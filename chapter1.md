@@ -18,13 +18,16 @@
 #git clone https://github.com/openstack-dev/devstack.git -b stable/newton
 ```
 
-* 创建 `stack`用户，修改用户目录权限
+* 创建 `stack`用户，修改用户目录权限，修改 `stack `用户权限
 
 ```
 #cd /opt/devstack
 #./tools/create-stack-user.sh
 #chown -R stack:stack /opt/devstack
+#vim /etc/sudoers
 ```
+
+> stack   ALL=\(ALL\)       NOPASSWD: ALL
 
 * 切换至 `stack`用户，编写`local.conf`文件
 
