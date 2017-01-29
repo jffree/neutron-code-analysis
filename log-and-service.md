@@ -7,17 +7,11 @@ $su - stack
 $screen -x stack
 ```
 
-`screen`_是一个终端复用器，类似于 _`tmux`
+`screen`_是一个终端复用器，类似于 _`tmux`。
 
-* 关于 screen 的使用请参考：[linux screen 命令详解](http://www.cnblogs.com/mchina/archive/2013/01/30/2880680.html)
+_使用方法请参考：_[_linux screen 命令详解_](http://www.cnblogs.com/mchina/archive/2013/01/30/2880680.html)
 
 ## 服务管理：
-
-
-
-
-
-
 
 
 
