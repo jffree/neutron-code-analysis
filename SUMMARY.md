@@ -2,5 +2,5 @@
 
 * [Introduction](README.md)
 * [deploy](chapter1.md)
-* [env](env.md)
+* [sys.path](env.md)
 
