@@ -6,5 +6,5 @@
 * [sys.path](env.md)
 * [log & service ](log-and-service.md)
 * [架构](architecture.md)
-* [requirements.txt](requirements.txt.md)
+* [setup](requirements.txt.md)
 

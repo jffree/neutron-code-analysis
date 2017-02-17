@@ -31,3 +31,10 @@ global-exclude *.pyc
 
 MAINFEST.IN 格式请参考： [The manifest template commands](https://docs.python.org/2/distutils/sourcedist.html#commands)
 
+entry\_point
+
+[python之entry points](http://blog.sina.com.cn/s/blog_85998e380101bojs.html)
+
+[setuptools中的entry\_points](http://bingotree.cn/?p=178)  
+  
+
