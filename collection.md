@@ -8,3 +8,10 @@
 
 [关于python中的setup.py](http://lingxiankong.github.io/blog/2013/12/23/python-setup/)
 
+[Python包管理工具setuptools详解](http://yansu.org/2013/06/07/learn-python-setuptools-in-detail.html)
+
+[Building and Distributing Packages with Setuptools](https://setuptools.readthedocs.io/en/latest/setuptools.html#id3)
+
+  
+
+
