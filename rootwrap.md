@@ -11,23 +11,24 @@ _不止是 neutron，nova、cinder中用到了 rootwrap 都是如此使用和实
 ```
 ......
 scripts = 
-	bin/neutron-rootwrap
+    bin/neutron-rootwrap
 .....
 
 neutron-rootwrap = oslo.rootwrap.cmd:main
 .......
 ```
 
-* **在 `/etc/sudoers.d/` 目录下增加一个 `neutron-rootwrap` 文件 ，其内容为：**
+* **在 **`/etc/sudoers.d/`** 目录下增加一个 **`neutron-rootwrap`** 文件 ，其内容为：**
 
 ```
 stack ALL=(root) NOPASSWD: /usr/bin/neutron-rootwrap /etc/neutron/rootwrap.conf *
 stack ALL=(root) NOPASSWD: /usr/bin/neutron-rootwrap-daemon /etc/neutron/rootwrap.conf
 ```
 
-_该文件的作用就是 stack 用户可以以无密码的方式执行 `/usr/bin/neutron-rootwrap /etc/neutron/rootwrap.conf *` 命令_
+_该文件的作用就是 stack 用户可以以无密码的方式执行 _`/usr/bin/neutron-rootwrap /etc/neutron/rootwrap.conf *`_  
+ 命令_
 
-* **`/etc/neutron/rootwrap.conf` 定义了 rootwrap 的配置信息**
+* `/etc/neutron/rootwrap.conf`** 定义了 rootwrap 的配置信息**
 
 ```
 # Configuration for neutron-rootwrap
@@ -66,7 +67,7 @@ xenapi_connection_username=root
 xenapi_connection_password=<None>
 ```
 
-* 配置文件中的 `filters_path `定义了可以使用 rootwrap 的命令的过滤文件的目录
+* 配置文件中的 `filters_path`定义了可以使用 rootwrap 的命令的过滤文件的目录
 
 ```
 $ls /etc/neutron/rootwrap.d/
@@ -76,13 +77,14 @@ dhcp.filters   ebtables.filters  iptables-firewall.filters  linuxbridge-plugin.f
 
 _若是你有想要以 root 身份执行的命令可以在这里面增加文件，并写清楚你要执行的命令即可。_
 
+* filters 文件的书写格式：
+
+```
+[filters]
+cmd-name: filter-name, raw-command, user, args
+```
+
 源码分析：
-
-
-
-
-
-
 
 [http://blog.csdn.net/gaoxingnengjisuan/article/details/47102593](http://blog.csdn.net/gaoxingnengjisuan/article/details/47102593)
 
