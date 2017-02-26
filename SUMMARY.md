@@ -4,18 +4,18 @@
 
 ## devstack
 
-* [deploy](chapter1.md)
-* [sys.path](env.md)
-* [log & service ](log-and-service.md)
+* [deploy](devstack/deploy.md)
+* [sys.path](devstack/env.md)
+* [log & service ](devstack/log-and-service.md)
 
 ## 其他
 
-* [收藏文档](collection.md)
+* [收藏文档](other/collection.md)
 
 ## 分析
 
-* [架构](architecture.md)
-* [setup.cfg](setup.cfg.md)
-* [init.d/neutron-server](init.dneutron-server.md)
-* [rootwrap](rootwrap.md)
+* [架构](analysis/architecture.md)
+* [setup.cfg](analysis/setup.cfg.md)
+* [init.d/neutron-server](analysis/init.d-neutron-server.md)
+* [rootwrap](analysis/rootwrap.md)
 
