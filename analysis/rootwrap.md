@@ -92,3 +92,5 @@ cmd-name: filter-name, raw-command, user, args
 
 [http://lingxiankong.github.io/blog/2014/03/11/rootwrap-in-openstack/](http://lingxiankong.github.io/blog/2014/03/11/rootwrap-in-openstack/)
 
+我自己也看了看rootwrap的源码，有兴趣的可以去看看：[https://github.com/jffree/oslo.rootwrap](https://github.com/jffree/oslo.rootwrap)
+
