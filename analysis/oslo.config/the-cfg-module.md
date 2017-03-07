@@ -265,5 +265,180 @@ opts = [
 foo = k1:v1,k2:v2
 ```
 
+### 全局ConfigOpts
+
+该模块提供了一个ConfigOpts的全局实例，以便在Openstack统一使用。
+
+```
+from oslo_config import cfg
+
+opts = [
+    cfg.StrOpt('bind_host', default='0.0.0.0'),
+    cfg.PortOpt('bind_port', default=9292),
+]
+
+CONF = cfg.CONF
+CONF.register_opts(opts)
+
+def start(server, app):
+    server.start(app, CONF.bind_port, CONF.bind_host)
+```
+
+命令行位置参数
+
+通过 positional 参数可声明一个命令行位置参数
+
+```
+>>> conf = cfg.ConfigOpts()
+>>> conf.register_cli_opt(cfg.MultiStrOpt('bar', positional=True))
+True
+>>> conf(['a', 'b'])
+>>> conf.bar
+['a', 'b']
+```
+
+子解析器
+
+继承自 argpparse 中的 sub-parse 的概念（将多个命令组合进一个程序中，使用子解析器来处理命令行的每个部分。），使用SubCommandOpt来实现。
+
+```
+#在 argparse中的例子
+ArgumentParser.add_subparsers([title][, description][, prog][, parser_class][, action][, option_string][, dest][, help][, metavar])
+>>> # create the top-level parser
+>>> parser = argparse.ArgumentParser(prog='PROG')
+>>> parser.add_argument('--foo', action='store_true', help='foo help')
+>>> subparsers = parser.add_subparsers(help='sub-command help')
+>>>
+>>> # create the parser for the "a" command
+>>> parser_a = subparsers.add_parser('a', help='a help')
+>>> parser_a.add_argument('bar', type=int, help='bar help')
+>>>
+>>> # create the parser for the "b" command
+>>> parser_b = subparsers.add_parser('b', help='b help')
+>>> parser_b.add_argument('--baz', choices='XYZ', help='baz help')
+>>>
+>>> # parse some argument lists
+>>> parser.parse_args(['a', '12'])
+Namespace(bar=12, foo=False)
+>>> parser.parse_args(['--foo', 'b', '--baz', 'Z'])
+Namespace(baz='Z', foo=True)
+```
+
+```
+>>> def add_parsers(subparsers):
+...     list_action = subparsers.add_parser('list')
+...     list_action.add_argument('id')
+...
+>>> conf = cfg.ConfigOpts()
+>>> conf.register_cli_opt(cfg.SubCommandOpt('action', handler=add_parsers))
+True
+>>> conf(args=['list', '10'])
+>>> conf.action.name, conf.action.id
+('list', '10')
+```
+
+### 高级选项
+
+如果需将选项标记为高级，指示该选项通常不被大多数用户使用，并且可能对稳定性和/或性能有重大影响，请使用此选项：
+
+```
+from oslo_config import cfg
+
+opts = [
+    cfg.StrOpt('option1', default='default_value',
+                advanced=True, help='This is help '
+                'text.'),
+    cfg.PortOpt('option2', default='default_value',
+                 help='This is help text.'),
+]
+
+CONF = cfg.CONF
+CONF.register_opts(opts)
+```
+
+这将会导致该选项被推送到命名空间的底部，并在示例文件中标记为高级，并带有关于可能的效果的符号：
+
+```
+[DEFAULT]
+...
+# This is help text. (string value)
+# option2 = default_value
+...
+<pushed to bottom of section>
+...
+# This is help text. (string value)
+# Advanced Option: intended for advanced users and not used
+# by the majority of users, and might have a significant
+# effect on stability and/or performance.
+# option1 = default_value
+```
+
+### 弃用选项
+
+如果要重命名一些选项，或者它们移动到另一个组或完全删除，可以在 Opt的构造函数中使用deprecated\_name，deprecated\_group和deprecated\_for\_removal参数进行声明：
+
+```
+from oslo_config import cfg
+
+conf = cfg.ConfigOpts()
+
+opt_1 = cfg.StrOpt('opt_1', default='foo', deprecated_name='opt1')
+opt_2 = cfg.StrOpt('opt_2', default='spam', deprecated_group='DEFAULT')
+opt_3 = cfg.BoolOpt('opt_3', default=False, deprecated_for_removal=True)
+
+conf.register_opt(opt_1, group='group_1')
+conf.register_opt(opt_2, group='group_2')
+conf.register_opt(opt_3)
+
+conf(['--config-file', 'config.conf'])
+
+assert conf.group_1.opt_1 == 'bar'
+assert conf.group_2.opt_2 == 'eggs'
+assert conf.opt_3
+```
+
+假定配置文件的内容如下：
+
+```
+[group_1]
+opt1 = bar
+
+[DEFAULT]
+opt_2 = eggs
+opt_3 = True
+```
+
+该脚本将成功，但会记录有关给定的已弃用选项的三个相应的警告。
+
+还有`deprecated_reason`和`deprecated_since`参数，用于指定有关弃用的一些其他信息。
+
+所有提及的参数可以以任何组合混合在一起。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
