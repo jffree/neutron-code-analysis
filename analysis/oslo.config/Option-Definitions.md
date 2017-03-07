@@ -19,12 +19,24 @@
 * deprecated\_name – 被放弃的名称，类似于重命名
 * deprecated\_group –被放弃的组名称
 * deprecated\_opts – list of DeprecatedOpt
-* sample\_default – a default string for sample config files
+* sample\_default – 在配置文件中的默认值
 * deprecated\_for\_removal – 指示该选项在将来将会被抛弃
 * deprecated\_reason –指示该选项将被抛弃的原因
 * deprecated\_since – 指出该选项在哪一个版本中被抛弃
 * mutable – True if this option may be reloaded
 * advanced – 是否为高级选项
+
+`class oslo_config.cfg.StrOpt(name, choices=None, quotes=None, regex=None, ignore_case=None, max_length=None, **kwargs)`
+
+string或[`oslo_config.types.String`](https://docs.openstack.org/developer/oslo.config/types.html#oslo_config.types.String) 类型的选项
+
+* name – 选项名称
+* choices – 可选的有效值序列
+* quotes –此值为True，且字符串被单引号或双引号括起来时，将剥去这些引号
+* regex – 可选的正则表达式，提供的选项值必须与此匹配
+* ignore\_case –若果为 True的话将会忽略 choices 和 quotes的大小写差异
+* max\_length – 选项值的最大长度
+* \*\*kwargs – 传递给 Opt 的其他可选参数
 
 
 
