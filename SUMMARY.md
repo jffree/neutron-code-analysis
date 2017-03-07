@@ -17,5 +17,5 @@
 * [架构](analysis/architecture.md)
 * [setup.cfg](analysis/setup.cfg.md)
 * [init.d/neutron-server](analysis/init.d-neutron-server.md)
-* [rootwrap](analysis/rootwrap.md)
+* [oslo.rootwrap](analysis/rootwrap.md)
 
