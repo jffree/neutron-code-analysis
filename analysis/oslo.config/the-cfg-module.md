@@ -227,11 +227,43 @@ opts = [
 
 ### 其他特殊说明
 
+选项可以被声明为必须的，若是没有为其提供值将会报错
 
+```
+opts = [
+    cfg.StrOpt('service_name', required=True),
+    cfg.StrOpt('image_id', required=True),
+    ...
+]
+```
 
+选项也可以被声明为保密的，这些选项的值将不会在日志中体现
 
+```
+opts = [
+   cfg.StrOpt('s3_store_access_key', secret=True),
+   cfg.StrOpt('s3_store_secret_key', secret=True),
+   ...
+]
+```
 
+### 字典类型选项：
 
+若是需要用书提供字典（键值对）类型的选项，那么你可以使用 `DictOpt`:
+
+```
+opts = [
+    cfg.DictOpt('foo',
+                default={})
+]
+```
+
+那么，用户可以在配置文件中写成下面的方式：
+
+```
+[DEFAULT]
+foo = k1:v1,k2:v2
+```
 
 
 
