@@ -140,6 +140,66 @@ if conf.verbose:
     ...
 ```
 
+### 选项组：
+
+选项在注册时，可以声明属于一个组：
+
+```
+rabbit_group = cfg.OptGroup(name='rabbit',
+                            title='RabbitMQ options')
+
+rabbit_host_opt = cfg.StrOpt('host',
+                             default='localhost',
+                             help='IP/hostname to listen on.'),
+rabbit_port_opt = cfg.PortOpt('port',
+                              default=5672,
+                              help='Port number to listen on.')
+
+def register_rabbit_opts(conf):
+    conf.register_group(rabbit_group)
+    # options can be registered under a group in either of these ways:
+    conf.register_opt(rabbit_host_opt, group=rabbit_group)
+    conf.register_opt(rabbit_port_opt, group='rabbit')
+```
+
+如果组除名称之外不需要别的属性，则不需要显式地注册组，例如：
+
+```
+def register_rabbit_opts(conf):
+    # The group will automatically be created, equivalent calling::
+    #   conf.register_group(OptGroup(name='rabbit'))
+    conf.register_opt(rabbit_port_opt, group='rabbit')
+```
+
+若是在注册选项是，没有声明所属组，则会将其归为 `DEFAULT `组
+
+```
+glance-api.conf:
+  [DEFAULT]
+  bind_port = 9292
+  ...
+
+  [rabbit]
+  host = localhost
+  port = 5672
+  use_ssl = False
+  userid = guest
+  password = guest
+  virtual_host = /
+```
+
+命令行选项将自动带有组名称作为前缀：
+
+```
+--rabbit-host localhost --rabbit-port 9999
+```
+
+### 在你的代码中访问选项值
+
+
+
+
+
 
 
 
