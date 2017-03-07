@@ -171,7 +171,7 @@ def register_rabbit_opts(conf):
     conf.register_opt(rabbit_port_opt, group='rabbit')
 ```
 
-若是在注册选项是，没有声明所属组，则会将其归为 `DEFAULT `组
+若是在注册选项是，没有声明所属组，则会将其归为 `DEFAULT`组
 
 ```
 glance-api.conf:
@@ -195,6 +195,43 @@ glance-api.conf:
 ```
 
 ### 在你的代码中访问选项值
+
+属于默认组的选项值可通过配置管理器直接访问，其他的可通过组名进行访问。
+
+```
+server.start(app, conf.bind_port, conf.bind_host, conf)
+
+self.connection = kombu.connection.BrokerConnection(
+    hostname=conf.rabbit.host,
+    port=conf.rabbit.port,
+    ...)
+```
+
+### 选项插值
+
+选项的值可以被其他选项值引用：
+
+```
+opts = [
+    cfg.StrOpt('state_path',
+               default=os.path.join(os.path.dirname(__file__), '../'),
+               help='Top-level directory for maintaining nova state.'),
+    cfg.StrOpt('sqlite_db',
+               default='nova.sqlite',
+               help='File name for SQLite.'),
+    cfg.StrOpt('sql_connection',
+               default='sqlite:///$state_path/$sqlite_db',
+               help='Connection string for SQL database.'),
+]
+```
+
+### 其他特殊说明
+
+
+
+
+
+
 
 
 
