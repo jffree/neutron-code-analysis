@@ -95,6 +95,57 @@ def add_common_opts(conf):
     conf.register_cli_opts(cli_opts)
 ```
 
+### 加载配置文件
+
+配置管理器有两个默认定义的CLI选项，-config-file和-config-dir：
+
+```py
+class ConfigOpts(object):
+
+    def __call__(self, ...):
+
+        opts = [
+            MultiStrOpt('config-file',
+                    ...),
+            StrOpt('config-dir',
+                   ...),
+        ]
+
+        self.register_cli_opts(opts)
+```
+
+oslo\_config.iniparser用于解析配置文件，若配置文件未声明，则一系列默认的文件将被使用，例如glance-api.conf、glance-common.conf。
+
+```
+glance-api.conf:
+  [DEFAULT]
+  bind_port = 9292
+
+glance-common.conf:
+  [DEFAULT]
+  bind_host = 0.0.0.0
+```
+
+配置文件中的每一行不得以空格开头。在配置文件中可以用 **\# **和 **;** 来表示注释行。无论是命令行选项还是配置文件选项都会按照顺序解析。对于多次出现的同一选项来说，后面的值将覆盖前面的值。
+
+同一配置目录中的配置文件的顺序由其文件名的字母排序顺序定义。
+
+CLI参数和配置文件的解析是通过调用配置管理器来启动的，例如：
+
+```
+conf = cfg.ConfigOpts()
+conf.register_opt(cfg.BoolOpt('verbose', ...))
+conf(sys.argv[1:])
+if conf.verbose:
+    ...
+```
+
+
+
+
+
+
+
 
 
 
