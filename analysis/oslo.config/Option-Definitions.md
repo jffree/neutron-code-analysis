@@ -4,33 +4,27 @@
 
 定义选项的基类。
 
-唯一必须的参数是 name，但是通常提供 `default `和 `help `信息。
+唯一必须的参数是 name，但是通常提供 `default`和 `help`信息。
 
 * name – 选项名称
 * type – 选项类型（必须是一个可调用的对象，用来返回选项值）
 * dest – the name of the corresponding ConfigOpts property
-* short – a single character CLI option name
-* default – the default value of the option
-* positional – True if the option is a positional CLI argument
-* metavar – the option argument to show in –help
-* help – an explanation of how the option is used
-* secret – true if the value should be obfuscated in log output
-* required – true if a value must be supplied for this option
-* deprecated\_name – deprecated name option. Acts like an alias
-* deprecated\_group – the group containing a deprecated alias
+* short – 一个单字母的命令行选项名称（缩写）
+* default – 选项的默认值
+* positional – 该选项是否为一个命令行位置选项
+* metavar – 在 -help后展示的信息
+* help – 帮助信息
+* secret –是否为秘密选项，不在日志文件中展示
+* required – 是否为必须选项
+* deprecated\_name – 被放弃的名称，类似于重命名
+* deprecated\_group –被放弃的组名称
 * deprecated\_opts – list of DeprecatedOpt
 * sample\_default – a default string for sample config files
-* deprecated\_for\_removal – indicates whether this opt is planned for removal in a future release
-* deprecated\_reason – indicates why this opt is planned for removal in a future release. Silently ignored if deprecated\_for\_removal is False
-* deprecated\_since – indicates which release this opt was deprecated in. Accepts any string, though valid version strings are encouraged. Silently ignored if deprecated\_for\_removal is False
+* deprecated\_for\_removal – 指示该选项在将来将会被抛弃
+* deprecated\_reason –指示该选项将被抛弃的原因
+* deprecated\_since – 指出该选项在哪一个版本中被抛弃
 * mutable – True if this option may be reloaded
-* advanced – a bool True/False value if this option has advanced usage and is not normally used by the majority of users
-
-
-
-
-
-
+* advanced – 是否为高级选项
 
 
 
