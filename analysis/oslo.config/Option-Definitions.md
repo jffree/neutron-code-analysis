@@ -1,4 +1,4 @@
-# 定义选项
+# [定义选项](https://docs.openstack.org/developer/oslo.config/opts.html)
 
 `class oslo_config.cfg.Opt(name, type=None, dest=None, short=None, default=None, positional=False, metavar=None, help=None, secret=False, required=False, deprecated_name=None, deprecated_group=None, deprecated_opts=None, sample_default=None, deprecated_for_removal=False, deprecated_reason=None, deprecated_since=None, mutable=False, advanced=False)`
 
@@ -128,35 +128,59 @@ IPADDRESS、[`oslo_config.types.IPAddress`](https://docs.openstack.org/developer
 * name – 选项名称
 * \*\*kwargs – 传递给 Opt 的其他可选参数
 
+`class oslo_config.cfg.HostAddressOpt(name, version=None, **kwargs)`
 
+IP 或 hostname 类型（[`oslo_config.types.HostAddress`](https://docs.openstack.org/developer/oslo.config/types.html#oslo_config.types.HostAddress)）的选项
 
+* name – 选项名称
+* version - IP 版本（4、6；None意味着两者都可以）
+* \*\*kwargs – 传递给 Opt 的其他可选参数
 
+class oslo\_config.cfg.URIOpt\(name, max\_length=None, schemes=None, \*\*kwargs\)
 
+URL 类型（[`oslo_config.types.URI`](https://docs.openstack.org/developer/oslo.config/types.html#oslo_config.types.URI)）的选项
 
+* name – 选项名称
+* max\_length – 选项值的最大长度
+* schemes – URL的类型（例如：‘https’, ‘ftp’, ‘git’）
+* \*\*kwargs – 传递给 Opt 的其他可选参数
 
+class oslo\_config.cfg.DeprecatedOpt\(name, group=None\)
 
+代表一个被遗弃的选项
 
+例如：
 
+```
+oldopts = [cfg.DeprecatedOpt('oldopt1', group='group1'),
+           cfg.DeprecatedOpt('oldopt2', group='group2')]
+cfg.CONF.register_group(cfg.OptGroup('group1'))
+cfg.CONF.register_opt(cfg.StrOpt('newopt', deprecated_opts=oldopts),
+                      group='group1')
+```
 
+其他请参考文档
 
+`class oslo_config.cfg.SubCommandOpt(name, dest=None, handler=None, title=None, description=None, help=None)`
 
+子命令选项
 
+* name – 选项名称
+* dest – the name of the corresponding ConfigOpts property
+* handler –可执行的，用来提供子解析器对象
+* title – 帮助信息中显示的子命令组的名称
+* description – 组描述
+* help – 子命令的帮助信息
 
+`class oslo_config.cfg.OptGroup(name, title=None, help=None)`
 
+组选项
 
+`name`组名称
 
+`title`组的帮助信息名称
 
-
-
-
-
-
-
-
-
-
-
-
+`help`组的帮助信息
 
 
 
