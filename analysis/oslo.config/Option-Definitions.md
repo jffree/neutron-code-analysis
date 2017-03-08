@@ -60,20 +60,43 @@ string或[`oslo_config.types.String`](https://docs.openstack.org/developer/oslo.
 
 `class oslo_config.cfg.FloatOpt(name, min=None, max=None, **kwargs)`
 
-列表、字符串或[`oslo_config.types.List`](https://docs.openstack.org/developer/oslo.config/types.html#oslo_config.types.List)类型的选项
+列表（字符串）或[`oslo_config.types.List`](https://docs.openstack.org/developer/oslo.config/types.html#oslo_config.types.List)类型的选项
 
-name – 选项名称
+* name – 选项名称
+* item\_type – 列表项类型
+* bounds –若为 True，则值应该被 '\[' '\]' 括起来
+* \*\*kwargs – 传递给 Opt 的其他可选参数
 
-item\_type – 列表项类型
+`class oslo_config.cfg.DictOpt(name, **kwargs)`
 
-bounds –若为 True，则值应该被 '\[' '\]' 括起来
+字典（字符串）、[`oslo_config.types.Dict`](https://docs.openstack.org/developer/oslo.config/types.html#oslo_config.types.Dict)类型的选项
 
-\*\*kwargs – 传递给 Opt 的其他可选参数
+* name – 选项名称
 
+* \*\*kwargs – 传递给 Opt 的其他可选参数
 
+`class oslo_config.cfg.MultiOpt(name, item_type, **kwargs)`
 
+多值选项
 
+选项值是一个列表，包含有所有的值。
 
+* name – 选项名称
+* item\_type – 列表项类型
+* \*\*kwargs – 传递给 Opt 的其他可选参数
+
+例如：
+
+```
+cfg.MultiOpt('foo',
+             item_type=types.Integer(),
+             default=None,
+             help="Multiple foo option")
+```
+
+在命令行中使用`--foo=1--foo=2，那么 cfg.CONF.foo将会是[1,2]`
+
+  
 
 
 
