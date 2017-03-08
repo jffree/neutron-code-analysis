@@ -38,5 +38,61 @@ string或[`oslo_config.types.String`](https://docs.openstack.org/developer/oslo.
 * max\_length – 选项值的最大长度
 * \*\*kwargs – 传递给 Opt 的其他可选参数
 
+`class oslo_config.cfg.BoolOpt(name, **kwargs)`
+
+布尔类型的选项
+
+在命令行中使用 –optname 或–nooptname将选项设定为 True 或 False
+
+在配置文件中，布尔值使用布尔类型
+
+* name – 选项名称
+* \*\*kwargs – 传递给 Opt 的其他可选参数
+
+`class oslo_config.cfg.IntOpt(name, min=None, max=None, **kwargs)`
+
+整形或[`oslo_config.types.Integer`](https://docs.openstack.org/developer/oslo.config/types.html#oslo_config.types.Integer)类型的选项
+
+* name – 选项名称
+* min – 参数可选择的最小值
+* max – 参数可选择的最大值
+* \*\*kwargs – 传递给 Opt 的其他可选参数
+
+`class oslo_config.cfg.FloatOpt(name, min=None, max=None, **kwargs)`
+
+列表、字符串或[`oslo_config.types.List`](https://docs.openstack.org/developer/oslo.config/types.html#oslo_config.types.List)类型的选项
+
+name – 选项名称
+
+item\_type – 列表项类型
+
+bounds –若为 True，则值应该被 '\[' '\]' 括起来
+
+\*\*kwargs – 传递给 Opt 的其他可选参数
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
