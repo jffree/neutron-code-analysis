@@ -96,7 +96,68 @@ cfg.MultiOpt('foo',
 
 在命令行中使用`--foo=1--foo=2，那么 cfg.CONF.foo将会是[1,2]`
 
-  
+`class oslo_config.cfg.MultiStrOpt(name, **kwargs)`
+
+item\_type 为MultiString或[`oslo_config.types.MultiString`](https://docs.openstack.org/developer/oslo.config/types.html#oslo_config.types.MultiString)的MultiOpt
+
+* name – 选项名称
+* \*\*kwargs – 传递给 Opt 的其他可选参数
+
+`class oslo_config.cfg.IPOpt(name, version=None, **kwargs)`
+
+IPADDRESS、[`oslo_config.types.IPAddress`](https://docs.openstack.org/developer/oslo.config/types.html#oslo_config.types.IPAddress)类型的选项
+
+* name – 选项名称
+* version - IP 版本（4、6；None意味着两者都可以）
+* \*\*kwargs – 传递给 Opt 的其他可选参数
+
+`class oslo_config.cfg.PortOpt(name, min=None, max=None, choices=None, **kwargs)`
+
+类型为 TCP/IP 端口号、[`oslo_config.types.Integer`](https://docs.openstack.org/developer/oslo.config/types.html#oslo_config.types.Integer)的选项，端口号的范围是0-65535
+
+* name – 选项名称
+* min – 参数可选择的最小值
+* max – 参数可选择的最大值
+* choices -  可选的有效值序列
+* \*\*kwargs – 传递给 Opt 的其他可选参数
+
+`class oslo_config.cfg.HostnameOpt(name, **kwargs)`
+
+主机名类型（[`oslo_config.types.Hostname`](https://docs.openstack.org/developer/oslo.config/types.html#oslo_config.types.Hostname)）的选项
+
+* name – 选项名称
+* \*\*kwargs – 传递给 Opt 的其他可选参数
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
