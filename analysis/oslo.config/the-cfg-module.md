@@ -27,7 +27,7 @@ common_opts = [
 
 为了方便，[`oslo_config.cfg`](https://docs.openstack.org/developer/oslo.config/cfg.html#module-oslo_config.cfg) 预定义了包含特定类型的子类。
 
-例如，[`oslo_config.cfg.MultiOpt`](https://docs.openstack.org/developer/oslo.config/opts.html#oslo_config.cfg.MultiOpt\)通过 `item_type `参数来定义值的类型。为了方便[`oslo_config.cfg.MultiStrOpt`]\(https://docs.openstack.org/developer/oslo.config/opts.html#oslo_config.cfg.MultiStrOpt\)类即使将 item_type 参数设为[`oslo_config.types.MultiString`]\(https://docs.openstack.org/developer/oslo.config/types.html#oslo_config.types.MultiString\)的[`oslo_config.cfg.MultiOpt`]\(https://docs.openstack.org/developer/oslo.config/opts.html#oslo_config.cfg.MultiOpt)的子类。
+例如，[`oslo_config.cfg.MultiOpt`](https://docs.openstack.org/developer/oslo.config/opts.html#oslo_config.cfg.MultiOpt%29通过 `item_type `参数来定义值的类型。为了方便[`oslo_config.cfg.MultiStrOpt`]%28https://docs.openstack.org/developer/oslo.config/opts.html#oslo_config.cfg.MultiStrOpt%29类即使将 item_type 参数设为[`oslo_config.types.MultiString`]%28https://docs.openstack.org/developer/oslo.config/types.html#oslo_config.types.MultiString%29的[`oslo_config.cfg.MultiOpt`]%28https://docs.openstack.org/developer/oslo.config/opts.html#oslo_config.cfg.MultiOpt)的子类。
 
 以下示例使用子类定义选项：
 
@@ -77,7 +77,7 @@ def get_bind_port(conf):
     return conf.bind_port
 ```
 
-有的选项可以通过命令行来使用，这些选线在被解析之前同样需要注册到配置管理器（为了help信息和 CLI 参数检查 ）
+有的选项可以通过命令行来使用，这些选项在被解析之前同样需要注册到配置管理器（为了help信息和 CLI 参数检查 ）
 
 ```
 cli_opts = [
@@ -413,32 +413,4 @@ opt_3 = True
 还有`deprecated_reason`和`deprecated_since`参数，用于指定有关弃用的一些其他信息。
 
 所有提及的参数可以以任何组合混合在一起。
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
