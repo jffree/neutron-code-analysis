@@ -26,5 +26,27 @@
 
 ### 数据库交互
 
+记录常见的陷阱以及在数据库开发过程中的良好做法。
+
+* [first\(\)](http://docs.sqlalchemy.org/en/rel_1_0/orm/query.html#sqlalchemy.orm.query.Query.first) 不引发异常。
+
+* 不要使用[delete\(\)](http://docs.sqlalchemy.org/en/rel_1_0/orm/query.html#sqlalchemy.orm.query.Query.delete)来删除对象。 删除查询不会加载该对象，因此不会触发可以执行诸如重新计算配额或更新父对象的修订版本的操作`sqlalchemy`事件。 有关使用批量删除操作可能出现的所有问题的更多详细信息，请参阅上述链接中的“**警告**”部分。
+
+* 对于PostgreSQL，如果您使用GROUP BY SELECT列表中的所有内容必须是聚合SUM（...），COUNT（...）等，或在GROUP BY中使用。
+
+不正确的方法如下：
+
+```
+q = query(Object.id, Object.name,
+          func.count(Object.number)).group_by(Object.name)
+```
+
+正确的方法：
+
+```
+q = query(Object.id, Object.name,
+          func.count(Object.number)).group_by(Object.id, Object.name)
+```
+
 
 
