@@ -6,7 +6,7 @@ Neutron是在由其他OpenStack服务（例如，nova）管理的接口设备（
 
 此文档由Sphinx工具包生成，并且位于源代码树中。 有关Neutron和OpenStack的其他组件的其他文档可以在[OpenStack wiki](http://wiki.openstack.org/)和Wiki的Neutron部分找到。[Neutron Development wiki](http://wiki.openstack.org/NeutronDevelopment)对新贡献者来说也是一个好资源。
 
-## Neutron 愿景
+## Neutron 策略
 
 * [Neutron Policies](https://docs.openstack.org/developer/neutron/policies/index.html)
   * [Blueprints and Specs](https://docs.openstack.org/developer/neutron/policies/blueprints.html)
