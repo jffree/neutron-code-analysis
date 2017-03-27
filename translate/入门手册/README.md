@@ -207,3 +207,12 @@ def test_generic(self):
 
 * 考虑您的审查的时间，然后再提交您的补丁。 需要许多小时或数天才能审核的修补程序将位于“待办事项”列表中，直到有人有多小时或几天的免费（这可能永远不会发生）。如果您的patch小但易于理解和可测试的部分提供补丁，那么您将更有可能吸引审查人员。
 
+### Nits and pedantic comments
+
+注意记录常见的nits and pedantic comments
+
+* 确保你拼写正确，最好的，没有人会在发布周期结束时想要rebase generators！
+
+* 奇怪的pep8错误可能会导致整个CI运行被浪费。考虑在提交补丁之前运行验证（pep8和/或测试）。如果你忘记考虑安装一个git [hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)，这样Git就可以为你做。
+
+* 有时候，新的贡献者想用琐碎的补丁来dip their toes，但我们在OpenStack love bike shedding，他们的补丁可能有时候会stall。 在一些极端的情况下，补丁更加简单，它们无法合并的机会越高。 为了确保我们作为一个团队提供/无挫的经验，新的贡献者应该被重定向到修复对代码库有明显积极影响的低挂果错误。 拼写错误和docstring都很好，但是还有更多的内容比较容易修复，并直接影响到Neutron用户。
