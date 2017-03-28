@@ -136,3 +136,9 @@ $ sqlite3 /tmp/iwbgvhbshp.db
 
 全栈测试可以通过启动代理多次来模拟多节点测试。 具体来说，每个节点都有自己的*OVS/inuxBridge/DHCP/L3*代理副本，全部配置有相同的“主机”值。 每个OVS代理连接到它自己的一对*br-int/br-ex*，然后这些桥互连。 对于LinuxBridge代理，每个代理都在自己的命名空间中启动，名为`host- <some_random_value>`。 这些命名空间与OVS `central` 桥连接。
 
+![](https://docs.openstack.org/developer/neutron/_images/fullstack_multinode_simulation.png)
+
+数据库层的分割是通过每个测试创建数据库来保证的。 消息层通过利用称为`vhosts`的RabbitMQ功能来实现分段。 简而言之，就像MySQL服务器提供多个数据库一样，RabbitMQ服务器也可以提供多个消息传递域。 一个`vhost`中的交换和队列与另一个 `vhost` 中的交换和队列分段。
+
+请注意，如果您想使用fullstack测试测试的更改涉及到`python-neutronclient`以及`Neutron`的更改，那么您应该确保您的fullstack测试是一个独立的变化，这取决于`python-neutronclient` 并在更改使用提交信息中的`Depends-On`标签。 您将需要等待下一个版本的`python-neutronclient`，并且在全局要求之前，`python-neutronclient`的最小版本颠覆，在您的fullstack测试将在门口工作之前。 这是因为tox使用了`openstack/requirements`存储库中的`upper-constraint.txt`文件中列出的`python-neutronclient`版本。
+
