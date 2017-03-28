@@ -188,3 +188,188 @@ Neutron的 */tests/tempest/api* 目录从Kilo框架的Tempest项目中复制出�
 
 Rally 测试（rally-jobs/plugins）使用rally 基础设施来执行Neutron部署。 在rally 插件文档中可以找到编写好的rally 测试的准则。这里还有一些例子，将rally 插件添加到中子的过程需要三个步骤：1）编写一个插件并将其放在*rally-jobs/plugins/*下。 这是你的rally场景 2）（可选）在*rally-jobs/extra/*下添加安装文件。 这是确保您的环境可以成功处理您的方案请求所需的任何devstack配置; 3）编辑neutron-neutron.yaml。 这是您的方案“合同”或SLA。
 
+## 开发过程
+
+预计为合并而提出的任何新的更改都将附带该功能或代码区域的测试。 所提交的任何错误修复也必须有测试证明他们被修复！ 此外，在提出合并之前，所有当前的测试都应该过去。
+
+### 单元测试的架构
+
+单元测试树的结构应该与代码树的结构匹配，例如
+
+```
+- target module: neutron.agent.utils
+
+- test module: neutron.tests.unit.agent.test_utils
+```
+
+单位测试模块应在*neutron/tests/unit/*下具有与目标模块在*neutron/*下相同的路径，其名称应为以test_为前缀的目标模块的名称。 这个要求旨在使开发人员更容易找到给定模块的单元测试。
+
+类似地，当测试模块定位到一个软件包时，该模块的名称应该是以test_为前缀的软件包的名称，其路径与测试目标模块相同。
+
+```
+- target package: neutron.ipam
+
+- test module: neutron.tests.unit.test_ipam
+```
+
+可以使用以下命令验证单元测试树是否按照上述要求进行结构化：
+
+```
+./tools/check_unit_test_structure.sh
+```
+
+在适当的情况下，可以为上述脚本添加例外。 例如，如果代码不是Neutron命名空间的一部分，则可以将其单元测试从检查中排除是合理的。
+
+*注意：生产代码在任何时候都不会从测试子树（neutron.tests）导入任何东西。 有一些发行版在一个单独的软件包中分离出中子模块，这个软件包默认情况下不会安装，使任何依赖模块存在的代码都会失败。 例如，RDO是其中之一。*
+
+## 运行测试
+
+在提交补丁之前，您应该始终确保所有测试通过; 一个tox run是由genit执行的jenkins gate引发的每个补丁推送审查。
+
+像其他OpenStack项目一样，中子使用tox来管理运行测试用例的虚拟环境。 它使用Testr来管理测试用例的运行。
+
+Tox处理创建一系列针对特定版本的Python的virtualenvs。
+
+Testr处理并行执行一系列测试用例以及跟踪长时间运行的测试和其他事情。
+
+有关OpenStack使用的基于标准Tox的测试基础架构的更多信息以及如何使用Testr进行一些常见的测试/调试过程，请参阅此wiki页面：https://wiki.openstack.org/wiki/Testr
+
+### PEP8 和单元测试
+
+运行pep8和单元测试与在Neutron源代码的根目录中执行此操作一样简单：
+
+```
+tox
+```
+
+只运行 pep8
+
+```
+tox -e pep8
+```
+
+由于pep8包括在所有文件上运行pylint，所以运行可能需要相当长的时间。 将pylint检查限制为只有最新修补程序更改所更改的文件：
+
+```
+tox -e pep8 HEAD~1
+```
+
+只运行单元测试
+
+```
+tox -e py27
+```
+
+### 功能测试
+
+要运行不需要sudo权限或特定系统依赖关系的功能测试：
+
+```
+tox -e functional
+```
+
+要运行所有功能测试，包括需要sudo权限和特定于系统的依赖关系的功能测试，应该遵循由*tools/configure_for_func_testing.sh*定义的过程。
+
+重要信息：*configure_for_func_testing.sh*依赖于DevStack对底层主机进行大量修改。 脚本的执行需要sudo权限，建议仅在干净且可拆卸的虚拟机上调用以下命令。 已经安装了DevStack的VM也是可以的。
+
+```
+git clone https://git.openstack.org/openstack-dev/devstack ../devstack
+./tools/configure_for_func_testing.sh ../devstack -i
+tox -e dsvm-functional
+```
+
+'-i'选项是可选的，并指示脚本使用DevStack来安装和配置所有Neutron的软件包依赖项。 如果DevStack已经用于将Neutron部署到目标主机，则不需要提供此选项。
+
+### 全栈测试
+
+要运行全栈测试，你需要运行：
+
+```
+tox -e dsvm-fullstack
+```
+
+由于全栈测试通常需要与功能测试相同的资源和依赖关系，因此建议使用配置脚本*tools/configure_for_func_testing.sh*（如上所述）。 首次在干净的VM上运行全栈测试时，我们建议成功运行./stack.sh，以确保满足所有Neutron的依赖关系。 基于全栈的Neutron守护程序会将日志生成到*/opt/stack/logs/dsvm-fullstack-logs*中的子文件夹中（例如，名为“test_example”的测试将生成日志到*/opt/stack/logs/dsvm-fullstack-logs/test_example/*），所以如果你的测试失败，这将是一个很好的地方。 从测试基础架构本身登录放在：*/opt/stack/logs/dsvm-fullstack-logs/test_example.log*中。 Fullstack测试套件假设测试机的根命名空间中的240.0.0.0/4（E类）范围可用于其使用。
+
+### API以及情景测试
+
+要运行api或场景测试，请使用DevStack部署Tempest和Neutron，然后从tempest目录运行以下命令：
+
+```
+tox -e all-plugin
+```
+
+如果要限制要运行的测试数量，可以执行以下操作：
+
+```
+export DEVSTACK_GATE_TEMPEST_REGEX="<you-regex>" # e.g. "neutron"
+tox -e all-plugin $DEVSTACK_GATE_TEMPEST_REGEX
+```
+
+### 运行单独的测试
+
+对于运行单独的测试模块，案例或测试，您只需要将所需的点分隔路径作为参数传递给它。
+
+例如，以下只运行一个测试或测试用例：
+
+```
+$ tox -e py27 neutron.tests.unit.test_manager
+$ tox -e py27 neutron.tests.unit.test_manager.NeutronManagerTestCase
+$ tox -e py27 neutron.tests.unit.test_manager.NeutronManagerTestCase.test_service_plugin_is_loaded
+```
+
+如果要将其他参数传递给ostestr，可以执行以下操作:
+
+```
+$ tox -e -epy27 – –regex neutron.tests.unit.test_manager –serial
+```
+
+## 测试覆盖范围
+
+中子具有快速增长的代码库，并且有很多领域需要更好的覆盖。
+
+要掌握需要测试的领域，您可以通过运行以下步骤来检查当前的单元测试覆盖范围：
+
+```
+$ tox -ecover
+```
+
+由于coverage命令只能显示单元测试覆盖范围，因此将保留覆盖文档，该文档显示以下文档中的代码区域的测试覆盖：*doc/source/devref/testing_coverage.rst*。 您也可以依赖于Zuul日志，这些日志是合并后生成的（不是每个项目都构建覆盖结果）。 要访问它们，请执行以下操作：
+
+* 查看最新的[合并提交](https://review.openstack.org/gitweb?p=openstack/neutron.git;a=search;s=Jenkins;st=author)
+
+* 转到：http://logs.openstack.org/<first-2-digits-of-sha1>/<sha1>/post/neutron-coverage/。
+
+* spec 是一项正在进行的工作，以提供更好的landing page。
+
+## 调试
+
+默认情况下，运行测试时，对pdb.set_trace（）的调用将被忽略。 要使pdb语句工作，请按如下所示调用tox：
+
+```
+$ tox -e venv -- python -m testtools.run [test module path]
+```
+
+Tox创建的虚拟环境（venv）也可以在tox运行后被激活并重新用于调试：
+
+```
+$ tox -e venv
+$ . .tox/venv/bin/activate
+$ python -m testtools.run [test module path]
+```
+
+Tox软件包并在每次调用时将Neutron源代码树安装在给定的静态文件中，但是如果需要在调用之间进行修改（例如，添加更多pdb语句），则建议将源代码树以可编辑模式安装到venv中：
+
+```
+# run this only after activating the venv
+$ pip install --editable .
+```
+
+可编辑模式可确保对源代码树进行的更改会自动反映在venv中，并且这些更改在下一次运行时不会被覆盖。
+
+### Post-mortem Debugging
+
+TBD: how to do this with tox.
+
+### References
+
+[1]	PUDB debugger: https://pypi.python.org/pypi/pudb
