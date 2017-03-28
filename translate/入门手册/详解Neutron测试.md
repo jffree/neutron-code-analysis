@@ -140,5 +140,51 @@ $ sqlite3 /tmp/iwbgvhbshp.db
 
 数据库层的分割是通过每个测试创建数据库来保证的。 消息层通过利用称为`vhosts`的RabbitMQ功能来实现分段。 简而言之，就像MySQL服务器提供多个数据库一样，RabbitMQ服务器也可以提供多个消息传递域。 一个`vhost`中的交换和队列与另一个 `vhost` 中的交换和队列分段。
 
-请注意，如果您想使用fullstack测试测试的更改涉及到`python-neutronclient`以及`Neutron`的更改，那么您应该确保您的fullstack测试是一个独立的变化，这取决于`python-neutronclient` 并在更改使用提交信息中的`Depends-On`标签。 您将需要等待下一个版本的`python-neutronclient`，并且在全局要求之前，`python-neutronclient`的最小版本颠覆，在您的fullstack测试将在门口工作之前。 这是因为tox使用了`openstack/requirements`存储库中的`upper-constraint.txt`文件中列出的`python-neutronclient`版本。
+请注意，如果您想使用fullstack测试那些涉及到`python-neutronclient`以及`Neutron`的更改，那么您应该确保您的fullstack测试是一个独立的第三方变化，这取决于`python-neutronclient` 并在更改使用提交信息中的`Depends-On`标签。在您的fullstack测试将在gate工作之前，您将需要等待下一个版本的`python-neutronclient`，`python-neutronclient`的最小版本bump在全局requirements。 这是因为tox使用了`openstack/requirements`存储库中的`upper-constraint.txt`文件中列出的`python-neutronclient`版本。
+
+#### 什么时间？
+
+1. 您想要测试 Neutron 组件（服务器和代理）之间的相互作用，并已通过单元或功能测试隔离测试每个组件。 您应该有许多单元测试，更少的测试来测试组件，甚至更少的测试他们的交互。 边缘情况不应该用全堆栈测试进行测试。
+
+2. 您希望通过测试需要多节点测试的功能（如l2pop，L3 HA和DVR）来增加覆盖范围。
+
+3. 你想测试代理重新启动。 我们在OVS，DHCP和L3代理中发现了错误，并没有找到测试这些场景的有效方式。 完整的堆栈测试可以在这里起到作用，因为完整的堆栈基础设施可以在测试期间重新启动代理。
+
+#### 实例
+
+Neutron提供了服务质量API，最初在端口级提供带宽上限。 在参考实现中，它通过使用OVS功能来实现。
+ `neutron.tests.fullstack.test_qos.TestQoSWithOvsAgent.test_qos_policy_rule_lifecycle`是一个积极的例子，说明如何使用fullstack测试基础架构。 它创建一个网络，子网，QoS策略和规则以及使用该策略的端口。 然后断定在连接到该端口的OVS桥上存在期望的带宽限制。 该测试是一个真正的集成测试，它的意义在于它调用API，然后断言Neutron适当地与管理程序进行交互。
+
+### API 测试
+
+API测试（neutron/tests/tempest/api/）旨在确保Neutron API的功能和稳定性。 尽可能地，对路径的更改不应该与代码的更改同时进行，以限制引入向后兼容的更改的可能性，尽管引入新API的同一补丁应包括API测试。
+
+由于API测试针对未经测试管理的部署Neutron守护程序，因此不应依赖于控制目标守护程序的运行时配置。 API测试应该是黑盒 - 不应该对实现做出假设。 应该验证Neutron的REST API定义的合同，并且所有与守护进程的交互应通过REST客户端进行。
+
+Neutron的 */tests/tempest/api* 目录从Kilo框架的Tempest项目中复制出来。 当时，Tempest和Neutron存储库之间的测试重叠。 然后通过雕刻出属于`Tempest`的资源子集，在Neutron中消除了这种重叠。
+
+属于Tempest的API测试涉及Neutron资源的一个子集：
+
+* Port
+* Network
+* Subnet
+* Security Group
+* Router
+* Floating IP
+
+这些资源导出被使用。它们在大多数Neutron部署中被发现，无论插件如何，并且直接参与实例的网络和安全性。 它们是Neutron的最低需求。
+
+这在大多数情况下不包括这些资源的扩展（例如：对子网的额外DHCP选项，或snat_gateway模式到路由器）。
+
+应向Neutron存储库提供其他资源的测试。 场景测试应该根据他们所针对的API在Tempest和Neutron之间分类。
+
+### 情景测试
+
+场景测试（中子/测试/暴风/场景），类似于API测试，使用Tempest测试基础设施并具有相同的要求。 在Tempest开发人员指南中可以找到编写良好场景测试的指南：http://docs.openstack.org/developer/tempest/field_guide/scenario.html
+
+根据测试针对的Neutron API，场景测试（如API测试）分为Tempest和Neutron存储库。
+
+### Rally Tests
+
+Rally 测试（rally-jobs/plugins）使用rally 基础设施来执行Neutron部署。 在rally 插件文档中可以找到编写好的rally 测试的准则。这里还有一些例子，将rally 插件添加到中子的过程需要三个步骤：1）编写一个插件并将其放在*rally-jobs/plugins/*下。 这是你的rally场景 2）（可选）在*rally-jobs/extra/*下添加安装文件。 这是确保您的环境可以成功处理您的方案请求所需的任何devstack配置; 3）编辑neutron-neutron.yaml。 这是您的方案“合同”或SLA。
 
