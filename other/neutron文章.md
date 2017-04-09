@@ -27,3 +27,13 @@
 [JUNO NEUTRON中的plugin和extension介绍及加载机制](http://bingotree.cn/?p=660&utm_source=tuicool&utm_medium=referral)
 
 **这个人的其他 blog 也应该看**
+
+# other
+
+[How to write a neutron service plugin?](http://virtualworkz.blogspot.com/2016/01/how-to-write-neutron-service-plugin.html)
+
+# openstack doc
+
+[Networking API v2.0](https://developer.openstack.org/api-ref/networking/v2/index.html)
+
+[NeutronDevelopment](https://wiki.openstack.org/wiki/NeutronDevelopment)
