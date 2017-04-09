@@ -16,7 +16,7 @@
 
 [怎样修改 Openstack Horizon（Dashboard）的显示界面 （一）](http://www.cnblogs.com/zhutianshi/p/3938618.html)
 
-[怎样修改 Openstack Horizon（Dashboard）的显示界面 （二）]()
+[怎样修改 Openstack Horizon（Dashboard）的显示界面 （二）](http://www.cnblogs.com/zhutianshi/p/3994014.html)
 
 # WangWei关于neutron的博客
 
@@ -37,3 +37,5 @@
 [Networking API v2.0](https://developer.openstack.org/api-ref/networking/v2/index.html)
 
 [NeutronDevelopment](https://wiki.openstack.org/wiki/NeutronDevelopment)
+
+[Writing CLI commands for NeutronClient on Openstack](http://control-that-vm.blogspot.jp/2014/06/writing-cli-commands-for-neutronclient.html)
