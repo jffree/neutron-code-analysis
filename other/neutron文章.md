@@ -32,6 +32,8 @@
 
 [How to write a neutron service plugin?](http://virtualworkz.blogspot.com/2016/01/how-to-write-neutron-service-plugin.html)
 
+[Python深入：stevedore简介](http://blog.csdn.net/gqtcgq/article/details/49620279)
+
 # openstack doc
 
 [Networking API v2.0](https://developer.openstack.org/api-ref/networking/v2/index.html)
