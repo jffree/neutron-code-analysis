@@ -41,3 +41,9 @@
 [NeutronDevelopment](https://wiki.openstack.org/wiki/NeutronDevelopment)
 
 [Writing CLI commands for NeutronClient on Openstack](http://control-that-vm.blogspot.jp/2014/06/writing-cli-commands-for-neutronclient.html)
+
+# About paste
+
+[ Python Paste 学习笔记](http://blog.csdn.net/u011521019/article/details/50891330)
+
+[详解Paste deploy](http://www.cnblogs.com/Security-Darren/p/4087587.html)
