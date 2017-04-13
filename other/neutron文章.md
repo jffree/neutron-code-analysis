@@ -47,3 +47,5 @@
 [ Python Paste 学习笔记](http://blog.csdn.net/u011521019/article/details/50891330)
 
 [详解Paste deploy](http://www.cnblogs.com/Security-Darren/p/4087587.html)
+
+[Openstack Paste Deploy介绍](http://www.choudan.net/2013/07/28/OpenStack-paste-deploy%E4%BB%8B%E7%BB%8D.html)
