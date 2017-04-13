@@ -185,8 +185,325 @@ m.connect("/{controller}/{action}/{id}",
     conditions=dict(function=referals))
 ```
 
+### 通配符 routes
 
+默认情况下，路径变量不匹配斜杠。这确保每个变量将完全匹配一个组件。您可以使用 requirements 来覆盖此：
 
+```
+map.connect("/static/{filename:.*?}")
+```
 
+这将会匹配 `/static/foo.jpg`，`/static/bar/foo.jpg`等。
 
+请注意，粗心的正则表达式可能会占用URL的其余部分，并导致其右侧的组件不匹配：
+
+```
+# OK because the following component is static and the regex has a "?".
+map.connect("/static/{filename:.*?}/download")
+```
+
+这个教训告诉我们总是要测试通配符模式。
+
+### 格式扩展
+
+`{.format}` 的路径组件将匹配可选的格式扩展名（例如“.html”或“.json”），如果路径中有格式扩展名的话会将 format 变量设置为`.` 后的部分（例如“html”或“json”），否则为 `None`。例如：
+
+```
+map.connect('/entries/{id}{.format}')
+```
+
+将匹配 `/entries/1` 和 `/entries/1.mp3`。您可以使用要求限制哪些扩展名将匹配，例如：
+
+```
+map.connect('/entries/{id:\d+}{.format:json}')
+```
+
+将匹配 `/entries/1` 和 `/entries/1.json`，而不是 `/entries/1.mp3`。
+
+与通配符路由一样，了解和测试很重要。没有上述 `id` 变量的 `\d+` 要求，`/entries/1.mp3` 将成功匹配，id变量捕获 `1.mp3`。
+
+*New in Routes 1.12.*
+
+### Submappers
+
+Submappers 允许您添加几个类似的路由，而不必重复相同的关键字参数。有两种语法，一种使用Python的 `with` 块，另一种不使用 with。
+
+```
+# Using 'with'
+with map.submapper(controller="home") as m:
+    m.connect("home", "/", action="splash")
+    m.connect("index", "/index", action="index")
+
+# Not using 'with'
+m = map.submapper(controller="home")
+m.connect("home", "/", action="splash")
+m.connect("index", "/index", action="index")
+
+# Both of these syntaxes create the following routes::
+# "/"      => {"controller": "home", action="splash"}
+# "/index" => {"controller": "home", action="index"}
+```
+
+您还可以为 routes 指定公用路径前缀：
+
+```
+with map.submapper(path_prefix="/admin", controller="admin") as m:
+    m.connect("admin_users", "/users", action="users")
+    m.connect("admin_databases", "/databases", action="databases")
+
+# /admin/users     => {"controller": "admin", "action": "users"}
+# /admin/databases => {"controller": "admin", "action": "databases"}
+```
+
+在 submapper 中使用的所有参数都必须是关键字参数。
+
+submapper 不是一个完整的 mapper。它只是一个带有.connect方法的临时对象，它向从其生成 mapper 的添加路由。
+
+*New in Routes 1.11.*
+
+### Submapper helpers
+
+Submappers包含一些辅助工具，可进一步简化路由配置。例如：
+
+```
+with map.submapper(controller="home") as m:
+    m.connect("home", "/", action="splash")
+    m.connect("index", "/index", action="index")
+```
+
+可以写成
+
+```
+with map.submapper(controller="home", path_prefix="/") as m:
+    m.action("home", action="splash")
+    m.link("index")
+```
+
+`action`方法在 submapper 的路径（在上面的示例中为'/'）生成一个或多个HTTP方法的route（假定为'GET'）。`link` 在相对路径上生成 route。
+
+有一些针对标准 `index, new, create, show, edit, update, delete` 动作的特定 helper。您可以直接使用这些：
+
+```
+with map.submapper(controller="entries", path_prefix="/entries") as entries:
+    entries.index()
+    with entries.submapper(path_prefix="/{id}") as entry:
+        entry.show()
+```
+
+或者间接使用：
+
+```
+with map.submapper(controller="entries", path_prefix="/entries",
+                   actions=["index"]) as entries:
+    entries.submapper(path_prefix="/{id}", actions=["show"])
+```
+
+以这种方式嵌套的集合/成员子映射器是常见的，这也有helper：
+
+```
+map.collection(collection_name="entries", member_name="entry",
+               controller="entries",
+               collection_actions=["index"], member_actions["show"])
+```
+
+这将返回一个可以添加更多路由submapper 实例; 它具有 `member` 属性（嵌套子映射程序），可以向其中添加哪些成员特定 route。 当省略`collection_actions`或`member_actions`时，会生成完整的操作集（请参见下面的“打印”下的示例）。
+
+请参阅下面的“RESTful服务”中的 `map.resource`，这是一个不使用submappers的 `map.collection` 的前身。
+
+### 从嵌套应用程序添加 route
+
+有时在嵌套应用程序中，子应用程序会向父项提供要添加到其映射器的路由列表。这些可以添加`.extend`方法，还可提供路径前缀：
+
+```
+from routes.route import Route
+routes = [
+    Route("index", "/index.html", controller="home", action="index"),
+    ]
+
+map.extend(routes)
+# /index.html => {"controller": "home", "action": "index"}
+
+map.extend(routes, "/subapp")
+# /subapp/index.html => {"controller": "home", "action": "index"}
+```
+
+这并不是真正地将 route 对象添加到 mapper。它创建相同的新 route 对象，并将它们添加到mapper。
+
+*New in Routes 1.11.*
+
+## Generation
+
+要生成URL，请使用您的框架提供的 `url` 或 `url_for` 对象。`url` 是 Routes `URLGenerator` 的一个实例，而 `url_for` 是较旧的 `routes.url_for()` 函数。`url_for`正在淘汰，所以新的应用程序应该使用 `url`。
+
+要生成命名路由，请将路由名称指定为位置参数：
+
+```
+url("home")   =>  "/"
+```
+
+如果路由包含路径变量，则必须使用关键字参数为它们指定值：
+
+```
+url("blog", year=2008, month=10, day=2)
+```
+
+会自动使用 `str()` 将非字符串值转换为字符串。（若遇到包含非ASCII字符的Unicode值，则可能中断）。
+
+但是，如果路由定义了与路径变量名称相同的额外变量，那么如果未指定该关键字，那么额外的变量将被用作默认值。例：
+
+```
+m.connect("archives", "/archives/{id}",
+    controller="archives", action="view", id=1)
+url("archives", id=123)  =>  "/archives/123"
+url("archives")  =>  "/archives/1"
+```
+
+*（额外的变量不用于匹配，除非启用最小化。）*
+
+任何不对应于路径变量的关键字参数都将放在**查询字符串**中。如果变量名与Python关键字相冲突，则附加`_`：
+
+```
+map.connect("archive", "/archive/{year}")
+url("archive", year=2009, font=large)  =>  "/archive/2009?font=large"
+url("archive", year=2009, print_=1)  =>  "/archive/2009?print=1"
+```
+
+如果应用程序安装在URL空间的子目录中，则所有生成的URL将具有应用程序前缀。应用程序前缀是请求的WSGI环境中的`SCRIPT_NAME`变量。
+
+如果位置参数对应于没有命名的路由，则假定它是一个文字URL。应用程序的安装点是前缀，并将关键字args转换为查询参数：
+
+```
+url("/search", q="My question")  =>  "/search?q=My+question"
+```
+
+如果没有位置参数，Routes将使用关键字args来选择路由。 将选择具有由关键字args指定的所有路径变量的第一个路由以及未被关键字args覆盖的最小数量的额外变量。 这在较旧版本的路由中是常见的，但是如果选择了意外的路由，则可能会导致应用程序错误，因此使用路由名称是非常优选的，因为只保证命名的路由将被选择。 对于未命名生成的最常见的用法是当你有一个很少使用的控制器，具有很多特殊的方法; 例如，`url（controller =“admin”，action =“session”）`。
+
+如果没有路由对应于参数，则会引发 `routes.util.GenerationException` 的异常。 （在路由1.9之前，返回 None。之后被更改为一个例外，以防止无效的空白URL被封装成模板。）
+
+如果Python产生Unicode URL（如果路由路径或变量值为Unicode），则还会得到此异常。路由只生成`str` URL。
+
+以下关键字参数是特殊的：
+
+* anchor
+
+ * 指定URL锚点（“＃”右侧的部分）。 `url("home", "summary")  =>  "/#summary"`
+
+* host
+
+ * 使URL完全限定，并覆盖 host（domain）。
+
+* protocol
+
+ * 使URL完全限定并覆盖协议（例如，`ftp`）。
+
+* qualified
+
+ * 使URL完全限定（即添加 `protocol://host:port` 前缀）。
+
+* sub_domain
+
+ * 请参考 “Generating URLs with subdomains”。
+
+*本节中的语法对于url和url_for都是相同的。*
+
+*New in Routes 1.10: ``url`` and the ``URLGenerator`` class behind it.*
+
+### 根据当前URL生成路由
+
+`url.current()` 返回当前请求的URL，不带查询字符串。 这被称为 `路由内存`，只有当 `RoutesMiddleware ` 在中间件堆栈中时才可以工作。 关键字参数会覆盖路径变量或放在查询字符串上。
+
+`url_for` 结合了 `url` 和 `url_current` 的行为。这是不推荐的，因为无名路由和路由内存具有相同的语法，这可能导致在某些情况下选择错误的路由。
+
+以下是路由内存的示例：
+
+```
+m.connect("/archives/{year}/{month}/{day}", year=2004)
+
+# Current URL is "/archives/2005/10/4".
+# Routing variables are {"controller": "archives", "action": "view",
+  "year": "2005", "month": "10", "day": "4"}
+
+url.current(day=6)    =>  "/archives/2005/10/6"
+url.current(month=4)  =>  "/archives/2005/4/4"
+url.current()         =>  "/archives/2005/10/4"
+```
+
+可以通过 `map.explicit=True` 全局禁用路由内存。
+
+### Generation-only routes (又名静态路由)
+
+静态路由仅用于生成 - 不用于匹配 - 并且必须命名。要定义静态路由，请使用参数 `_static = True`。
+
+此示例提供了一种方便的链接到搜索的方法：
+
+```
+map.connect("google", "http://google.com/", _static=True)
+url("google", q="search term")  =>  "http://google.com/?q=search+term")
+```
+
+此示例生成Pylons公共目录中静态图像的URL。 Pylons以绕过路由的方式提供公共目录，所以没有理由匹配它下的URL。
+
+```
+map.connect("attachment", "/images/attachments/{category}/{id}.jpg",
+    _static=True)
+url("attachment", category="dogs", id="Mastiff") =>
+    "/images/attachments/dogs/Mastiff.jpg"
+```
+
+从 routes 1.10开始，静态路由与常规路由完全相同，除了没有添加到 internal match table 中。 在以前版本中，它们不能包含路径变量，而且必须指向外部URL。
+
+### Filter functions
+
+过滤功能修改命名路由的生成方式。不要将其与功能条件混淆，该功能条件用于匹配。滤波器功能是相反的。
+
+一个用例是当您有一个具有年，月和日属性的 `story` 对象时。 你不想在每个`url`调用中对这些属性进行硬编码，因为界面有可能会改变。 相反，您将故事作为伪参数传递，过滤器会生成实际的生成参数。 以下是一个例子：
+
+```
+class Story(object):
+    def __init__(self, year, month, day):
+        self.year = year
+        self.month = month
+        self.day = day
+
+    @staticmethod
+    def expand(kw):
+        try:
+            story = kw["story"]
+        except KeyError:
+            pass   # Don't modify dict if ``story`` key not present.
+        else:
+            # Set the actual generation args from the story.
+            kw["year"] = story.year
+            kw["month"] = story.month
+            kw["day"] = story.day
+        return kw
+
+m.connect("archives", "/archives/{year}/{month}/{day}",
+    controller="archives", action="view", _filter=Story.expand)
+
+my_story = Story(2009, 1, 2)
+url("archives", story=my_story)  =>  "/archives/2009/1/2"
+```
+
+`_filter` 参数可以是任何接受dict并返回dict的函数。 在这个例子中，我们使用了Story类的一个静态方法来将所有 story 关联在一起，但是您可能更喜欢使用独立的函数来保持路由相关的代码与模型的隔离。
+
+### Generating URLs with subdomains
+
+如果启用子域支持，并将`sub_domain` 作为参数传递给 `url_for`，则路由可确保生成的路由指向该子域。
+
+```
+# Enable subdomain support.
+map.sub_domains = True
+
+# Ignore the www subdomain.
+map.sub_domains_ignore = "www"
+
+map.connect("/users/{action}")
+
+# Add a subdomain.
+url_for(action="update", sub_domain="fred")  =>  "http://fred.example.com/users/update"
+
+# Delete a subdomain.  Assume current URL is fred.example.com.
+url_for(action="new", sub_domain=None)  =>  "http://example.com/users/new"
+```
 
