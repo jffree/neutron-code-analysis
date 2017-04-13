@@ -507,3 +507,169 @@ url_for(action="update", sub_domain="fred")  =>  "http://fred.example.com/users/
 url_for(action="new", sub_domain=None)  =>  "http://example.com/users/new"
 ```
 
+## RESTful services
+
+路由可以轻松配置RESTful Web服务。`map.resource` 创建符合Atom发布协议的一组`add/modify/delete`路由。
+
+A resource route addresses *members* in a *collection*, and the collection itself. 通常，一个集合是一个复数词，一个成员是相应的单数词。例如，考虑一个消息集合：
+
+```
+map.resource("message", "messages")
+
+# The above command sets up several routes as if you had typed the
+# following commands:
+map.connect("messages", "/messages",
+    controller="messages", action="create",
+    conditions=dict(method=["POST"]))
+map.connect("messages", "/messages",
+    controller="messages", action="index",
+    conditions=dict(method=["GET"]))
+map.connect("formatted_messages", "/messages.{format}",
+    controller="messages", action="index",
+    conditions=dict(method=["GET"]))
+map.connect("new_message", "/messages/new",
+    controller="messages", action="new",
+    conditions=dict(method=["GET"]))
+map.connect("formatted_new_message", "/messages/new.{format}",
+    controller="messages", action="new",
+    conditions=dict(method=["GET"]))
+map.connect("/messages/{id}",
+    controller="messages", action="update",
+    conditions=dict(method=["PUT"]))
+map.connect("/messages/{id}",
+    controller="messages", action="delete",
+    conditions=dict(method=["DELETE"]))
+map.connect("edit_message", "/messages/{id}/edit",
+    controller="messages", action="edit",
+    conditions=dict(method=["GET"]))
+map.connect("formatted_edit_message", "/messages/{id}.{format}/edit",
+    controller="messages", action="edit",
+    conditions=dict(method=["GET"]))
+map.connect("message", "/messages/{id}",
+    controller="messages", action="show",
+    conditions=dict(method=["GET"]))
+map.connect("formatted_message", "/messages/{id}.{format}",
+    controller="messages", action="show",
+    conditions=dict(method=["GET"]))
+```
+
+这建立了以下惯例：
+
+```
+GET    /messages        => messages.index()    => url("messages")
+POST   /messages        => messages.create()   => url("messages")
+GET    /messages/new    => messages.new()      => url("new_message")
+PUT    /messages/1      => messages.update(id) => url("message", id=1)
+DELETE /messages/1      => messages.delete(id) => url("message", id=1)
+GET    /messages/1      => messages.show(id)   => url("message", id=1)
+GET    /messages/1/edit => messages.edit(id)   => url("edit_message", id=1)
+```
+
+**注意：**  Due to how Routes matches a list of URL’s, it has no inherent knowledge of a route being a **resource**. 因此，如果路由由于方法要求不满足而无法匹配，则404将像任何其他失败匹配路由一样返回。
+
+因此，您 `GET` 集合以查看到成员的链接索引（`index`方法）。你 `GET` 一个成员看到它（`show`）。 您可以 `GET` `COLLECTION/new` 以获取一个新的邮件表单（`new`），您可以将其`POST` 到集合（`create`）。 您 `GET` `MEMBER/edit` 以获得编辑（`edit`），您将向该成员PUT（`update`） 。你 `DELETE` 该成员来删除它。 请注意，只有四个路由名称，因为多个操作在相同的URL上。
+
+如果您不习惯使用Atom协议，此URL结构可能看起来很奇怪。 REST是一个模糊的术语，有些人认为这意味着适当的URL语法（每个组件包含右边的一个），其他人则认为这不意味着将ID放在查询参数中，而其他人认为这意味着使用除GET和POST之外的HTTP方法。`map.resource` 包含了这三个，但是对于不需要符合 Atom 规范的应用程序，或者更喜欢坚持使用GET和POST，这可能是过度的。`map.resource`的优点是，许多自动化工具和非浏览器代理将能够列出和修改您的资源，而无需您的任何编程。 但是，如果您喜欢使用更简单的 `add/modify/delete` 结构，则不必使用它。
+
+HTML表单只能生成GET和POST请求。作为解决方法，如果POST请求包含 `_method` 参数，则路由中间件会将HTTP方法更改为任何参数指定的内容，就像首先请求的一样。 这种惯例在其他框架中变得越来越普遍。 如果您使用 `WebHelpers`，`WebHelpers`表单函数有一个方法参数，它自动设置`HTTP`方法和`_method`参数。
+
+几条路由与包含 `format` 变量的相同路由配对。目的是允许用户通过文件名后缀获得不同的格式; 例如 `/messages/1.xml`。 这产生一个路由变量`xml`，如果它定义了一个正式的参数，它将在Pylons 中被传递给控制器动作。 在 generation 您可以传递 `format` 参数以生成具有该后缀的URL：
+
+
+```
+url("message", id=1, format="xml")  =>  "/messages/1.xml"
+```
+
+route 不识别任何特定的格式，或者知道哪些格式对您的应用有效。It merely passes the `format` attribute through if it appears.
+
+*New in Routes 1.7.3: changed URL suffix from ”;edit” to “/edit”. 不允许在URL的路径部分中使用分号，除了定义路径参数，没人会使用。*
+
+### Resource options
+
+`map.resource`方法识别一些修改其行为的关键字参数：
+
+* controller
+ * 使用指定的控制器，而不是从集合名称中推导出来。
+* collection
+ * Additional URLs to allow for the collection. Example:
+```
+map.resource("message", "messages", collection={"rss": "GET"})
+# "GET /message/rss"  =>  ``Messages.rss()``.
+# Defines a named route "rss_messages".
+```
+
+* member
+ * Additional URLs to allow for a member. Example:
+```
+map.resource('message', 'messages', member={'mark':'POST'})
+# "POST /message/1/mark"  =>  ``Messages.mark(1)``
+# also adds named route "mark_message"
+```
+ * This can be used to display a delete confirmation form:
+
+```
+map.resource("message", "messages", member={"ask_delete": "GET"}
+# "GET /message/1/ask_delete"   =>   ``Messages.ask_delete(1)``.
+# Also adds a named route "ask_delete_message".
+```
+* new
+ * Additional URLs to allow for new-member functionality.
+```
+map.resource("message", "messages", new={"preview": "POST"})
+# "POST /messages/new/preview"
+```
+* path_prefix
+ * 为所有URL模式预先指定前缀。前缀可以包括路径变量。这主要用于在资源中嵌套资源。
+* name_prefix
+ * 将指定的字符串前缀到所有路由名称。这通常与`path_prefix`相结合来嵌套资源：
+```
+map.resource("message", "messages", controller="categories",
+    path_prefix="/category/{category_id}",
+    name_prefix="category_")
+# GET /category/7/message/1
+# Adds named route "category_message"
+```
+* parent_resource
+ * 包含有关父资源的信息的dict，用于创建嵌套资源。 它应该包含父资源的`member_name`和`collection_name`。 该dict将通过相关的Route对象访问，该对象可以通过`request.environ["routes.route"]`在请求期间访问。
+ * 如果提供了`parent_resource`并且`path_prefix`而没有提供，则`path_prefix`将从`parent_resource`生成为`<parent collection name>/:<parent member name>_id`。
+ * 如果提供了`parent_resource`并且没有`name_prefix`，则`name_prefix`将从`parent_resource`生成为`<parent member name>_`。
+ * 例如：
+
+```
+>>> m = Mapper()
+>>> m.resource('location', 'locations',
+...            parent_resource=dict(member_name='region',
+...                                 collection_name='regions'))
+>>> # path_prefix is "regions/:region_id"
+>>> # name prefix is "region_"
+>>> url('region_locations', region_id=13)
+'/regions/13/locations'
+>>> url('region_new_location', region_id=13)
+'/regions/13/locations/new'
+>>> url('region_location', region_id=13, id=60)
+'/regions/13/locations/60'
+>>> url('region_edit_location', region_id=13, id=60)
+'/regions/13/locations/60/edit'
+
+Overriding generated path_prefix:
+
+>>> m = Mapper()
+>>> m.resource('location', 'locations',
+...            parent_resource=dict(member_name='region',
+...                                 collection_name='regions'),
+...            path_prefix='areas/:area_id')
+>>> # name prefix is "region_"
+>>> url('region_locations', area_id=51)
+'/areas/51/locations'
+
+Overriding generated name_prefix:
+
+>>> m = Mapper()
+>>> m.resource('location', 'locations',
+...            parent_resource=dict(member_name='region',
+...                                 collection_name='regions'),
+...            name_prefix='')
+>>> # path_prefix is "regions/:region_id"
+>>> url('locations', region_id=51)
+'/regions/51/locations'
+```
