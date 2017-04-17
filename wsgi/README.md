@@ -18,7 +18,9 @@
 
 [WebOb的简单介绍](http://bingotree.cn/?p=109)
 
+# REST API
 
+[Python API：OpenStack 隐藏深处的秘密](https://www.ibm.com/developerworks/cn/cloud/library/cl-openstack-pythonapis/)
 
 
 
