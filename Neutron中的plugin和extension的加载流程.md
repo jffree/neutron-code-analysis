@@ -16,3 +16,16 @@
 
  *  [Python深入：stevedore简介](http://blog.csdn.net/gqtcgq/article/details/49620279)
  * [stevedore – Manage Dynamic Plugins for Python Applications](https://docs.openstack.org/developer/stevedore/)  
+ 
+## 分析流程
+
+### api-paste.ini 文件
+
+根据 paste.deploy 的相关知识，我们可以知道，访问 neutron 的 wsgi 服务的的入口点如下：
+
+```
+[composite:neutron]
+use = egg:Paste#urlmap
+/: neutronversions_composite
+/v2.0: neutronapi_v2_0
+```
