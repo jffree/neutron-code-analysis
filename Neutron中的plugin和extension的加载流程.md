@@ -210,3 +210,129 @@ def get_extensions_path(service_plugins=None):
 * `NeutronModule` 待研究
  
 * 返回一个以 `:` 分割的路径字符串
+
+### `_load_all_extensions_from_path`
+
+```
+def _load_all_extensions_from_path(self, path):
+    # Sorting the extension list makes the order in which they
+    # are loaded predictable across a cluster of load-balanced
+    # Neutron Servers
+    for f in sorted(os.listdir(path)):
+        try:
+            LOG.debug('Loading extension file: %s', f)
+            mod_name, file_ext = os.path.splitext(os.path.split(f)[-1])
+            ext_path = os.path.join(path, f)
+            if file_ext.lower() == '.py' and not mod_name.startswith('_'):
+                mod = imp.load_source(mod_name, ext_path)
+                ext_name = mod_name[0].upper() + mod_name[1:]
+                new_ext_class = getattr(mod, ext_name, None)
+                if not new_ext_class:
+                    LOG.warning(_LW('Did not find expected name '
+                                    '"%(ext_name)s" in %(file)s'),
+                                {'ext_name': ext_name,
+                                 'file': ext_path})
+                    continue
+                new_ext = new_ext_class()
+                self.add_extension(new_ext)
+        except Exception as exception:
+            LOG.warning(_LW("Extension file %(f)s wasn't loaded due to "
+                            "%(exception)s"),
+                        {'f': f, 'exception': exception})
+```
+
+**在这个方法中我们可以看出 extension 方法的写法，就是一个 extension 模块（.py）里面必须有一个和这个模块名称一样，且首字母大写的类。**
+
+
+*`add_extension` 方法是在父类 `ExtensionManager`*
+```
+def add_extension(self, ext):
+    # Do nothing if the extension doesn't check out
+    if not self._check_extension(ext):
+        return
+
+    alias = ext.get_alias()
+    LOG.info(_LI('Loaded extension: %s'), alias)
+
+    if alias in self.extensions:
+        raise exceptions.DuplicatedExtension(alias=alias)
+    self.extensions[alias] = ext
+
+```
+
+*子类 `PluginAwareExtensionManager` 中重写了 `_check_extension` 方法。*
+```
+def _check_extension(self, extension):
+    """Check if an extension is supported by any plugin."""
+    extension_is_valid = super(PluginAwareExtensionManager,
+                               self)._check_extension(extension)
+    if not extension_is_valid:
+        return False
+
+    alias = extension.get_alias()
+    if alias in EXTENSION_SUPPORTED_CHECK_MAP:
+        return EXTENSION_SUPPORTED_CHECK_MAP[alias]()
+
+    return (self._plugins_support(extension) and
+            self._plugins_implement_interface(extension))
+```
+
+```
+def _plugins_support(self, extension):
+    alias = extension.get_alias()
+    supports_extension = alias in self.get_supported_extension_aliases()
+    if not supports_extension:
+        LOG.warning(_LW("Extension %s not supported by any of loaded "
+                        "plugins"),
+                    alias)
+    return supports_extension
+
+def get_plugin_supported_extension_aliases(self, plugin):
+    """Return extension aliases supported by a given plugin"""
+    aliases = set()
+    # we also check all classes that the plugins inherit to see if they
+    # directly provide support for an extension
+    for item in [plugin] + plugin.__class__.mro():
+        try:
+            aliases |= set(
+                getattr(item, "supported_extension_aliases", []))
+        except TypeError:
+            # we land here if a class has a @property decorator for
+            # supported extension aliases. They only work on objects.
+            pass
+    return aliases
+```
+
+```
+def _plugins_implement_interface(self, extension):
+    if extension.get_plugin_interface() is None:
+        return True
+    for plugin in self.plugins.values():
+        if isinstance(plugin, extension.get_plugin_interface()):
+            return True
+    LOG.warning(_LW("Loaded plugins do not implement extension "
+                    "%s interface"),
+                extension.get_alias())
+    return False
+```
+
+```
+def check_if_plugin_extensions_loaded(self):
+    """Check if an extension supported by a plugin has been loaded."""
+    plugin_extensions = self.get_supported_extension_aliases()
+    missing_aliases = plugin_extensions - set(self.extensions)
+    missing_aliases -= _PLUGIN_AGNOSTIC_EXTENSIONS
+    if missing_aliases:
+        raise exceptions.ExtensionsNotFound(
+            extensions=list(missing_aliases))
+```
+
+我们一步步的追踪下来，可以发现这些信息：
+
+1. `get_plugin_supported_extension_aliases` 方法搜集所有被加载的 plugin 支持的 extension (`supported_extension_aliases`)，返回支持的所有被支持的 extension 的 alias 的集合
+
+2. `_plugins_implement_interface` 方法检查 extension 是否重写了 `get_plugin_interface` 方法，若是重写了该方法，则要求其返回值是 plugins 中一个的实例。
+
+3. 将通过检查的 extension 存于 `self.extensions` 的字典（`{alias:实例}`）中。
+
+4. 通过 `check_if_plugin_extensions_loaded` 函数检查是否所有的被 plugin 所支持 extension 都已经被加载。
