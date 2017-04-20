@@ -2,30 +2,15 @@
 
 主要参考：[JUNO NEUTRON中的plugin和extension介绍及加载机制](http://bingotree.cn/?p=660&utm_source=tuicool&utm_medium=referral)
 
-## 预备知识
+[neutron-server的启动流程(二)](http://blog.csdn.net/gj19890923/article/details/51345576)
 
-* wsgi
-
- * 请参考我收集的关于 wsgi 的资料
-
-* neutron_lib
-
-* oslo_service
-
-* stevedore
-
- *  [Python深入：stevedore简介](http://blog.csdn.net/gqtcgq/article/details/49620279)
- * [stevedore – Manage Dynamic Plugins for Python Applications](https://docs.openstack.org/developer/stevedore/)  
-
-* python 模块
-
- * weakref
- * six
- * collections
+*newton 版本中的 plugin 的加载流程，与参考文章中写的变化不大，我这里只说一下不同的地方。*
 
 ## 加载 plugin
 
-*newton 版本中的 plugin 的加载流程，与参考文章中写的变化不大，我这里只说一下不同的地方。*
+```
+plugin = manager.NeutronManager.get_plugin()
+```
 
 ### `_get_plugin_instance`
 
@@ -87,11 +72,11 @@ def load_class_by_alias_or_classname(namespace, name):
 
 `load_class_by_alias_or_classname` 参数中的 `name` 既可以是 `alias/entry_points` 也可以是一个具体的可加载的类/方法名。
 
-### neutron.plugins.common.constants.py
+### `neutron.plugins.common.constants.py`
 
 *该模块定义了 Neutron 中常用的一些常量。*
 
-## `_load_service_plugins`
+### `_load_service_plugins`
 
 **作用：** 加载 service plugins
 
@@ -165,6 +150,10 @@ def _load_service_plugins(self):
 
 
 ## 加载 extension
+
+```
+ext_mgr = extensions.PluginAwareExtensionManager.get_instance()
+```
 
 ### `get_extensions_path` 
 
@@ -336,3 +325,76 @@ def check_if_plugin_extensions_loaded(self):
 3. 将通过检查的 extension 存于 `self.extensions` 的字典（`{alias:实例}`）中。
 
 4. 通过 `check_if_plugin_extensions_loaded` 函数检查是否所有的被 plugin 所支持 extension 都已经被加载。
+
+## 加载所有的 resource
+
+```
+ext_mgr.extend_resources("2.0", attributes.RESOURCE_ATTRIBUTE_MAP)
+```
+
+### `extend_resources(self, version, attr_map)`
+
+**作用：**在已有的资源（通过 rest api 访问的即为资源）的基础上扩展资源或者资源的属性
+
+```
+def extend_resources(self, version, attr_map):
+    """Extend resources with additional resources or attributes.
+
+    :param attr_map: the existing mapping from resource name to
+    attrs definition.
+
+    After this function, we will extend the attr_map if an extension
+    wants to extend this map.
+    """
+    processed_exts = {}
+    exts_to_process = self.extensions.copy()
+    check_optionals = True
+    # Iterate until there are unprocessed extensions or if no progress
+    # is made in a whole iteration
+    while exts_to_process:
+        processed_ext_count = len(processed_exts)
+        for ext_name, ext in list(exts_to_process.items()):
+            # Process extension only if all required extensions
+            # have been processed already
+            required_exts_set = set(ext.get_required_extensions())
+            if required_exts_set - set(processed_exts):
+                continue
+            optional_exts_set = set(ext.get_optional_extensions())
+            if check_optionals and optional_exts_set - set(processed_exts):
+                continue
+            extended_attrs = ext.get_extended_resources(version)
+            for res, resource_attrs in six.iteritems(extended_attrs):
+                attr_map.setdefault(res, {}).update(resource_attrs)
+            processed_exts[ext_name] = ext
+            del exts_to_process[ext_name]
+        if len(processed_exts) == processed_ext_count:
+            # if we hit here, it means there are unsatisfied
+            # dependencies. try again without optionals since optionals
+            # are only necessary to set order if they are present.
+            if check_optionals:
+                check_optionals = False
+                continue
+            # Exit loop as no progress was made
+            break
+    if exts_to_process:
+        unloadable_extensions = set(exts_to_process.keys())
+        LOG.error(_LE("Unable to process extensions (%s) because "
+                      "the configured plugins do not satisfy "
+                      "their requirements. Some features will not "
+                      "work as expected."),
+                  ', '.join(unloadable_extensions))
+        self._check_faulty_extensions(unloadable_extensions)
+    # Extending extensions' attributes map.
+    for ext in processed_exts.values():
+        ext.update_attributes_map(attr_map)
+```
+
+* 从代码中可以看出，每一个 extension 都可能会有下面这三个方法： `get_required_extensions`、`get_optional_extensions`、`get_extended_resources`
+
+* `get_required_extensions` 意味着加载 这个 extension 的 resource 之前必须需要先加载别的 extension 的 resource。若是这些被依赖的 extension 无法被加载，在会在 `_check_faulty_extensions` 进行错误处理。
+
+* `get_optional_extensions` 意味着加载 这个 extension 的 resource 之前可选的先加载别的 extension 的 resource。若是这些可选的 extension 无法被加载，则会对其进行忽略。
+
+* `get_extended_resources` 是每个 extension 向外抛出 resource 的实现，这个方法是每个 extension 都会提供的，不然的话这个 extension 也就没意义了。
+
+* `update_attributes_map` 则是对 extension 抛出的 resource 进行进一步的更新。 
