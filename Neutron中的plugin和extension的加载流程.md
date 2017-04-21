@@ -398,3 +398,54 @@ def extend_resources(self, version, attr_map):
 * `get_extended_resources` 是每个 extension 向外抛出 resource 的实现，这个方法是每个 extension 都会提供的，不然的话这个 extension 也就没意义了。
 
 * `update_attributes_map` 则是对 extension 抛出的 resource 进行进一步的更新。 
+
+### 构造 `/v2.0/` 的 Response
+
+```
+mapper.connect('index', '/', controller=Index(RESOURCES))
+```
+
+**作用：** 构造 `/v2.0/` 的 Response
+
+```
+RESOURCES = {'network': 'networks',
+             'subnet': 'subnets',
+             'subnetpool': 'subnetpools',
+             'port': 'ports'}
+
+class Index(wsgi.Application):
+    def __init__(self, resources):
+        self.resources = resources
+
+    @webob.dec.wsgify(RequestClass=wsgi.Request)
+    def __call__(self, req):
+        metadata = {}
+
+        layout = []
+        for name, collection in six.iteritems(self.resources):
+            href = urlparse.urljoin(req.path_url, collection)
+            resource = {'name': name,
+                        'collection': collection,
+                        'links': [{'rel': 'self',
+                                   'href': href}]}
+            layout.append(resource)
+        response = dict(resources=layout)
+        content_type = req.best_match_content_type()
+        body = wsgi.Serializer(metadata=metadata).serialize(response,
+                                                            content_type)
+        return webob.Response(body=body, content_type=content_type)
+```
+
+* `Index` 实例被声明为访问 `/` 时的 `controller`。
+
+* `Index` 实现了用 `webob.dec.wsgify` 修饰的 `__call__`，当 `Index` 被实例化时，它就变成了一个可被调用的 wsgi app。
+
+* 若想测试访问结果可用如下命令测试（请用自己的 token）：
+
+```
+curl -s -X GET http://172.16.100.106:9696/v2.0/ \
+            -H "Content-Type: application/json" \
+            -H "X-Auth-Token: 7eb90d76addc4a5bafeb380bf47f37fd"
+```
+
+* `Request` 和 `Serializer` 的实现我们以后再做探讨。
