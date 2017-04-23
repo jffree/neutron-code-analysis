@@ -2,9 +2,9 @@
 
 主要参考：[JUNO NEUTRON中的plugin和extension介绍及加载机制](http://bingotree.cn/?p=660&utm_source=tuicool&utm_medium=referral)
 
-[neutron-server的启动流程(二)](http://blog.csdn.net/gj19890923/article/details/51345576)
+[neutron-server的启动流程\(二\)](http://blog.csdn.net/gj19890923/article/details/51345576)
 
-*newton 版本中的 plugin 的加载流程，与参考文章中写的变化不大，我这里只说一下不同的地方。*
+_newton 版本中的 plugin 的加载流程，与参考文章中写的变化不大，我这里只说一下不同的地方。_
 
 ## 加载 plugin
 
@@ -74,7 +74,7 @@ def load_class_by_alias_or_classname(namespace, name):
 
 ### `neutron.plugins.common.constants.py`
 
-*该模块定义了 Neutron 中常用的一些常量。*
+_该模块定义了 Neutron 中常用的一些常量。_
 
 ### `_load_service_plugins`
 
@@ -146,8 +146,7 @@ def _load_service_plugins(self):
 
 * 还是通过 `_get_plugin_instance` 方法来加载所有的 service plugin 的实例
 
-**不管是 core plugin 还是 service plugin 都是放在 `self.service_plugins` 中进行管理的。**
-
+**不管是 core plugin 还是 service plugin 都是放在 **`self.service_plugins`** 中进行管理的。**
 
 ## 加载 extension
 
@@ -155,7 +154,7 @@ def _load_service_plugins(self):
 ext_mgr = extensions.PluginAwareExtensionManager.get_instance()
 ```
 
-### `get_extensions_path` 
+### `get_extensions_path`
 
 **作用：** 从配置文件以及 `neutron.extensions.__patch__` 中加载 extensions 的路径
 
@@ -192,12 +191,12 @@ def get_extensions_path(service_plugins=None):
 
 * 以 plugin 为模块，加载该 plugin 所在包中的 extensions 模块的路径。
 
-*为什么要这么做呢，因为有人可能以一个单独的包来实现一个 plugin*
+_为什么要这么做呢，因为有人可能以一个单独的包来实现一个 plugin_
 
-* 加载配置文件中声明的 api_extensions_path
+* 加载配置文件中声明的 api\_extensions\_path
 
 * `NeutronModule` 待研究
- 
+
 * 返回一个以 `:` 分割的路径字符串
 
 ### `_load_all_extensions_from_path`
@@ -232,8 +231,8 @@ def _load_all_extensions_from_path(self, path):
 
 **在这个方法中我们可以看出 extension 方法的写法，就是一个 extension 模块（.py）里面必须有一个和这个模块名称一样，且首字母大写的类。**
 
+`add_extension`_ 方法是在父类 _`ExtensionManager`
 
-*`add_extension` 方法是在父类 `ExtensionManager`*
 ```
 def add_extension(self, ext):
     # Do nothing if the extension doesn't check out
@@ -246,10 +245,10 @@ def add_extension(self, ext):
     if alias in self.extensions:
         raise exceptions.DuplicatedExtension(alias=alias)
     self.extensions[alias] = ext
-
 ```
 
-*子类 `PluginAwareExtensionManager` 中重写了 `_check_extension` 方法。*
+_子类 _`PluginAwareExtensionManager`_ 中重写了 _`_check_extension`_ 方法。_
+
 ```
 def _check_extension(self, extension):
     """Check if an extension is supported by any plugin."""
@@ -318,7 +317,7 @@ def check_if_plugin_extensions_loaded(self):
 
 我们一步步的追踪下来，可以发现这些信息：
 
-1. `get_plugin_supported_extension_aliases` 方法搜集所有被加载的 plugin 支持的 extension (`supported_extension_aliases`)，返回支持的所有被支持的 extension 的 alias 的集合
+1. `get_plugin_supported_extension_aliases` 方法搜集所有被加载的 plugin 支持的 extension \(`supported_extension_aliases`\)，返回支持的所有被支持的 extension 的 alias 的集合
 
 2. `_plugins_implement_interface` 方法检查 extension 是否重写了 `get_plugin_interface` 方法，若是重写了该方法，则要求其返回值是 plugins 中一个的实例。
 
@@ -397,4 +396,7 @@ def extend_resources(self, version, attr_map):
 
 * `get_extended_resources` 是每个 extension 向外抛出 resource 的实现，这个方法是每个 extension 都会提供的，不然的话这个 extension 也就没意义了。
 
-* `update_attributes_map` 则是对 extension 抛出的 resource 进行进一步的更新。 
+* `update_attributes_map` 则是对 extension 抛出的 resource 进行进一步的更新。
+
+
+
