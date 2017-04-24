@@ -179,5 +179,271 @@ curl -s -X GET 172.16.100.106:9696/v2.0/extensions \
             -H "X-Auth-Token: c54521031ba540b0b183a5b26f82ab3d"
 ```
 
+### 我们接着看 `ExtensionController` 的实现
 
+```
+class ExtensionController(wsgi.Controller):
+
+    def __init__(self, extension_manager):
+        self.extension_manager = extension_manager
+
+    @staticmethod
+    def _translate(ext):
+        ext_data = {}
+        ext_data['name'] = ext.get_name()
+        ext_data['alias'] = ext.get_alias()
+        ext_data['description'] = ext.get_description()
+        ext_data['updated'] = ext.get_updated()
+        ext_data['links'] = []  # TODO(dprince): implement extension links
+        return ext_data
+
+    def index(self, request):
+        extensions = []
+        for _alias, ext in six.iteritems(self.extension_manager.extensions):
+            extensions.append(self._translate(ext))
+        return dict(extensions=extensions)
+
+    def show(self, request, id):
+        # NOTE(dprince): the extensions alias is used as the 'id' for show
+        ext = self.extension_manager.extensions.get(id, None)
+        if not ext:
+            raise webob.exc.HTTPNotFound(
+                _("Extension with alias %s does not exist") % id)
+        return dict(extension=self._translate(ext))
+
+    def delete(self, request, id):
+        msg = _('Resource not found.')
+        raise webob.exc.HTTPNotFound(msg)
+
+    def create(self, request):
+        msg = _('Resource not found.')
+        raise webob.exc.HTTPNotFound(msg)
+```
+
+* 这里我们看一下 `index` 方法，这个方法其实就是将所有的 extension 的相关信息收集在一个集合中，`index` 的处理结果和我们的通过 rest api GET 方法访问 `/v2.0/extensions` 的到的结果是一致的。
+
+* 至于 `show` 方法，则是针对单个的 extension 进行访问 `/v2.0/extensions/{alias}`：
+
+```
+curl -s -X GET 172.16.100.106:9696/v2.0/extensions/project-id \
+              -H "Content-Type: application/json" \
+              -H "X-Auth-Token: 15d4b89f42b048beae52ca7cd35ed664"
+```
+
+* `delete` 和 `create` 方法仅仅是返回一个错误页面。
+
+## extended resources wsgi 映射关系的建立
+
+上面分析了 resource 的整合以及 extensions 的映射关系，下面我们分析所有的 resources 的映射关系是如何建立的：
+
+```
+...
+        # extended resources
+        for resource in self.ext_mgr.get_resources():
+            path_prefix = resource.path_prefix
+            if resource.parent:
+                path_prefix = (resource.path_prefix +
+                               "/%s/{%s_id}" %
+                               (resource.parent["collection_name"],
+                                resource.parent["member_name"]))
+
+            LOG.debug('Extended resource: %s',
+                      resource.collection)
+            for action, method in six.iteritems(resource.collection_actions):
+                conditions = dict(method=[method])
+                path = "/%s/%s" % (resource.collection, action)
+                with mapper.submapper(controller=resource.controller,
+                                      action=action,
+                                      path_prefix=path_prefix,
+                                      conditions=conditions) as submap:
+                    submap.connect(path_prefix + path, path)
+                    submap.connect(path_prefix + path + "_format",
+                                   "%s.:(format)" % path)
+
+            for action, method in resource.collection_methods.items():
+                conditions = dict(method=[method])
+                path = "/%s" % resource.collection
+                with mapper.submapper(controller=resource.controller,
+                                      action=action,
+                                      path_prefix=path_prefix,
+                                      conditions=conditions) as submap:
+                    submap.connect(path_prefix + path, path)
+                    submap.connect(path_prefix + path + "_format",
+                                   "%s.:(format)" % path)
+
+            mapper.resource(resource.collection, resource.collection,
+                            controller=resource.controller,
+                            member=resource.member_actions,
+                            parent_resource=resource.parent,
+                            path_prefix=path_prefix)
+...
+```
+
+上文中还提到了这么一个事实：我们获取的 resources 实际上是一系列 `ResourceExtension` 实例的集合。
+
+那么我们先不管一个具体的 resource 是如何构造的，我们单根据 `ResourceExtension` 来理解 resource 映射关系的构成。
+
+看代码就知道映射实现的关键就在于 routes 模块的使用。其中，`submapper` 方法用于类似路由的添加。下面举例说一下 `resource` 方法：
+
+* 第一个例子：
+
+```
+import routes
+
+map = routes.Mapper()
+
+map.resource('message', 'messages')
+```
+
+查看映射结果：
+
+```
+>>> print map
+Route name             Methods Path                           Controller action
+                       POST    /messages.:(format)            messages   create
+                       POST    /messages                      messages   create
+formatted_messages     GET     /messages.:(format)            messages   index 
+messages               GET     /messages                      messages   index 
+formatted_new_message  GET     /messages/new.:(format)        messages   new   
+new_message            GET     /messages/new                  messages   new   
+                       PUT     /messages/:(id).:(format)      messages   update
+                       PUT     /messages/:(id)                messages   update
+                       DELETE  /messages/:(id).:(format)      messages   delete
+                       DELETE  /messages/:(id)                messages   delete
+formatted_edit_message GET     /messages/:(id)/edit.:(format) messages   edit  
+edit_message           GET     /messages/:(id)/edit           messages   edit  
+formatted_message      GET     /messages/:(id).:(format)      messages   show  
+message                GET     /messages/:(id)                messages   show 
+```
+
+* 第二个例子：
+
+```
+import routes
+
+mapper = routes.Mapper()
+
+controller='con'
+member_actions={'default': 'GET'}
+parent=None
+map.resource('message', 'messages', controller=controller)
+
+mapper.resource('message', 'messages',
+                controller=controller,
+                member=member_actions,
+                parent_resource = parent,
+                path_prefix = None)
+```
+
+查看映射结果：
+
+```
+>>> print mapper
+Route name                Methods Path                              Controller action 
+                          POST    /messages.:(format)               con        create 
+                          POST    /messages                         con        create 
+formatted_messages        GET     /messages.:(format)               con        index  
+messages                  GET     /messages                         con        index  
+formatted_new_message     GET     /messages/new.:(format)           con        new    
+new_message               GET     /messages/new                     con        new    
+                          PUT     /messages/:(id).:(format)         con        update 
+                          PUT     /messages/:(id)                   con        update 
+                          DELETE  /messages/:(id).:(format)         con        delete 
+                          DELETE  /messages/:(id)                   con        delete 
+formatted_default_message GET     /messages/:(id)/default.:(format) con        default
+default_message           GET     /messages/:(id)/default           con        default
+formatted_edit_message    GET     /messages/:(id)/edit.:(format)    con        edit   
+edit_message              GET     /messages/:(id)/edit              con        edit   
+formatted_message         GET     /messages/:(id).:(format)         con        show   
+message                   GET     /messages/:(id)                   con        show 
+```
+
+* 就这样，通过 `routes.Mapper().submapper` 和 `routes.Mapper().resource` 实现了 extended resources wsgi 映射关系的建立。
+
+## extended actions wsgi 映射关系的建立
+
+```
+...
+        # extended actions
+        action_controllers = self._action_ext_controllers(application,
+                                                          self.ext_mgr, mapper)
+        for action in self.ext_mgr.get_actions():
+            LOG.debug('Extended action: %s', action.action_name)
+            controller = action_controllers[action.collection]
+            controller.add_action(action.action_name, action.handler)
+...
+```
+
+* `_action_ext_controllers` 同样是在本类中实现
+
+```
+    def _action_ext_controllers(self, application, ext_mgr, mapper):
+        """Return a dict of ActionExtensionController-s by collection."""
+        action_controllers = {}
+        for action in ext_mgr.get_actions():
+            if action.collection not in action_controllers.keys():
+                controller = ActionExtensionController(application)
+                mapper.connect("/%s/:(id)/action.:(format)" %
+                               action.collection,
+                               action='action',
+                               controller=controller,
+                               conditions=dict(method=['POST']))
+                mapper.connect("/%s/:(id)/action" % action.collection,
+                               action='action',
+                               controller=controller,
+                               conditions=dict(method=['POST']))
+                action_controllers[action.collection] = controller
+
+        return action_controllers
+```
+
+* `ExtensionManager.get_actions` 方法如下：
+
+```
+    def get_actions(self):
+        """Returns a list of ActionExtension objects."""
+        actions = []
+        for ext in self.extensions.values():
+            actions.extend(ext.get_actions())
+        return actions
+```
+
+*我在 neutron 的源代码中搜了一下，貌似只有测试时用到了 extension 的 get_actions 的方法。*
+
+* `ActionExtension` 实现如下：
+
+```
+class ActionExtension(object):
+    """Add custom actions to core Neutron OpenStack API controllers."""
+
+    def __init__(self, collection, action_name, handler):
+        self.collection = collection
+        self.action_name = action_name
+        self.handler = handler
+```
+
+* `ActionExtensionController` 的实现如下：
+
+```
+class ActionExtensionController(wsgi.Controller):
+
+    def __init__(self, application):
+        self.application = application
+        self.action_handlers = {}
+
+    def add_action(self, action_name, handler):
+        self.action_handlers[action_name] = handler
+
+    def action(self, request, id):
+        input_dict = self._deserialize(request.body,
+                                       request.get_content_type())
+        for action_name, handler in six.iteritems(self.action_handlers):
+            if action_name in input_dict:
+                return handler(input_dict, request, id)
+        # no action handler found (bump to downstream application)
+        response = self.application
+        return response
+```
+
+`ActionExtensionController` 的实现比较简单，也就是定义了一个 `action_handlers` 来保存请求方法和处理方法的映射关系，在 `action` 方法中解析请求消息体，若找到对应的请求方法，则对其进行处理。 
 
