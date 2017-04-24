@@ -48,20 +48,9 @@ for resource in SUB_RESOURCES:
                   SUB_RESOURCES[resource]['parent'])
 ```
 
-**作用：**
+**作用：**对 `routes.Mapper().collection` 方法的封装，建立映射关系。
 
-```
-RESOURCES = {'network': 'networks',
-             'subnet': 'subnets',
-             'subnetpool': 'subnetpools',
-             'port': 'ports'}
-SUB_RESOURCES = {}
-COLLECTION_ACTIONS = ['index', 'create']
-MEMBER_ACTIONS = ['show', 'update', 'delete']
-REQUIREMENTS = {'id': constants.UUID_PATTERN, 'format': 'json'}
-```
-
-* 介绍一下在这里用到的 neutron.conf 中的三个配置选项：
+### 介绍一下在这里用到的 neutron.conf 中的三个配置选项：
 
  * `allow_bulk` 允许使用批量API（比如说我们可通过 reset api 批量创建网络）；
  * `allow_paginaion` 允许使用分页（已被丢弃的选项，恒为 True）;
@@ -84,6 +73,55 @@ REQUIREMENTS = {'id': constants.UUID_PATTERN, 'format': 'json'}
 #allow_sorting = true
 ```
 
+### `routes.Mapper().collection` 使用示例
+
+```
+import routes
+
+map = routes.Mapper()
+
+collection = 'entries'
+resource = 'entry'
+controller = dict()
+path_prefix = None
+requirements = {'id': 'id', 'format': 'json'}
+collection_actions = ['index', 'create']
+member_actions = ['show', 'update', 'delete']
+
+mapper_kwargs = dict(controller = controller,
+requirements = requirements,
+path_prefix = path_prefix,
+collection_actions = collection_actions,
+member_actions = member_actions)
+
+map.collection(collection, resource, **mapper_kwargs)
+```
+
+那么我们构造的映射关系如下：
+
+```
+>>> print map
+Route name Methods Path Controller action
+entries GET /entries{.format} {} index
+create_entry POST /entries{.format} {} create
+entry GET /entries/{id}{.format} {} show
+update_entry PUT /entries/{id}{.format} {} update
+delete_entry DELETE /entries/{id}{.format} {} delete
+```
+
+```
+RESOURCES = {'network': 'networks',
+'subnet': 'subnets',
+'subnetpool': 'subnetpools',
+'port': 'ports'}
+SUB_RESOURCES = {}
+COLLECTION_ACTIONS = ['index', 'create']
+MEMBER_ACTIONS = ['show', 'update', 'delete']
+REQUIREMENTS = {'id': constants.UUID_PATTERN, 'format': 'json'}
+```
+
+## Controller 的构造
+
 * `create_resource` 很简单，就是实现了一个 Controller 实例，并返回了一个 把 Controller 实例进行包装的 Resource实例。
 
 ```
@@ -98,7 +136,7 @@ def create_resource(collection, resource, plugin, params, allow_bulk=False,
     return wsgi_resource.Resource(controller, FAULT_MAP)
 ```
 
-# `neutron.api.v2.base.Controller` 
+### `neutron.api.v2.base.Controller` 
 
 `neutron.api.v2.base.py` 就是实现了 Contrller 类和 create_resource 方法。
 
@@ -106,7 +144,7 @@ def create_resource(collection, resource, plugin, params, allow_bulk=False,
 
 *我们不是 neutron 架构的设计者，单看这个类的实现是很难理解其用处的，我么就结合其使用来看（见上面）。*
 
-## `Controller` 的 `__init__`
+### `Controller` 的 `__init__`
 
 ```
 class Controller(object):
@@ -209,7 +247,7 @@ self._plugin_handlers = {
     self.delete : delete_port}
 ```
 
-## 获取 plugin 以及其 resource 属性的一些参数
+### 获取 plugin 以及其 resource 属性的一些参数
 
 ```
     def _get_primary_key(self, default_primary_key='id'):
@@ -230,7 +268,7 @@ self._plugin_handlers = {
         return api_common.is_native_sorting_supported(self._plugin)
 ```
 
-## `__getattr__` 的实现
+### `__getattr__` 的实现
 
 ```
     def __getattr__(self, name):
