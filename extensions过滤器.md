@@ -1,4 +1,4 @@
-# extensions filter
+# filter extensions
 
 ```
 [filter:extensions]
@@ -87,12 +87,21 @@ class ExtensionMiddleware(base.ConfigurableMiddleware):
                                                           mapper)
         super(ExtensionMiddleware, self).__init__(application)
 ```
+## extension 实现的三个功能：
+
+1. 直接实现了某种新的resource。比如实现了资源XXX，那么我可以通过/v2.0/XXX进行XXX资源的操作。这个是最类似于实现一个新的service_plugin的
+
+2. 对现有的某种资源添加某种操作功能。比如对于ports资源，我想有一个动作是做绑定（打个比方，不一定确切），则可以通过extension在现有的plugin基础上增加功能，比如对/v2.0/ports增加/action接口
+
+3. 对现有的某个REST API请求增加参数。比如对于/v2.0/ports我本来创建的时候什么参数都不用提供，现在我希望POST请求能带上参数NAME，则可以通过extension来实现
+
+*对于 1 和 2 ，我们都是要提供url的，所以这里应该就会做这个事情。从注释中也可看到，先是实现‘extended resources’，然后是‘extended actions’，最后是‘extended requests’。*
 
 ## `for resource in self.ext_mgr.get_resources():`
 
 * `get_resources` 方法在 `ExtensionManager` 中实现
 
-```
+```py
     def get_resources(self):
         """Returns a list of ResourceExtension objects."""
         resources = []
@@ -137,19 +146,19 @@ collection(self, collection_name, resource_name, path_prefix=None, member_prefix
 
 * 这里的每项的含义是：
 
- * `self.collection`：资源复数的名字，比如ports、networks。在REST API中，url一般是复数的，比如GET /v2.0/ports，复数的GET一般是通过filter来获取信息，而单数的GET，如/v2.0/ports/{id}则是通过id号获取
+  * `self.collection`：资源复数的名字，比如ports、networks。在REST API中，url一般是复数的，比如GET /v2.0/ports，复数的GET一般是通过filter来获取信息，而单数的GET，如/v2.0/ports/{id}则是通过id号获取
 
- * `self.controller`：资源代表的controller，用于url和action的映射
+  * `self.controller`：资源代表的controller，用于url和action的映射
 
- * `self.parent`：父资源
+  * `self.parent`：父资源
 
- * `self.collection_actions`：复数资源允许的REST API操作，比如ports允许哪些操作（SHOW、INDEX这类，可以看下上面的map.collection）
+  * `self.collection_actions`：复数资源允许的REST API操作，比如ports允许哪些操作（SHOW、INDEX这类，可以看下上面的map.collection）
 
- * `self.member_actions`：单个资源允许的REST API操作，比如port允许哪些操作，在URL中一般是包含{id}的
+  * `self.member_actions`：单个资源允许的REST API操作，比如port允许哪些操作，在URL中一般是包含{id}的
 
- * `self.path_prefix`：url前缀
+  * `self.path_prefix`：url前缀
 
- * `self.attr_map`：REST API参数属性信息
+  * `self.attr_map`：REST API参数属性信息
 
 ## resource 中的第一项 `extensions`
 
@@ -162,23 +171,13 @@ collection(self, collection_name, resource_name, path_prefix=None, member_prefix
 ...
 ```
 
-我们用 rest api 访问以下 `v2.0/extensions` 路径：
+* 我们用 rest api 访问以下 `v2.0/extensions` 路径：
 
 ```
 curl -s -X GET 172.16.100.106:9696/v2.0/extensions \
             -H "Content-Type: application/json" \
             -H "X-Auth-Token: c54521031ba540b0b183a5b26f82ab3d"
 ```
-
-
-
-
-
-
-
-
-
-
 
 
 

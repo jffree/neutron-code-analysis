@@ -2,18 +2,18 @@
 
 ## 简介
 
-*Routes 其实就是 Python 版本的 Rails 的 routes. 它用来将用户的不同 URLs 自动匹配 到不同的应用上, 对于开发 RESTful 的 API 和其他 web 的应用非常方便。*
+_Routes 其实就是 Python 版本的 Rails 的 routes. 它用来将用户的不同 URLs 自动匹配 到不同的应用上, 对于开发 RESTful 的 API 和其他 web 的应用非常方便。_
 
 ### 特性
 
-- Sophisticated route lookup and URL generation
-- Named routes
-- Redirect routes
-- Wildcard paths before and after static parts
-- Sub-domain support built-in
-- Conditional matching based on domain, cookies, HTTP method (RESTful), and more
-- Easily extensible utilizing custom condition functions and route generation functions
-- Extensive unit tests
+* Sophisticated route lookup and URL generation
+* Named routes
+* Redirect routes
+* Wildcard paths before and after static parts
+* Sub-domain support built-in
+* Conditional matching based on domain, cookies, HTTP method \(RESTful\), and more
+* Easily extensible utilizing custom condition functions and route generation functions
+* Extensive unit tests
 
 ### 安装
 
@@ -51,9 +51,9 @@ map.connect(None, "/{controller}/{action}/{id}")
 
 * 第一行和第二行创建一个 mapper
 
-* 第三行匹配任意三组件的并且以 `/error` 开头的 route，并且设定 controller 为常量。*
+* 第三行匹配任意三组件的并且以 `/error` 开头的 route，并且设定 controller 为常量。\*
 
- * 若一个 URL 为 `/error/images/arrow.jpg`，那么将会产生： `{"controller": "error", "action": "images", "id": "arrow.jpg"}`
+  * 若一个 URL 为 `/error/images/arrow.jpg`，那么将会产生： `{"controller": "error", "action": "images", "id": "arrow.jpg"}`
 
 * 第四行匹配一个单独的 URL `/`，并且将 `controller` 和 `action` 设为常量。它还有一个路由名称 `home`，可以在 generataion 中使用。 （其他路由都是None而不是一个名字，所以没有名字。建议为所有可能在 generation 中使用的路由命名，但不必命名不会使用的路由。）
 
@@ -118,7 +118,7 @@ map.connect(..., requirements=ARTICLE_REQS)
 
 因为 `requirements` 参数为保留字，所以您不能使用该名称定义路由变量。
 
-### 神奇的 path_info
+### 神奇的 path\_info
 
 如果在URL的末尾使用 `path_info` 变量，路由将其前面的所有内容移动到 `SCRIPT_NAME` 环境变量中。当委托给另一个执行自己的路由的WSGI应用程序时，这是非常有用的：子应用程序将仅针对URL的剩余部分路由，而不是整个URL。 您仍然需要 `:.*` requirement 来将余下的URL组件捕获到变量中。
 
@@ -169,16 +169,16 @@ Conditions 对可以匹配什么类型的请求做额外的限制。`conditions`
 
 * method
 
- * 大写HTTP方法的列表。request必须是列出的方法之一。
+  * 大写HTTP方法的列表。request必须是列出的方法之一。
 
-* sub_domain
+* sub\_domain
 
- * 可以是子域列表True，False或None。如果是列表，request必须是指定的子域之一。如果为True，request 必须包含一个子域，但它可以是任何东西。如果为False或None，则如果有子域名，则不匹配。
- * *New in Routes 1.10: ``False`` and ``None`` values.*
+  * 可以是子域列表True，False或None。如果是列表，request必须是指定的子域之一。如果为True，request 必须包含一个子域，但它可以是任何东西。如果为False或None，则如果有子域名，则不匹配。
+  * _New in Routes 1.10: _`False`_ and _`None`_ values._
 
 * function
 
- * 评估 request 的函数。 它的格式必须是 `func（environ，match_dict）=> bool`。 如果匹配成功则返回 true，否则返回false。 第一个参数是WSGI环境; 第二个是匹配成功时返回的路由变量。该函数可以修改 `match_dict`，以影响返回哪些变量。 这允许广泛的转换。
+  * 评估 request 的函数。 它的格式必须是 `func（environ，match_dict）=> bool`。 如果匹配成功则返回 true，否则返回false。 第一个参数是WSGI环境; 第二个是匹配成功时返回的路由变量。该函数可以修改 `match_dict`，以影响返回哪些变量。 这允许广泛的转换。
 
 实例：
 
@@ -242,7 +242,7 @@ map.connect('/entries/{id:\d+}{.format:json}')
 
 与通配符路由一样，了解和测试很重要。没有上述 `id` 变量的 `\d+` 要求，`/entries/1.mp3` 将成功匹配，id变量捕获 `1.mp3`。
 
-*New in Routes 1.12.*
+_New in Routes 1.12._
 
 ### Submappers
 
@@ -279,7 +279,7 @@ with map.submapper(path_prefix="/admin", controller="admin") as m:
 
 submapper 不是一个完整的 mapper。它只是一个带有.connect方法的临时对象，它向从其生成 mapper 的添加路由。
 
-*New in Routes 1.11.*
+_New in Routes 1.11._
 
 ### Submapper helpers
 
@@ -349,7 +349,7 @@ map.extend(routes, "/subapp")
 
 这并不是真正地将 route 对象添加到 mapper。它创建相同的新 route 对象，并将它们添加到mapper。
 
-*New in Routes 1.11.*
+_New in Routes 1.11._
 
 ## Generation
 
@@ -378,7 +378,7 @@ url("archives", id=123)  =>  "/archives/123"
 url("archives")  =>  "/archives/1"
 ```
 
-*（额外的变量不用于匹配，除非启用最小化。）*
+_（额外的变量不用于匹配，除非启用最小化。）_
 
 任何不对应于路径变量的关键字参数都将放在**查询字符串**中。如果变量名与Python关键字相冲突，则附加`_`：
 
@@ -406,31 +406,31 @@ url("/search", q="My question")  =>  "/search?q=My+question"
 
 * anchor
 
- * 指定URL锚点（“＃”右侧的部分）。 `url("home", "summary")  =>  "/#summary"`
+  * 指定URL锚点（“＃”右侧的部分）。 `url("home", "summary")  =>  "/#summary"`
 
 * host
 
- * 使URL完全限定，并覆盖 host（domain）。
+  * 使URL完全限定，并覆盖 host（domain）。
 
 * protocol
 
- * 使URL完全限定并覆盖协议（例如，`ftp`）。
+  * 使URL完全限定并覆盖协议（例如，`ftp`）。
 
 * qualified
 
- * 使URL完全限定（即添加 `protocol://host:port` 前缀）。
+  * 使URL完全限定（即添加 `protocol://host:port` 前缀）。
 
-* sub_domain
+* sub\_domain
 
- * 请参考 “Generating URLs with subdomains”。
+  * 请参考 “Generating URLs with subdomains”。
 
-*本节中的语法对于url和url_for都是相同的。*
+_本节中的语法对于url和url\_for都是相同的。_
 
-*New in Routes 1.10: ``url`` and the ``URLGenerator`` class behind it.*
+_New in Routes 1.10: _`url`_ and the _`URLGenerator`_ class behind it._
 
 ### 根据当前URL生成路由
 
-`url.current()` 返回当前请求的URL，不带查询字符串。 这被称为 `路由内存`，只有当 `RoutesMiddleware ` 在中间件堆栈中时才可以工作。 关键字参数会覆盖路径变量或放在查询字符串上。
+`url.current()` 返回当前请求的URL，不带查询字符串。 这被称为 `路由内存`，只有当 `RoutesMiddleware` 在中间件堆栈中时才可以工作。 关键字参数会覆盖路径变量或放在查询字符串上。
 
 `url_for` 结合了 `url` 和 `url_current` 的行为。这是不推荐的，因为无名路由和路由内存具有相同的语法，这可能导致在某些情况下选择错误的路由。
 
@@ -450,7 +450,7 @@ url.current()         =>  "/archives/2005/10/4"
 
 可以通过 `map.explicit=True` 全局禁用路由内存。
 
-### Generation-only routes (又名静态路由)
+### Generation-only routes \(又名静态路由\)
 
 静态路由仅用于生成 - 不用于匹配 - 并且必须命名。要定义静态路由，请使用参数 `_static = True`。
 
@@ -478,32 +478,30 @@ url("attachment", category="dogs", id="Mastiff") =>
 
 一个用例是当您有一个具有年，月和日属性的 `story` 对象时。 你不想在每个`url`调用中对这些属性进行硬编码，因为界面有可能会改变。 相反，您将故事作为伪参数传递，过滤器会生成实际的生成参数。 以下是一个例子：
 
-```
-class Story(object):
-    def __init__(self, year, month, day):
-        self.year = year
-        self.month = month
-        self.day = day
+    class Story(object):
+        def __init__(self, year, month, day):
+            self.year = year
+            self.month = month
+            self.day = day
 
-    @staticmethod
-    def expand(kw):
-        try:
-            story = kw["story"]
-        except KeyError:
-            pass   # Don't modify dict if ``story`` key not present.
-        else:
-            # Set the actual generation args from the story.
-            kw["year"] = story.year
-            kw["month"] = story.month
-            kw["day"] = story.day
-        return kw
+        @staticmethod
+        def expand(kw):
+            try:
+                story = kw["story"]
+            except KeyError:
+                pass   # Don't modify dict if ``story`` key not present.
+            else:
+                # Set the actual generation args from the story.
+                kw["year"] = story.year
+                kw["month"] = story.month
+                kw["day"] = story.day
+            return kw
 
-m.connect("archives", "/archives/{year}/{month}/{day}",
-    controller="archives", action="view", _filter=Story.expand)
+    m.connect("archives", "/archives/{year}/{month}/{day}",
+        controller="archives", action="view", _filter=Story.expand)
 
-my_story = Story(2009, 1, 2)
-url("archives", story=my_story)  =>  "/archives/2009/1/2"
-```
+    my_story = Story(2009, 1, 2)
+    url("archives", story=my_story)  =>  "/archives/2009/1/2"
 
 `_filter` 参数可以是任何接受dict并返回dict的函数。 在这个例子中，我们使用了Story类的一个静态方法来将所有 story 关联在一起，但是您可能更喜欢使用独立的函数来保持路由相关的代码与模型的隔离。
 
@@ -531,7 +529,7 @@ url_for(action="new", sub_domain=None)  =>  "http://example.com/users/new"
 
 路由可以轻松配置RESTful Web服务。`map.resource` 创建符合Atom发布协议的一组`add/modify/delete`路由。
 
-A resource route addresses *members* in a *collection*, and the collection itself. 通常，一个集合是一个复数词，一个成员是相应的单数词。例如，考虑一个消息集合：
+A resource route addresses _members_ in a _collection_, and the collection itself. 通常，一个集合是一个复数词，一个成员是相应的单数词。例如，考虑一个消息集合：
 
 ```
 map.resource("message", "messages")
@@ -595,65 +593,61 @@ HTML表单只能生成GET和POST请求。作为解决方法，如果POST请求�
 
 几条路由与包含 `format` 变量的相同路由配对。目的是允许用户通过文件名后缀获得不同的格式; 例如 `/messages/1.xml`。 这产生一个路由变量`xml`，如果它定义了一个正式的参数，它将在Pylons 中被传递给控制器动作。 在 generation 您可以传递 `format` 参数以生成具有该后缀的URL：
 
-
 ```
 url("message", id=1, format="xml")  =>  "/messages/1.xml"
 ```
 
 route 不识别任何特定的格式，或者知道哪些格式对您的应用有效。It merely passes the `format` attribute through if it appears.
 
-*New in Routes 1.7.3: changed URL suffix from ”;edit” to “/edit”. 不允许在URL的路径部分中使用分号，除了定义路径参数，没人会使用。*
+_New in Routes 1.7.3: changed URL suffix from ”;edit” to “/edit”. 不允许在URL的路径部分中使用分号，除了定义路径参数，没人会使用。_
 
 ### Resource options
 
 `map.resource`方法识别一些修改其行为的关键字参数：
 
 * controller
- * 使用指定的控制器，而不是从集合名称中推导出来。
+  * 使用指定的控制器，而不是从集合名称中推导出来。
 * collection
- * Additional URLs to allow for the collection. Example:
-```
-map.resource("message", "messages", collection={"rss": "GET"})
-# "GET /message/rss"  =>  ``Messages.rss()``.
-# Defines a named route "rss_messages".
-```
+
+  * Additional URLs to allow for the collection. Example:
+        map.resource("message", "messages", collection={"rss": "GET"})
+        # "GET /message/rss"  =>  ``Messages.rss()``.
+        # Defines a named route "rss_messages".
 
 * member
- * Additional URLs to allow for a member. Example:
-```
-map.resource('message', 'messages', member={'mark':'POST'})
-# "POST /message/1/mark"  =>  ``Messages.mark(1)``
-# also adds named route "mark_message"
-```
- * This can be used to display a delete confirmation form:
 
-```
-map.resource("message", "messages", member={"ask_delete": "GET"}
-# "GET /message/1/ask_delete"   =>   ``Messages.ask_delete(1)``.
-# Also adds a named route "ask_delete_message".
-```
+  * Additional URLs to allow for a member. Example:
+        map.resource('message', 'messages', member={'mark':'POST'})
+        # "POST /message/1/mark"  =>  ``Messages.mark(1)``
+        # also adds named route "mark_message"
+  * This can be used to display a delete confirmation form:
+
+    map.resource("message", "messages", member={"ask_delete": "GET"}
+    # "GET /message/1/ask_delete"   =>   ``Messages.ask_delete(1)``.
+    # Also adds a named route "ask_delete_message".
+
 * new
- * Additional URLs to allow for new-member functionality.
-```
-map.resource("message", "messages", new={"preview": "POST"})
-# "POST /messages/new/preview"
-```
-* path_prefix
- * 为所有URL模式预先指定前缀。前缀可以包括路径变量。这主要用于在资源中嵌套资源。
-* name_prefix
- * 将指定的字符串前缀到所有路由名称。这通常与`path_prefix`相结合来嵌套资源：
-```
-map.resource("message", "messages", controller="categories",
+  * Additional URLs to allow for new-member functionality.
+    ```
+    map.resource("message", "messages", new={"preview": "POST"})
+    # "POST /messages/new/preview"
+    ```
+* path\_prefix
+  * 为所有URL模式预先指定前缀。前缀可以包括路径变量。这主要用于在资源中嵌套资源。
+* name\_prefix
+  * 将指定的字符串前缀到所有路由名称。这通常与`path_prefix`相结合来嵌套资源：
+    ```
+    map.resource("message", "messages", controller="categories",
     path_prefix="/category/{category_id}",
     name_prefix="category_")
-# GET /category/7/message/1
-# Adds named route "category_message"
-```
-* parent_resource
- * 包含有关父资源的信息的dict，用于创建嵌套资源。 它应该包含父资源的`member_name`和`collection_name`。 该dict将通过相关的Route对象访问，该对象可以通过`request.environ["routes.route"]`在请求期间访问。
- * 如果提供了`parent_resource`并且`path_prefix`而没有提供，则`path_prefix`将从`parent_resource`生成为`<parent collection name>/:<parent member name>_id`。
- * 如果提供了`parent_resource`并且没有`name_prefix`，则`name_prefix`将从`parent_resource`生成为`<parent member name>_`。
- * 例如：
+    # GET /category/7/message/1
+    # Adds named route "category_message"
+    ```
+* parent\_resource
+  * 包含有关父资源的信息的dict，用于创建嵌套资源。 它应该包含父资源的`member_name`和`collection_name`。 该dict将通过相关的Route对象访问，该对象可以通过`request.environ["routes.route"]`在请求期间访问。
+  * 如果提供了`parent_resource`并且`path_prefix`而没有提供，则`path_prefix`将从`parent_resource`生成为`<parent collection name>/:<parent member name>_id`。
+  * 如果提供了`parent_resource`并且没有`name_prefix`，则`name_prefix`将从`parent_resource`生成为`<parent member name>_`。
+  * 例如：
 
 ```
 >>> m = Mapper()
@@ -693,3 +687,6 @@ Overriding generated name_prefix:
 >>> url('locations', region_id=51)
 '/regions/51/locations'
 ```
+
+
+
