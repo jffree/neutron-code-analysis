@@ -4,17 +4,17 @@
 
 ```
 curl -s -X GET http://172.16.100.106:9696/v2.0/networks \
--H "Content-Type: application/json" \
--H "X-Auth-Token: 7eb90d76addc4a5bafeb380bf47f37fd"
+        -H "Content-Type: application/json" \
+        -H "X-Auth-Token: 7eb90d76addc4a5bafeb380bf47f37fd"
 ```
 
 ## core plugin 的 resource 的映射实现
 
 ```
 RESOURCES = {'network': 'networks',
-'subnet': 'subnets',
-'subnetpool': 'subnetpools',
-'port': 'ports'}
+             'subnet': 'subnets',
+             'subnetpool': 'subnetpools',
+             'port': 'ports'}
 SUB_RESOURCES = {}
 COLLECTION_ACTIONS = ['index', 'create']
 MEMBER_ACTIONS = ['show', 'update', 'delete']
@@ -63,9 +63,9 @@ for resource in SUB_RESOURCES:
 
 ### 介绍一下在这里用到的 neutron.conf 中的三个配置选项：
 
- * `allow_bulk` 允许使用批量API（比如说我们可通过 reset api 批量创建网络）；
- * `allow_paginaion` 允许使用分页（已被丢弃的选项，恒为 True）;
- * `allow_sorting` 允许使用排序（已被丢弃的选项，恒为 True）;
+* `allow_bulk` 允许使用批量API（比如说我们可通过 reset api 批量创建网络）；
+* `allow_paginaion` 允许使用分页（已被丢弃的选项，恒为 True）;
+* `allow_sorting` 允许使用排序（已被丢弃的选项，恒为 True）;
 
 ```
 # Allow the usage of the bulk API (boolean value)
@@ -112,12 +112,12 @@ map.collection(collection, resource, **mapper_kwargs)
 
 ```
 >>> print map
-Route name Methods Path Controller action
-entries GET /entries{.format} {} index
-create_entry POST /entries{.format} {} create
-entry GET /entries/{id}{.format} {} show
-update_entry PUT /entries/{id}{.format} {} update
-delete_entry DELETE /entries/{id}{.format} {} delete
+Route name   Methods Path                   Controller action
+entries      GET     /entries{.format}      {}         index 
+create_entry POST    /entries{.format}      {}         create
+entry        GET     /entries/{id}{.format} {}         show  
+update_entry PUT     /entries/{id}{.format} {}         update
+delete_entry DELETE  /entries/{id}{.format} {}         delete
 ```
 
 ## Controller 的构造
@@ -136,13 +136,13 @@ def create_resource(collection, resource, plugin, params, allow_bulk=False,
     return wsgi_resource.Resource(controller, FAULT_MAP)
 ```
 
-### `neutron.api.v2.base.Controller` 
+### `neutron.api.v2.base.Controller`
 
-`neutron.api.v2.base.py` 就是实现了 Contrller 类和 create_resource 方法。
+`neutron.api.v2.base.py` 就是实现了 Contrller 类和 create\_resource 方法。
 
-**`Controller` 是 neutron 中 wsgi 实现的关键类，我们一点点分析。**
+`Controller`** 是 neutron 中 wsgi 实现的关键类，我们一点点分析。**
 
-*我们不是 neutron 架构的设计者，单看这个类的实现是很难理解其用处的，我么就结合其使用来看（见上面）。*
+_我们不是 neutron 架构的设计者，单看这个类的实现是很难理解其用处的，我么就结合其使用来看（见上面）。_
 
 ### `Controller` 的 `__init__`
 
@@ -235,8 +235,8 @@ class Controller(object):
 * `_init_policy_attrs` 创建一个 policy 所需要的属性列表。
 
 * `__init__` 方法主要是做了一些属性初始化的工作，一个主要的工作就是构造 `self._plugin_handlers`。
- 
- * 如果我们的 `self._collection` 为 `ports`，`self._resource` 为 `port`，`self.parent` 为 `None`，那么我们得到的 `self._plugin_handlers` 将会是：
+
+  * 如果我们的 `self._collection` 为 `ports`，`self._resource` 为 `port`，`self.parent` 为 `None`，那么我们得到的 `self._plugin_handlers` 将会是：
 
 ```
 self._plugin_handlers = {
@@ -312,3 +312,6 @@ self._plugin_handlers = {
         else:
             raise AttributeError()
 ```
+
+
+
