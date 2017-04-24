@@ -11,6 +11,17 @@ curl -s -X GET http://172.16.100.106:9696/v2.0/networks \
 ## core plugin 的 resource 的映射实现
 
 ```
+RESOURCES = {'network': 'networks',
+'subnet': 'subnets',
+'subnetpool': 'subnetpools',
+'port': 'ports'}
+SUB_RESOURCES = {}
+COLLECTION_ACTIONS = ['index', 'create']
+MEMBER_ACTIONS = ['show', 'update', 'delete']
+REQUIREMENTS = {'id': constants.UUID_PATTERN, 'format': 'json'}
+```
+
+```
 col_kwargs = dict(collection_actions=COLLECTION_ACTIONS,
                           member_actions=MEMBER_ACTIONS)
 
@@ -107,17 +118,6 @@ create_entry POST /entries{.format} {} create
 entry GET /entries/{id}{.format} {} show
 update_entry PUT /entries/{id}{.format} {} update
 delete_entry DELETE /entries/{id}{.format} {} delete
-```
-
-```
-RESOURCES = {'network': 'networks',
-'subnet': 'subnets',
-'subnetpool': 'subnetpools',
-'port': 'ports'}
-SUB_RESOURCES = {}
-COLLECTION_ACTIONS = ['index', 'create']
-MEMBER_ACTIONS = ['show', 'update', 'delete']
-REQUIREMENTS = {'id': constants.UUID_PATTERN, 'format': 'json'}
 ```
 
 ## Controller 的构造
