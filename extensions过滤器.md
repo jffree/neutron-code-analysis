@@ -454,3 +454,143 @@ class ActionExtensionController(wsgi.Controller):
 3. `ExtensionManager.get_actions` 收集了所有的 extend action，并以 `ActionExtension` 进行封装，返回封装后的列表
 4. `ExtensionMiddleware._action_ext_controllers` 实现了 extend action 的 wsgi 映射关系，并返回了 action.collection 与 controller 的对应列表
 5. `ExtensionMiddleware.__init__` 在调用 `_action_ext_controllers` 之后，还完善的所有的 extend action 的 controller 的行为。
+
+## extended request wsgi 映射关系的建立
+
+* 实现方法：
+
+```
+        # extended requests
+        req_controllers = self._request_ext_controllers(application,
+                                                        self.ext_mgr, mapper)
+        for request_ext in self.ext_mgr.get_request_extensions():
+            LOG.debug('Extended request: %s', request_ext.key)
+            controller = req_controllers[request_ext.key]
+            controller.add_handler(request_ext.handler)
+```
+
+* 接着看 `self._request_ext_controllers` 方法
+
+```
+    def _request_ext_controllers(self, application, ext_mgr, mapper):
+        """Returns a dict of RequestExtensionController-s by collection."""
+        request_ext_controllers = {}
+        for req_ext in ext_mgr.get_request_extensions():
+            if req_ext.key not in request_ext_controllers.keys():
+                controller = RequestExtensionController(application)
+                mapper.connect(req_ext.url_route + '.:(format)',
+                               action='process',
+                               controller=controller,
+                               conditions=req_ext.conditions)
+
+                mapper.connect(req_ext.url_route,
+                               action='process',
+                               controller=controller,
+                               conditions=req_ext.conditions)
+                request_ext_controllers[req_ext.key] = controller
+
+        return request_ext_controllers
+```
+
+* 接着看 `ExtensionManager` 中的 `get_request_extensions` 方法
+
+```
+    def get_request_extensions(self):
+        """Returns a list of RequestExtension objects."""
+        request_exts = []
+        for ext in self.extensions.values():
+            request_exts.extend(ext.get_request_extensions())
+        return request_exts
+```
+
+* 再看 `RequestExtension` 的实现：
+
+```
+class RequestExtension(object):
+    """Extend requests and responses of core Neutron OpenStack API controllers.
+
+    Provide a way to add data to responses and handle custom request data
+    that is sent to core Neutron OpenStack API controllers.
+    """
+
+    def __init__(self, method, url_route, handler):
+        self.url_route = url_route
+        self.handler = handler
+        self.conditions = dict(method=[method])
+        self.key = "%s-%s" % (method, url_route)
+```
+
+* 最后看 `RequestExtensionController` 的实现
+
+```
+class RequestExtensionController(wsgi.Controller):
+
+    def __init__(self, application):
+        self.application = application
+        self.handlers = []
+
+    def add_handler(self, handler):
+        self.handlers.append(handler)
+
+    def process(self, request, *args, **kwargs):
+        res = request.get_response(self.application)
+        # currently request handlers are un-ordered
+        for handler in self.handlers:
+            response = handler(request, res)
+        return response
+```
+ 
+*process方法会先调用 `self.application` 做具体的事情，然后对于结果和请求调用 handler 做额外的处理，然后返回结果。*
+
+### extend request wsgi 映射关系总结
+
+*extend request 与 extend action 的实现基本一致，没有什么大区别*
+
+1. `RequestExtension` 是 extend request 的封装类
+2. `RequestExtensionController` 是 extend request 的控制类
+3. `ExtensionManager.get_request_extensions` 收集了所有的 extend request，并以 `RequestExtension` 进行封装，返回封装后的列表
+4. `ExtensionMiddleware._request_ext_controllers` 实现了 extend request 的 wsgi 映射关系，并返回了 RequestExtension.key 与 controller 的对应列表
+5. `ExtensionMiddleware.__init__` 在调用 `_request_ext_controllers` 之后，还完善的所有的 extend request 的 controller 的行为。
+
+
+## extension 中路由映射的分发
+
+通过上面的分析，neutron 已经做好了请求路径和处理方法的映射，那么当一个请求来临时我们则需要用响应的处理方法来处理：
+
+```
+        self._router = routes.middleware.RoutesMiddleware(self._dispatch,
+                                                          mapper)
+        super(ExtensionMiddleware, self).__init__(application)
+```
+
+* `self._dispatch` 方法如下：
+
+```
+    @staticmethod
+    @webob.dec.wsgify(RequestClass=wsgi.Request)
+    def _dispatch(req):
+        """Dispatch the request.
+
+        Returns the routed WSGI app's response or defers to the extended
+        application.
+        """
+        match = req.environ['wsgiorg.routing_args'][1]
+        if not match:
+            return req.environ['extended.app']
+        app = match['controller']
+        return app
+```
+
+* `self._router` 是在下面的被调用的：
+
+```
+    @webob.dec.wsgify(RequestClass=wsgi.Request)
+    def __call__(self, req):
+        """Route the incoming request with router."""
+        req.environ['extended.app'] = self.application
+        return self._router
+```
+
+那么我们就可以理解了， `routes.middleware.RoutesMiddleware` 是一个 wsgi 的中间件，它会利用已经建立好的映射关系 mapper，来向环境变量 environ 中增加一些匹配信息，并调用 `self._dispatch` 来做进一步的处理。 
+
+在 environ 环境变量中若是有匹配信息的话，`self._dispatch` 则会返回匹配到的 controller，否则的话直接返回`self.application`（也就是 neutronapiapp_v2_0）。
