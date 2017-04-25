@@ -447,3 +447,10 @@ class ActionExtensionController(wsgi.Controller):
 
 `ActionExtensionController` 的实现比较简单，也就是定义了一个 `action_handlers` 来保存请求方法和处理方法的映射关系，在 `action` 方法中解析请求消息体，若找到对应的请求方法，则对其进行处理。 
 
+#### extend action wsgi 映射关系总结
+
+1. `ActionExtension` 是 extend action 的封装类
+2. `ActionExtensionController` 是 extend action 的控制类
+3. `ExtensionManager.get_actions` 收集了所有的 extend action，并以 `ActionExtension` 进行封装，返回封装后的列表
+4. `ExtensionMiddleware._action_ext_controllers` 实现了 extend action 的 wsgi 映射关系，并返回了 action.collection 与 controller 的对应列表
+5. `ExtensionMiddleware.__init__` 在调用 `_action_ext_controllers` 之后，还完善的所有的 extend action 的 controller 的行为。
