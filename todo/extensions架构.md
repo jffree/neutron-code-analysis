@@ -156,8 +156,6 @@ class ExtensionDescriptor(object):
 
 ### 分析
 
-单看一个抽象类没啥好看的，我们结合一个具体的实现来看：[availability_zone extension](https://github.com/openstack/neutron/blob/stable/newton/neutron/extensions/availability_zone.py)
-
 1. `ExtensionDescriptor` 是个抽象类（`@six.add_metaclass(abc.ABCMeta)`），定义了 extension 的基本框架；
 
 2. `get_name` 抽象方法，返回 extension 的名字；
@@ -186,7 +184,89 @@ class ExtensionDescriptor(object):
 
 ### 测试
 
+单看一个抽象类没啥好看的，我们结合一个具体的实现来看：[availability_zone extension](https://github.com/openstack/neutron/blob/stable/newton/neutron/extensions/availability_zone.py)
+
+#### availability_zone extension 中的公共属性和方法
+
+```
+AZ_HINTS_DB_LEN = 255
+
+
+# resource independent common methods
+def convert_az_list_to_string(az_list):
+    return jsonutils.dumps(az_list)
+
+
+def convert_az_string_to_list(az_string):
+    return jsonutils.loads(az_string) if az_string else []
+
+
+def _validate_availability_zone_hints(data, valid_value=None):
+    # syntax check only here. existence of az will be checked later.
+    msg = validators.validate_list_of_unique_strings(data)
+    if msg:
+        return msg
+    az_string = convert_az_list_to_string(data)
+    if len(az_string) > AZ_HINTS_DB_LEN:
+        msg = _("Too many availability_zone_hints specified")
+        raise exceptions.InvalidInput(error_message=msg)
+
+validators.add_validator('availability_zone_hints',
+                         _validate_availability_zone_hints)
+
+# Attribute Map
+RESOURCE_NAME = 'availability_zone'
+AVAILABILITY_ZONES = 'availability_zones'
+AZ_HINTS = 'availability_zone_hints'
+# name: name of availability zone (string)
+# resource: type of resource: 'network' or 'router'
+# state: state of availability zone: 'available' or 'unavailable'
+# It means whether users can use the availability zone.
+RESOURCE_ATTRIBUTE_MAP = {
+    AVAILABILITY_ZONES: {
+        'name': {'is_visible': True},
+        'resource': {'is_visible': True},
+        'state': {'is_visible': True}
+    }
+}
+
+EXTENDED_ATTRIBUTES_2_0 = {
+    'agents': {
+        RESOURCE_NAME: {'allow_post': False, 'allow_put': False,
+                        'is_visible': True}
+    }
+}
+
+
+class AvailabilityZoneNotFound(exceptions.NotFound):
+    message = _("AvailabilityZone %(availability_zone)s could not be found.")
+```
+
 #### `ExtensionDescriptor`中的四个抽象方法
+
+* availability_zone extension 中的实现：
+
+```
+class Availability_zone(extensions.ExtensionDescriptor):
+    """Availability zone extension."""
+
+    @classmethod
+    def get_name(cls):
+        return "Availability Zone"
+
+    @classmethod
+    def get_alias(cls):
+        return "availability_zone"
+
+    @classmethod
+    def get_description(cls):
+        return "The availability zone extension."
+
+    @classmethod
+    def get_updated(cls):
+        return "2015-01-01T10:00:00-00:00"
+```
+
 
 * 关于 `ExtensionDescriptor`中的四个抽象方法，其实是对该 extension 的简单描述，下面我们通过 `curl` 对 `Availability_zone` extension 进行测试：
 
@@ -230,31 +310,12 @@ curl -s -X GET http://172.16.100.106:9696//v2.0/extensions/network_availability_
 #### `get_extended_resources` 方法实例（[availability_zone extension](https://github.com/openstack/neutron/blob/stable/newton/neutron/extensions/availability_zone.py)）：
 
 ```
-RESOURCE_NAME = 'availability_zone'
-AVAILABILITY_ZONES = 'availability_zones'
-
-RESOURCE_ATTRIBUTE_MAP = {
-    AVAILABILITY_ZONES: {
-        'name': {'is_visible': True},
-        'resource': {'is_visible': True},
-        'state': {'is_visible': True}
-    }
-}
-
-EXTENDED_ATTRIBUTES_2_0 = {
-    'agents': {
-        RESOURCE_NAME: {'allow_post': False, 'allow_put': False,
-                        'is_visible': True}
-    }
-}
-
     def get_extended_resources(self, version):
         if version == "2.0":
             return dict(list(EXTENDED_ATTRIBUTES_2_0.items()) +
                         list(RESOURCE_ATTRIBUTE_MAP.items()))
         else:
             return {}
-
 ```
 
 返回值为：
