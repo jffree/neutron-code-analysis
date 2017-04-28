@@ -622,16 +622,20 @@ _New in Routes 1.7.3: changed URL suffix from ”;edit” to “/edit”. 不允
         # also adds named route "mark_message"
   * This can be used to display a delete confirmation form:
 
-    map.resource("message", "messages", member={"ask_delete": "GET"}
-    # "GET /message/1/ask_delete"   =>   ``Messages.ask_delete(1)``.
-    # Also adds a named route "ask_delete_message".
+    map.resource\("message", "messages", member={"ask\_delete": "GET"}
+
+    # "GET /message/1/ask\_delete"   =&gt;   `Messages.ask_delete(1)`.
+
+    # Also adds a named route "ask\_delete\_message".
 
 * new
+
   * Additional URLs to allow for new-member functionality.
     ```
     map.resource("message", "messages", new={"preview": "POST"})
     # "POST /messages/new/preview"
     ```
+
 * path\_prefix
   * 为所有URL模式预先指定前缀。前缀可以包括路径变量。这主要用于在资源中嵌套资源。
 * name\_prefix
