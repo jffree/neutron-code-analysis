@@ -1,3 +1,51 @@
+# [NeutronDevelopment Wiki](https://wiki.openstack.org/wiki/NeutronDevelopment)
+
+## Developing a Neutron Plugin
+
+如果您尝试在 OpenStack 使用新的网络交换技术，那么您可能希望开发一个Neutron插件。那么你来到正确的地方。
+
+### What is a Neutron Plugin?
+
+Neutron 公开了一系列逻辑 API 来定义网络，以让来自其他 OpenStack 服务（例如，来自Nova VM的vNIC）的设备实现连接。 使用API描述的逻辑连接必须转换为虚拟或物理交换机上的实际配置。 这是Neutron插件所要做的事情。Neutron插件能够与一个或多个类型的交换机通话，并根据API调用动态重新配置交换机。
+
+### What Code Do I Need to Write
+
+Neutron 代码库有一个python API，您若是想要实现一个 Neutron 插件，则必须实现这一组API调用。源代码请看 *neutron/neutron_plugin_base.py*。
+
+如果您选择围绕着 SQL 数据库来构建插件，代码库提供一些有用的 sqlalchemy 绑定来存储逻辑API实体（网络，端口）。
+
+一个插件通常由以下代码组成：
+
+* 存储有关当前逻辑网络配置的信息（例如，SQL数据库）
+
+* 确定并存储有关逻辑模型到物理网络的映射信息（例如，选择VLAN以表示逻辑网络）。
+
+* 与一个或多个类型的交换机进行通信，以根据映射进行配置。这可以是在虚拟机管理程序上运行的代理的形式，或者远程登录到交换机并重新配置的代码。
+
+另外，如果您的交换技术需要 nova-compute 以特殊方式创建 vNIC，则可能需要创建一个特殊的 vif-plugging 模块，以便与交换机一起使用。 然而，鉴于现有的插件集，很可能已经有您需要的vif插件类型。 重要的是，尽可能保持 vif 插件尽可能简单，以避免 nova 与网络细节复杂化。 例如，您不应该将 VLAN ID传递给 nova，nova 只应该创建基本设备，并且有一个 neutron 插件代理负责设置与该vlan的连接。
+
+不需要修改任何其他nova代码，因为此代码仅使用所有插件中相同的逻辑Neutron API。
+
+### Useful Next Steps
+
+* 阅读管理指南中的 Neutron 概述，了解基本组件：http://docs.openstack.org/trunk/openstack-network/admin/content/ch_overview.html
+
+* 浏览Neutron API指南，了解每个插件必须实现的API：http://docs.openstack.org/api/openstack-network/2.0/content/index.html
+
+* 获取 Neutron 代码（http://launchpad.net/neutron）并根据管理员指南运行它。
+
+* 查看*neutron/plugins*目录中的现有插件，以了解插件的实现
+
+* 参见 `nova-compute vif-plugging` 的例子。在nova代码库中，请参阅 *nova/virt/libvirt/vif.py*。
+
+### Plugin FAQ
+
+* 问：我可以在同一时间运行多个插件吗？
+
+答：不可以，对于给定的Neutron API，一次只能运行一个插件。 那是因为一个插件是实现一个特定的API调用的代码块。 只能运行一个插件，但并不意味着你只能与一种类型的交换机进行交互。 一个插件可以有多个驱动程序可以与不同类型的交换机交互。例如，Cisco插件与多种类型的交换机通话。 没有正式的驱动程序接口，但是我们鼓励人们以通用方式编写与交换机通话的代码，以便其他插件能够利用它。驱动程序通常是能够与特定交换机型号或系列交换机通信的代码。驱动程序通常将具有用于标准配置操作的方法，例如为端口添加一个特定的VLAN。
+
+答： 是的，使用“meta-plugin”调用两个不同现有插件代码。https://github.com/openstack/neutron/tree/master/neutron/plugins/metaplugin
+
 ## API Extensions
 
 API Extension 允许插件扩展 Neutron API 以便公开更多信息。 该信息可能需要实现特定于某个插件的高级功能，或者在将其纳入官方 Neutron API 之前将其展现出来。
