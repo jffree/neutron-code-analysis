@@ -297,6 +297,43 @@ curl -s -X GET http://172.16.100.106:9696//v2.0/extensions/network_availability_
         return [ex]
 ```
 
+`neutron.api.v2.base.Controller` 以及 `neutron.api.extensions.ResourceExtension` 是用于 resource wsgi 映射的实现，我们有专门的一节来讲解，这里我们只看一下 availability_zone extension 中 `get_resource` 方法的实现逻辑。
+
+* 定义资源的复数名及单数名映射 `my_plurals`：`[('availability_zones', 'availability_zone')]`
+
+* 更新 `neutron.api.v2.attributes.PLURALS` 属性，我们看一下这个变量：
+
+```
+# Store plural/singular mappings
+PLURALS = {NETWORKS: NETWORK,
+           PORTS: PORT,
+           SUBNETS: SUBNET,
+           SUBNETPOOLS: SUBNETPOOL,
+           'dns_nameservers': 'dns_nameserver',
+           'host_routes': 'host_route',
+           'allocation_pools': 'allocation_pool',
+           'fixed_ips': 'fixed_ip',
+           'extensions': 'extension'}
+```
+
+那么我们更新后会变为：
+
+```
+# Store plural/singular mappings
+PLURALS = {NETWORKS: NETWORK,
+           PORTS: PORT,
+           SUBNETS: SUBNET,
+           SUBNETPOOLS: SUBNETPOOL,
+           'dns_nameservers': 'dns_nameserver',
+           'host_routes': 'host_route',
+           'allocation_pools': 'allocation_pool',
+           'fixed_ips': 'fixed_ip',
+           'extensions': 'extension',
+           'availability_zones':  'availability_zone'}
+```
+
+* 获取支持此 extension 的 plugin
+
 #### `get_extended_resources` 方法实例：
 
 ```
