@@ -293,6 +293,27 @@ curl -s -X GET http://172.16.100.106:9696//v2.0/availability_zones -H 'Content-T
 
 *这里的 python 对象的 id 不一样，是因为中间重启了一次 neutron。*
 
-* 我们知道 extension 的 controller 全是由 `Controller` 来实现的，那么我们就看一下它的 index 方法：
+* 找到了路由映射，那么我们就来找一下路由中的 controller，随便找一个 extension 的实例（例如 `Availability_zone`），我么就可以发现实现 controller 的是 `neutron.api.v2.resource.Resource` 方法：
 
+*Resource 是个方法，不是类*
 
+这个方法定义了解析消息体和构造消息体的方法，前面我们说在 `ExtensionMiddleware` 的 `__call__` 方法调用了 `routes.middleware.RoutesMiddleware` 的返回值 `_router`， `_router` 又进一步的调用了 `_dispatch` 返回匹配到的处理请求的方法。
+
+* 我们知道 extension 的 controller 全是由 `neutron.api.v2.Controller` 来实现的，那么我们就在它的 index 方法增加一条 LOG 语句：
+
+```
+LOG.info('wlw=============================== Controller.index')
+```
+
+我们依然用 curl 命令来访问 neutron：
+
+```
+curl -s -X GET http://172.16.100.106:9696//v2.0/availability_zones -H 'Content-Type: application/json' -H 'X-Auth-Token: 7eff6dc843394c97ba9322d3bba44e96'
+```
+
+LOG 的输出为：
+
+```
+2017-04-29 09:31:05.934 ^[[00;36mINFO neutron.api.extensions [^[[01;36mreq-634b788a-99d5-4761-a7eb-4d0aaa33b53c ^[[00;36madmin d4edcc21aaca452dbc79e7a6056e53bb^[[00;36m] ^[[01;35m^[[00;36mwlw========================== req.environ.wsgiorg.routing_args: {'action': u'index', 'controller': <wsgify at 103490576 wrapping <function resource at 0x6448e60>>} ^[[00m^M
+2017-04-29 09:31:05.935 ^[[00;36mINFO neutron.api.v2.base [^[[01;36mreq-634b788a-99d5-4761-a7eb-4d0aaa33b53c ^[[00;36madmin d4edcc21aaca452dbc79e7a6056e53bb^[[00;36m] ^[[01;35m^[[00;36mwlw=============================== Controller.index^[[00m^M
+```
