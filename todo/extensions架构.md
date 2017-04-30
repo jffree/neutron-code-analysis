@@ -14,7 +14,7 @@ extension 为 neutron plugin 的向外提供接口。根据 rest api，extension
 
 2. 在这个模块中创建一个与模块名一致的，继承于 `ExtensionDescriptor` 的类，这就是你的 extension
 
-3. 实现 extension 的基本方法和响应功能
+3. 实现 extension 的基本方法和相应功能
 
 4. 通过 plugin 的 `supported_extension_aliases` 将 extension 与 plugin 关联起来
 
