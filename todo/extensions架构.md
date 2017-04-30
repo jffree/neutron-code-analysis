@@ -367,7 +367,9 @@ PLURALS = {NETWORKS: NETWORK,
 {'availability_zones': {'state': {'is_visible': True}, 'resource': {'is_visible': True}, 'name': {'is_visible': True}}, 'agents': {'availability_zone': {'is_visible': True, 'allow_put': False, 'allow_post': False}}}
 ```
 
-#### `get_plugin_interface`
+#### 其他方法
+
+AvailabilityZones extension 只实现了这些方法，关于其他的方法的实例，大家可以在 neutron 的其他 extension 中找一下。
 
 ## 参考
 
