@@ -35,6 +35,23 @@ result = map.match('/error/myapp/4')
 # result == {'controller': 'error', 'action': 'myapp', 'id': '4'}
 ```
 
+**另外**，我在看 openstack 的代码时发现了下面的用法：
+
+下面这两个的效果是一样的
+
+map.connect(None, "/error/{action}/{id}", controller="error")
+map.connect(None, "/error/:action/:(id)", controller="error")
+
+即： `:` 和 `{}` 都可以用来获取参数。
+
+而 `()` 的作用是隔离，例如：
+
+```
+map.connect(None, "/error/:action/:(id)path", controller="error")
+```
+
+很明显我们获取的参数将是 `id` 而不是 `idpath`。
+
 ## 设定 routes
 
 ### 一个典型的配置
@@ -637,7 +654,9 @@ _New in Routes 1.7.3: changed URL suffix from ”;edit” to “/edit”. 不允
     ```
 
 * path\_prefix
+
   * 为所有URL模式预先指定前缀。前缀可以包括路径变量。这主要用于在资源中嵌套资源。
+
 * name\_prefix
   * 将指定的字符串前缀到所有路由名称。这通常与`path_prefix`相结合来嵌套资源：
     ```
