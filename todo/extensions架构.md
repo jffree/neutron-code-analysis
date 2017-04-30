@@ -10,13 +10,13 @@ extension 为 neutron plugin 的向外提供接口。根据 rest api，extension
 
 ## extension 的实现步骤：
 
-1. 在 _neutron/extensions_ 文件夹下创建一个模块
+1. 在 _neutron/extensions_ 文件夹下创建一个模块；
 
-2. 在这个模块中创建一个与模块名一致的，继承于 `ExtensionDescriptor` 的类，这就是你的 extension
+2. 在这个模块中创建一个与模块名一致的，继承于 `ExtensionDescriptor` 的类，这就是你的 extension；
 
-3. 实现 extension 的基本方法和相应功能
+3. 实现 extension 的基本方法和相应功能；
 
-4. 通过 plugin 的 `supported_extension_aliases` 将 extension 与 plugin 关联起来
+4. 通过 plugin 的 `supported_extension_aliases` 将 extension 与 plugin 关联起来；
 
 ## 抽象类 `class ExtensionDescriptor(object)`
 
@@ -174,7 +174,15 @@ class ExtensionDescriptor(object):
 
 9. `get_extended_resources`，若是这个 extension 向外暴露了资源，那么这个 extension 所暴露的资源以及资源的属性就会通过这个方法获得。
 
-10. `get_plugin_interface` 返回一个从 `extension.PluginInterface` 继承的抽象类，这个抽象类中的方法应该被装饰为 `abstractmethod`。
+10. `get_plugin_interface` 返回一个从 `extension.PluginInterface` 继承的抽象类，这个抽象类中的方法应该被装饰为 `abstractmethod`。 **待深入研究**
+
+11. `get_required_extensions` 方法用来声明：加此 extension 资源前**必须**加载的其他的 extension 资源。（**注意：**加载 extension 是按照文件名来排序的，但是加载 extension 的资源是有顺序的。）若是有被需要的 extension 资源无法被加载则会报错。
+
+12. `get_optional_extensions` 方法用来声明：加此 extension 资源前**可选地**加载其他的 extension 资源。但是，若是有可选地 extension 资源无法被加载则也不会报错。
+
+13. `update_attributes_map` 跟新此 extension 的资源属性。因为有可能不能的 extension 处理了同一种资源，那么这里就可以把这个资源的所有属性集合到一起（也就是说所有的 extension 中相同的资源的属性是一致的）。
+
+14. `get_pecan_resources` 方法返回一个 `PecanResourceExtension` 的实例列表。**关于 pecan 以后再研究**
 
 ### 测试
 
@@ -279,6 +287,8 @@ curl -s -X GET http://172.16.100.106:9696//v2.0/extensions/network_availability_
 }
 ```
 
+* extension 的 alias 在 neutron 用的比较多，比如说，在加载所以的 extension 的时候，会将所以的 extension 类实例放在一个字典（`ExtensionManager.extensions` 属性）中，这个字典的 key 既是 extension 的 alias，value 为 extension 的实例。
+
 #### `get_resources` 方法实例：
 
 ```
@@ -301,7 +311,7 @@ curl -s -X GET http://172.16.100.106:9696//v2.0/extensions/network_availability_
 
 * 定义资源的复数名及单数名映射 `my_plurals`：`[('availability_zones', 'availability_zone')]`
 
-* 更新 `neutron.api.v2.attributes.PLURALS` 属性，我们看一下这个变量：
+* 更新 `neutron.api.v2.attributes` 的 `PLURALS` 属性，这个属性存储了所以资源的单复数映射：
 
 ```
 # Store plural/singular mappings
@@ -333,6 +343,12 @@ PLURALS = {NETWORKS: NETWORK,
 ```
 
 * 获取支持此 extension 的 plugin
+
+* 获取此资源的属性
+
+* 创建此资源的 controller，controller 在 wsgi 架构中用到。当对 neutron 的一个资源发出请求时，会调用 controller 的相应方法进行处理。
+
+* 构造 `ResourceExtension` 对象（也就是单个 resource 的封装对象）并返回。
 
 #### `get_extended_resources` 方法实例：
 
