@@ -36,6 +36,9 @@
 
 [半小时 neutron 教程](http://huntxu.github.io/2015-12-03-neutron-in-half-an-hour.html)
 
+[ OpenStack源码分析 Neutron源码分析（一）-----------Restful API篇 ](http://blog.csdn.net/happyanger6/article/details/54586463)
+**这个人的其他博客也必须看**
+
 # openstack doc
 
 [Networking API v2.0](https://developer.openstack.org/api-ref/networking/v2/index.html)
