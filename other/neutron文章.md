@@ -34,6 +34,8 @@
 
 [Python深入：stevedore简介](http://blog.csdn.net/gqtcgq/article/details/49620279)
 
+[半小时 neutron 教程](http://huntxu.github.io/2015-12-03-neutron-in-half-an-hour.html)
+
 # openstack doc
 
 [Networking API v2.0](https://developer.openstack.org/api-ref/networking/v2/index.html)
