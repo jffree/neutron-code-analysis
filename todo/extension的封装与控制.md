@@ -216,9 +216,15 @@ def Resource(controller, faults=None, deserializers=None, serializers=None,
 
 这是本篇文章的重头戏，也就是真正的 controller，所有的 resource extension 都是使用这个类来实现控制器功能。
 
-`Controller` 的代码比较长，我们分开来看。
+controller 的分析分为两部分，一个是 controller 的初始化，另一个是controller 实现的 action。
 
-##### `__init__` 方法
+初始化自然是指 `__init__` 方法。
+
+我们之前有一篇文章是 [extension调试](./extension调试.md)，里面有一个是跟踪路由映射，我们从打印出的路由映射中可以发现，controller 应该实现 `create`、`index`、`new`、`update`、`delete`、`edit`、`show`、`tenant`、`default` 这几个 action。
+
+那么我们就从 `__init__` 看起。
+
+##### 初始化 `__init__` 方法
 
 ```
 class Controller(object):
@@ -304,6 +310,23 @@ class Controller(object):
         for action in [self.CREATE, self.UPDATE, self.DELETE]:
             self._plugin_handlers[action] = '%s%s_%s' % (action, parent_part,
                                                          self._resource)
+
+    def _get_primary_key(self, default_primary_key='id'):
+        for key, value in six.iteritems(self._attr_info):
+            if value.get('primary_key', False):
+                return key
+        return default_primary_key
+
+    def _is_native_bulk_supported(self):
+        native_bulk_attr_name = ("_%s__native_bulk_support"
+                                 % self._plugin.__class__.__name__)
+        return getattr(self._plugin, native_bulk_attr_name, False)
+
+    def _is_native_pagination_supported(self):
+        return api_common.is_native_pagination_supported(self._plugin)
+
+    def _is_native_sorting_supported(self):
+        return api_common.is_native_sorting_supported(self._plugin)
 ```
 
 * `__init__` 参数说明：
@@ -318,9 +341,140 @@ class Controller(object):
  8. `allow_pagination` 是否允许分页；（限制服务器一次返回的资源个数，请参考：[Pagination](https://developer.openstack.org/api-ref/networking/v2/?expanded=bulk-create-networks-detail#pagination)）
  9. `allow_sorting` 是否允许排序；（对返回的资源列表进行排序，请参考：[Sorting](https://developer.openstack.org/api-ref/networking/v2/?expanded=bulk-create-networks-detail#sorting)）
 
+* 我们看一下 `__init__` 方法都做了那些工作：
+
+ 1. 初始化控制器的一些参数
+
+ 2. 获得 plugin 的一些参数（`self._native_bulk`、`self._native_pagination`、`self._native_sorting`）
+
+ 3. 调用 `self._init_policy_attrs` 获取 policy 所需要的资源属性列表；
+
+ 4. 调用 `self._get_primary_key` 获取资源属性的主键
+
+ 5. 构造了 `self._plugin_handlers` 的字典；
+
+创建 availability_zone resource extension 的 controller 时的  `self._plugin_handlers` 实例： `{'create': 'create_availability_zone', 'delete': 'delete_availability_zone', 'list': 'get_availability_zones', 'update': 'update_availability_zone', 'show': 'get_availability_zone'}`
+
+##### `index` 动作
+
+```
+    def _items(self, request, do_authz=False, parent_id=None):
+        """Retrieves and formats a list of elements of the requested entity."""
+        # NOTE(salvatore-orlando): The following ensures that fields which
+        # are needed for authZ policy validation are not stripped away by the
+        # plugin before returning.
+        original_fields, fields_to_add = self._do_field_list(
+            api_common.list_args(request, 'fields'))
+        filters = api_common.get_filters(request, self._attr_info,
+                                         ['fields', 'sort_key', 'sort_dir',
+                                          'limit', 'marker', 'page_reverse'])
+        kwargs = {'filters': filters,
+                  'fields': original_fields}
+        sorting_helper = self._get_sorting_helper(request)
+        pagination_helper = self._get_pagination_helper(request)
+        sorting_helper.update_args(kwargs)
+        sorting_helper.update_fields(original_fields, fields_to_add)
+        pagination_helper.update_args(kwargs)
+        pagination_helper.update_fields(original_fields, fields_to_add)
+        if parent_id:
+            kwargs[self._parent_id_name] = parent_id
+        obj_getter = getattr(self._plugin, self._plugin_handlers[self.LIST])
+        obj_list = obj_getter(request.context, **kwargs)
+        obj_list = sorting_helper.sort(obj_list)
+        obj_list = pagination_helper.paginate(obj_list)
+        # Check authz
+        if do_authz:
+            # FIXME(salvatore-orlando): obj_getter might return references to
+            # other resources. Must check authZ on them too.
+            # Omit items from list that should not be visible
+            obj_list = [obj for obj in obj_list
+                        if policy.check(request.context,
+                                        self._plugin_handlers[self.SHOW],
+                                        obj,
+                                        plugin=self._plugin,
+                                        pluralized=self._collection)]
+        # Use the first element in the list for discriminating which attributes
+        # should be filtered out because of authZ policies
+        # fields_to_add contains a list of attributes added for request policy
+        # checks but that were not required by the user. They should be
+        # therefore stripped
+        fields_to_strip = fields_to_add or []
+        if obj_list:
+            fields_to_strip += self._exclude_attributes_by_policy(
+                request.context, obj_list[0])
+        collection = {self._collection:
+                      [self._filter_attributes(
+                          request.context, obj,
+                          fields_to_strip=fields_to_strip)
+                       for obj in obj_list]}
+        pagination_links = pagination_helper.get_links(obj_list)
+        if pagination_links:
+            collection[self._collection + "_links"] = pagination_links
+        # Synchronize usage trackers, if needed
+        resource_registry.resync_resource(
+            request.context, self._resource, request.context.tenant_id)
+        return collection
+
+    @db_api.retry_db_errors
+    def index(self, request, **kwargs):
+        """Returns a list of the requested entity."""
+        parent_id = kwargs.get(self._parent_id_name)
+        # Ensure policy engine is initialized
+        policy.init()
+        return self._items(request, True, parent_id)
+```
 
 
 
+
+##### `create` 动作
+
+
+
+
+
+##### 从给用户的响应中删除一些不可见（`'is_visible': False`）或者不符合 policy 检查的属性
+
+`_exclude_attributes_by_policy` 方法用于返回一个应该被删除的属性列表。
+ 
+```
+    def _exclude_attributes_by_policy(self, context, data):
+        """Identifies attributes to exclude according to authZ policies.
+
+        Return a list of attribute names which should be stripped from the
+        response returned to the user because the user is not authorized
+        to see them.
+        """
+        attributes_to_exclude = []
+        for attr_name in data.keys():
+            # TODO(amotoki): At now, all attribute maps have tenant_id and
+            # determine excluded attributes based on tenant_id.
+            # We need to migrate tenant_id to project_id later
+            # as attr_info is referred to in various places and we need
+            # to check all logis carefully.
+            if attr_name == 'project_id':
+                continue
+            attr_data = self._attr_info.get(attr_name)
+            if attr_data and attr_data['is_visible']:
+                if policy.check(
+                    context,
+                    '%s:%s' % (self._plugin_handlers[self.SHOW], attr_name),
+                    data,
+                    might_not_exist=True,
+                    pluralized=self._collection):
+                    # this attribute is visible, check next one
+                    continue
+            # if the code reaches this point then either the policy check
+            # failed or the attribute was not visible in the first place
+            attributes_to_exclude.append(attr_name)
+            # TODO(amotoki): As mentioned in the above TODO,
+            # we treat project_id and tenant_id equivalently.
+            # This should be migrated to project_id in Ocata.
+            if attr_name == 'tenant_id':
+                attributes_to_exclude.append('project_id')
+
+        return attributes_to_exclude
+```
 
 
 
