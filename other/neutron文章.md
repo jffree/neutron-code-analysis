@@ -42,4 +42,8 @@
 
 [Writing CLI commands for NeutronClient on Openstack](http://control-that-vm.blogspot.jp/2014/06/writing-cli-commands-for-neutronclient.html)
 
+# RPC & AMQP
 
+[Openstack RPC 通信原理](https://www.ibm.com/developerworks/cn/cloud/library/1403_renmm_opestackrpc/)
+
+[RabbitMQ基础概念详细介绍](http://www.diggerplus.org/archives/3110)

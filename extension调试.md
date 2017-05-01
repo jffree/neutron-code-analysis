@@ -305,14 +305,13 @@ curl -s -X GET http://172.16.100.106:9696//v2.0/availability_zones -H 'Content-T
 ('availability_zones', 'GET', '/availability_zones', <wsgify at 96052304 wrapping <function resource at 0x5d3b2a8>>, u'index')
 ```
 
-*这里的 python 对象的 id 不一样，是因为中间重启了一次 neutron。*
+_这里的 python 对象的 id 不一样，是因为中间重启了一次 neutron。_
 
 ## controller 的实现
 
 * 那么下面我们就跟踪一下 controller 的调用，我们找一个 extension 的实例（例如 `Availability_zone`），我么就可以发现实现 controller 的是 `neutron.api.v2.resource.Resource` 方法：
 
-*`Resource` 是个方法，不是类，这个方法返回了一个可以处理 wsgi 消息的方法 `resource`。*
-
+`Resource`_ 是个方法，不是类，这个方法返回了一个可以处理 wsgi 消息的方法 _`resource`_。_
 
 `Resource` 方法定义了解析消息体和构造消息体的方法，而且是对真正 controller 的一个封装。
 
@@ -359,3 +358,6 @@ LOG 的输出为：
 2. `ExtensionMiddleware` 利用 `routes.Mapper` 构造了路由映射，路由分发也是由这个类来实现的。
 
 3. 路由分发后，我们找到 controller，找到 action。对这些调用后，返回消息体。
+
+
+
