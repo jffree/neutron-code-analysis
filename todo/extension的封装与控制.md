@@ -427,7 +427,7 @@ class Controller(object):
  ```
  4. 我们在继承列表中发现了这么两个类：`<class 'neutron.db.agents_db.AgentAvailabilityZoneMixin'>` 和 `<class 'neutron.extensions.availability_zone.AvailabilityZonePluginBase'>`。
  5. 看一下 `<class 'neutron.extensions.availability_zone.AvailabilityZonePluginBase'>` 这个类，发现它定义了一个 `get_availability_zones` 抽象方法。
- 6.‵<class 'neutron.db.agents_db.AgentAvailabilityZoneMixin'>` 类继承于 `<class 'neutron.extensions.availability_zone.AvailabilityZonePluginBase'>` 且实现了 `get_availability_zones` 方法，这个就是被 extension controller 调用的方法。
+ 6. `<class 'neutron.db.agents_db.AgentAvailabilityZoneMixin'>` 类继承于 `<class 'neutron.extensions.availability_zone.AvailabilityZonePluginBase'>` 且实现了 `get_availability_zones` 方法，这个就是被 extension controller 调用的方法。
 
 ##### `create` 动作
 
