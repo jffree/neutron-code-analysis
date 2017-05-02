@@ -429,14 +429,39 @@ class Controller(object):
  5. 看一下 `<class 'neutron.extensions.availability_zone.AvailabilityZonePluginBase'>` 这个类，发现它定义了一个 `get_availability_zones` 抽象方法。
  6.‵<class 'neutron.db.agents_db.AgentAvailabilityZoneMixin'>` 类继承于 `<class 'neutron.extensions.availability_zone.AvailabilityZonePluginBase'>` 且实现了 `get_availability_zones` 方法，这个就是被 extension controller 调用的方法。
 
-
-
-
 ##### `create` 动作
 
+*实现方式与 `index` 动作类似*
 
+##### `new` 动作
 
+*`Controller` 没有实现 new 动作*
 
+##### `update` 动作
+
+*实现方式与 `index` 动作类似*
+
+##### `delete` 动作
+
+*实现方式与 `index` 动作类似*
+
+##### `edit` 动作
+
+*`Controller` 没有实现 edit 动作*
+
+##### `show` 动作
+
+*实现方式与 `index` 动作类似*
+
+##### `tenant` 动作
+
+*`Controller` 没有实现 tenant 动作*
+
+##### `default` 动作
+
+*`Controller` 没有实现 default 动作*
+
+#### 关于这些动作的实现细节，我们以后再做讨论。
 
 ##### 从给用户的响应中删除一些不可见（`'is_visible': False`）或者不符合 policy 检查的属性
 
