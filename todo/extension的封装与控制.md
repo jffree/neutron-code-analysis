@@ -357,27 +357,25 @@ class Controller(object):
 
 ##### `index` 动作
 
+源码：
+
+```
+    @db_api.retry_db_errors
+    def index(self, request, **kwargs):
+        """Returns a list of the requested entity."""
+        parent_id = kwargs.get(self._parent_id_name)
+        # Ensure policy engine is initialized
+        policy.init()
+        return self._items(request, True, parent_id)
+```
+
+这里我们可以看到它在最后调用了 `_items` 方法，对于这个方法我们重点看这么几行：
+
 ```
     def _items(self, request, do_authz=False, parent_id=None):
-        """Retrieves and formats a list of elements of the requested entity."""
-        # NOTE(salvatore-orlando): The following ensures that fields which
-        # are needed for authZ policy validation are not stripped away by the
-        # plugin before returning.
-        original_fields, fields_to_add = self._do_field_list(
-            api_common.list_args(request, 'fields'))
-        filters = api_common.get_filters(request, self._attr_info,
-                                         ['fields', 'sort_key', 'sort_dir',
-                                          'limit', 'marker', 'page_reverse'])
-        kwargs = {'filters': filters,
-                  'fields': original_fields}
-        sorting_helper = self._get_sorting_helper(request)
-        pagination_helper = self._get_pagination_helper(request)
-        sorting_helper.update_args(kwargs)
-        sorting_helper.update_fields(original_fields, fields_to_add)
-        pagination_helper.update_args(kwargs)
-        pagination_helper.update_fields(original_fields, fields_to_add)
-        if parent_id:
-            kwargs[self._parent_id_name] = parent_id
+    
+    ....
+    
         obj_getter = getattr(self._plugin, self._plugin_handlers[self.LIST])
         obj_list = obj_getter(request.context, **kwargs)
         obj_list = sorting_helper.sort(obj_list)
@@ -414,15 +412,22 @@ class Controller(object):
         resource_registry.resync_resource(
             request.context, self._resource, request.context.tenant_id)
         return collection
-
-    @db_api.retry_db_errors
-    def index(self, request, **kwargs):
-        """Returns a list of the requested entity."""
-        parent_id = kwargs.get(self._parent_id_name)
-        # Ensure policy engine is initialized
-        policy.init()
-        return self._items(request, True, parent_id)
 ```
+
+看到这里我们就明白了， `_items` 方法从支持此 extension 的 plugin 里面获取属性方法 `obj_getter`，再通过此方法去处理请求，获取 `obj_list`，最终通过 `obj_list` 获取所有的返回值。
+
+我们同时也明白了，`self._plugin_handlers` 保存的是需要从 plugin 里面获取的方法。
+
+* 我们以 `Availability_zone` extension 为例，来看以下这个方法。
+ 1. 支持 `Availability_zone` extension 的 plugin 为 `Ml2Plugin`，也就是我们的核心插件
+ 2. 访问 `Availability_zone` extension controller 的 index 方法，需要调用 `Ml2Plugin` 插件的方法为：`get_availability_zones`。
+ 3. 我们在 `Ml2Plugin` 的 `__init__` 方法的初始位置设定断点（`pdb.set_trace()`），调试时使用下列语句获取 `Ml2Plugin` 的继承列表：`Ml2Plugin.mro()`，结果如下：
+ ```
+<class 'neutron.plugins.ml2.plugin.Ml2Plugin'>, <class 'neutron.db.db_base_plugin_v2.NeutronDbPluginV2'>, <class 'neutron.db.db_base_plugin_common.DbBasePluginCommon'>, <class 'neutron.neutron_plugin_base_v2.NeutronPluginBaseV2'>, <class 'neutron.worker.WorkerSupportServiceMixin'>, <class 'neutron.db.rbac_db_mixin.RbacPluginMixin'>, <class 'neutron.db.common_db_mixin.CommonDbMixin'>, <class 'neutron.db.standardattrdescription_db.StandardAttrDescriptionMixin'>, <class 'neutron.db.dvr_mac_db.DVRDbMixin'>, <class 'neutron.extensions.dvr.DVRMacAddressPluginBase'>, <class 'neutron.db.external_net_db.External_net_db_mixin'>, <class 'neutron.db.securitygroups_rpc_base.SecurityGroupServerRpcMixin'>, <class 'neutron.db.securitygroups_db.SecurityGroupDbMixin'>, <class 'neutron.extensions.securitygroup.SecurityGroupPluginBase'>, <class 'neutron.db.agentschedulers_db.AZDhcpAgentSchedulerDbMixin'>, <class 'neutron.db.agentschedulers_db.DhcpAgentSchedulerDbMixin'>, <class 'neutron.extensions.dhcpagentscheduler.DhcpAgentSchedulerPluginBase'>, <class 'neutron.db.agentschedulers_db.AgentSchedulerDbMixin'>, <class 'neutron.db.agents_db.AgentDbMixin'>, <class 'neutron.extensions.agent.AgentPluginBase'>, <class 'neutron.db.agents_db.AgentAvailabilityZoneMixin'>, <class 'neutron.extensions.availability_zone.AvailabilityZonePluginBase'>, <class 'neutron.db.availability_zone.network.NetworkAvailabilityZoneMixin'>, <class 'neutron.extensions.network_availability_zone.NetworkAvailabilityZonePluginBase'>, <class 'neutron.db.allowedaddresspairs_db.AllowedAddressPairsMixin'>, <class 'neutron.db.vlantransparent_db.Vlantransparent_db_mixin'>, <class 'neutron.db.extradhcpopt_db.ExtraDhcpOptMixin'>, <class 'neutron.db.address_scope_db.AddressScopeDbMixin'>, <class 'neutron.extensions.address_scope.AddressScopePluginBase'>, <class 'neutron.db.subnet_service_type_db_models.SubnetServiceTypeMixin'>, <type 'object'>)
+ ```
+ 4. 我们在继承列表中发现了这么两个类：`<class 'neutron.db.agents_db.AgentAvailabilityZoneMixin'>` 和 `<class 'neutron.extensions.availability_zone.AvailabilityZonePluginBase'>`。
+ 5. 看一下 `<class 'neutron.extensions.availability_zone.AvailabilityZonePluginBase'>` 这个类，发现它定义了一个 `get_availability_zones` 抽象方法。
+ 6.‵<class 'neutron.db.agents_db.AgentAvailabilityZoneMixin'>` 类继承于 `<class 'neutron.extensions.availability_zone.AvailabilityZonePluginBase'>` 且实现了 `get_availability_zones` 方法，这个就是被 extension controller 调用的方法。
 
 
 
