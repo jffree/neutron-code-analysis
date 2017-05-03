@@ -1,4 +1,4 @@
-# [OSProfiler](https://osprofiler.readthedocs.io/en/latest/)
+# [OSProfiler](http://docs.openstack.org/developer/osprofiler)
 
 OSProfiler是一个OpenStack跨项目分析库。
 
@@ -8,7 +8,7 @@ OpenStack 由多个项目组成。 而每个项目又由多个服务组成。在
 
 为了解决这个问题，我们介绍一个很小但功能强大的库 **osprofiler**，它将被所有OpenStack项目及其python客户端使用。 为了能够每个请求生成1个跟踪，它遍历及这个请求所涉及的所有服务，并构建一个调用树（参见[示例](http://pavlovic.me/rally/profiler/)）。
 
-## Why not cProfile and etc?
+### Why not cProfile and etc?
 
 这个库的范围是完全不同的：
 
@@ -26,7 +26,7 @@ OpenStack 由多个项目组成。 而每个项目又由多个服务组成。在
 
 在使用API​​之前，您应该了解有关API的几件事情。
 
-* 增加一个追踪点的4种方法
+### 增加一个追踪点的5种方法
 
 ```
 from osprofiler import profiler
@@ -58,21 +58,36 @@ class TracedClass(object):
 
     def _traced_only_if_trace_private_true(self):
          pass
+
+@six.add_metaclass(profiler.TracedMeta)
+class RpcManagerClass(object):
+    __trace_args__ = {'name': 'rpc',
+                      'info': None,
+                      'hide_args': False,
+                      'trace_private': False}
+
+     def my_method(self, some_args):
+         pass
+
+     def my_method2(self, some_arg1, some_arg2, kw=None, kw2=None)
+         pass
 ```
 
-* How profiler works?
+### How profiler works?
 
- * `@profiler.Trace()` 和 `profiler.trace()` 只是语法糖，实际上是调用 `profiler.start()` 和 `profiler.stop()` 方法。
+* `@profiler.Trace()` 和 `profiler.trace()` 只是语法糖，实际上是调用 `profiler.start()` 和 `profiler.stop()` 方法。
 
- * `profiler.start()` ＆ `profiler.stop()` 的每次调用都会向收集器发送一条消息。这意味着每个跟踪点在收集器中创建两条记录。 （稍后会将更多的关于 collector & records 的信息）
+* `profiler.start()` ＆ `profiler.stop()` 的每次调用都会向收集器发送一条消息。这意味着每个跟踪点在收集器中创建两条记录。 （稍后会将更多的关于 collector & records 的信息）
 
- * 支持嵌套跟踪点。以下示例产生2个跟踪点：
- ```
+* 支持嵌套跟踪点。以下示例产生2个跟踪点：
+
+```
 profiler.start("parent_point")
 profiler.start("child_point")
 profiler.stop()
 profiler.stop()
- ```
+```
+
 实现相当简单。Profiler 具有一个包含所有跟踪点的ID的堆栈。例如：
 
 ```
@@ -90,7 +105,7 @@ profiler.stop()                # send to collector -> trace_stack[-2:]
 
 构建嵌套跟踪点的树很简单，即包含所有跟踪点的（parent_id，point_id）。
 
-* Process of sending to collector
+### Process of sending to collector
 
 跟踪点包含2个消息（开始和停止）。以下消息将发送给收件人：
 
@@ -112,7 +127,7 @@ profiler.stop()                # send to collector -> trace_stack[-2:]
 * `info -` 当调用 `profiler start() & stop()` 方法时，传递的包含用户信息的字典
 ```
 
-* 设置 collector。
+### 设置 collector。
 
 profiler 不包括跟踪点收集器。用户或者开发人员应该提供一种向收集器发送消息的方法。我们来看一个简单的例子，例子中的 collector 只是一个文件：
 
@@ -130,7 +145,32 @@ notifier.set(send_info_to_file_collector)
 
 那么现在每个 `profiler.start()` 和 `profiler.stop()` 调用中，我们将把跟踪点的信息写入跟踪文件的末尾。
 
-* Initialization of profiler.
+#### Using OSProfiler initializer.
+
+OSProfiler 现在包含收集跟踪数据的各种存储驱动程序。 关于要使用什么驱动程序和什么选项传递给 OSProfiler 的信息现在存储在 OpenStack 服务配置文件中。 配置的示例如下：
+
+```
+[profiler]
+enabled = True
+trace_sqlalchemy = True
+hmac_keys = SECRET_KEY
+connection_string = messaging://
+```
+
+如果提供这样的配置，OSProfiler设置可以按以下方式处理：
+
+```
+if CONF.profiler.enabled:
+    osprofiler_initializer.init_from_conf(
+        conf=CONF,
+        context=context.get_admin_context().to_dict(),
+        project="cinder",
+        service=binary,
+        host=host
+    )
+```
+
+### Initialization of profiler.
 
 如果 profiler 未初始化，则对 `profiler.start()` 和 `profiler.stop()` 的所有调用将被忽略。
 
@@ -170,11 +210,18 @@ $ osprofiler -v/--version
 $ osprofiler trace show <trace_id> --json/--html
 ```
 
-提示：选项--out会将osprofiler跟踪显示的结果重定向到指定的文件中：
+* 选项--out会将osprofiler跟踪显示的结果重定向到指定的文件中：
 
 ```
 $ osprofiler trace show <trace_id> --json/--html --out /path/to/file
 ```
+
+* 在具有存储驱动程序（例如MongoDB（URI：mongodb：//），Messaging（URI：messaging：//）和Ceilometer（URI：ceilometer：//））的最新版本的 OSProfiler 中 - 应该设置connection-string参数：
+
+```
+$ osprofiler trace show <trace_id> --connection-string=<URI> --json/--html
+```
+
 
 ## Integration with OpenStack
 
