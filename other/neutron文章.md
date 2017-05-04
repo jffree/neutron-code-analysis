@@ -1,6 +1,6 @@
 # 云耳 关于openstack的博客
 
- [怎样写 OpenStack Neutron 的 Plugin （一）](http://www.cnblogs.com/zhutianshi/p/3896147.html) 
+[怎样写 OpenStack Neutron 的 Plugin （一）](http://www.cnblogs.com/zhutianshi/p/3896147.html)
 
 [怎样写 OpenStack Neutron 的 Plugin （二）](http://www.cnblogs.com/zhutianshi/p/3898491.html)
 
@@ -36,7 +36,7 @@
 
 [半小时 neutron 教程](http://huntxu.github.io/2015-12-03-neutron-in-half-an-hour.html)
 
-[ OpenStack源码分析 Neutron源码分析（一）-----------Restful API篇 ](http://blog.csdn.net/happyanger6/article/details/54586463)
+[ OpenStack源码分析 Neutron源码分析（一）-----------Restful API篇 ](http://blog.csdn.net/happyanger6/article/details/54586463)  
 **这个人的其他博客也必须看**
 
 # openstack doc
@@ -52,3 +52,8 @@
 [Openstack RPC 通信原理](https://www.ibm.com/developerworks/cn/cloud/library/1403_renmm_opestackrpc/)
 
 [RabbitMQ基础概念详细介绍](http://www.diggerplus.org/archives/3110)
+
+[RabbitMQ 和 oslo.messaging](http://liaoph.com/rabbitmq-and-oslo-messaging/)
+
+
+
