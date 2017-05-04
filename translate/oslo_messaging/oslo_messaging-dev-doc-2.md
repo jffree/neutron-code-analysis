@@ -75,14 +75,110 @@ server.stop()
 server.wait()
 ```
 
+### `oslo_messaging.get_rpc_server(transport, target, endpoints, executor='blocking', serializer=None, access_policy=None)`
 
+构造一个RPC服务器。
 
+**Parameters:**
 
+* transport (Transport) – the messaging transport
+* target (Target) – the exchange, topic and server to listen on
+* endpoints (list) – a list of endpoint objects
+* executor (str) – name of message executor - available values are ‘eventlet’, ‘blocking’ and ‘threading’
+* serializer (Serializer) – an optional entity serializer
+* access_policy (RPCAccessPolicyBase) – an optional access policy. Defaults to LegacyRPCAccessPolicy
 
+### `class oslo_messaging.RPCAccessPolicyBase`
 
+确定可以通过RPC调用哪些端点方法
 
+### `class oslo_messaging.LegacyRPCAccessPolicy`
 
+传统访问策略允许RPC访问所有可调用的端点方法，包括私有方法（前缀为“_”的方法）
 
+### `class oslo_messaging.DefaultRPCAccessPolicy`
 
+默认访问策略阻止RPC调用私有方法（以_ _'为前缀的方法）
 
+注意：`LegacyRPCAdapterPolicy` 当前需要是默认值，而我们有依赖于暴露私有方法的项目。
 
+### `class oslo_messaging.ExplicitRPCAccessPolicy`
+
+需要被装饰的端点方法以允许发送的策略
+
+### `class oslo_messaging.RPCDispatcher(endpoints, serializer, access_policy=None)`
+
+了解RPC消息的消息分派器。
+
+`MessageHandlingServer` 通过传递一个可调用的调度程序来构建，该调度程序在每次接收到消息时都会使用上下文和消息字典进行调用。
+
+`RPCDispatcher` 是一个理解RPC消息格式的调度程序。调度程序查看消息中的命名空间，版本和方法值，并将其与可用端点列表进行匹配。
+
+端点可能具有描述由该对象公开的方法的命名空间和版本的目标属性。
+
+RPCDispatcher可能有一个access_policy属性，它决定要分派哪些端点方法。默认的access_policy调度端点对象上的所有公共方法。
+
+### `class oslo_messaging.MessageHandlingServer(transport, dispatcher, executor='blocking')`
+
+用于处理消息的服务器。
+
+将传输连接到分派器，该分派器知道如何使用执行器来处理消息，执行器知道应用程序要创建新任务。
+
+* `reset()`
+
+Reset service.
+
+Called in case service running in daemon mode receives SIGHUP.
+
+* `start(*args, **kwargs)`
+
+Start handling incoming messages.
+
+此方法使服务器开始轮询传入的传入消息并将其传递给调度程序。消息处理将继续，直到调用 `stop()` 方法。
+
+执行器控制服务器如何与应用程序 I/O 处理策略集成 - 它可以选择轮询新进程中的消息，线程或协作计划协作，或者简单地通过向事件循环注册回调。 类似地，执行者可以选择在新线程，协程或简单的当前线程中分派消息。
+
+* `stop(*args, **kwargs)`
+
+Stop handling incoming messages.
+
+一旦此方法返回，服务器将不会处理新的传入消息。 但是，服务器可能仍在处理某些消息，并且与此服务器相关联的底层驱动程序资源仍在使用中。 有关详细信息，请参阅“wait”。
+
+* `wait(*args, **kwargs)`
+
+Wait for message processing to complete.
+
+调用 `stop()` 后，仍然可能存在一些尚未完全处理的现有消息。 `wait()` 方法阻塞，直到所有消息处理完成。
+
+一旦完成，与此服务器相关联的底层驱动程序资源将被释放（如关闭无用的网络连接）。
+
+### `oslo_messaging.expected_exceptions(*exceptions)`
+
+Decorator for RPC endpoint methods that raise expected exceptions.
+
+使用此装饰器标记端点方法允许声明RPC服务器不应该认为是致命的预期异常，而不是像在真实错误情况下生成一样。
+
+请注意，这将导致列出的异常包装在由RPC服务器内部使用的 `ExpectedException` 中。 RPC客户端将看到原始的异常类型。
+
+### `oslo_messaging.expose(func)`
+
+Decorator for RPC endpoint methods that are exposed to the RPC client.
+
+如果调度程序的 `access_policy` 设置为 `ExplicitRPCAccessPolicy`，则需要显式地显示端点方法：
+
+```
+# foo() cannot be invoked by an RPC client
+def foo(self):
+    pass
+
+# bar() can be invoked by an RPC client
+@rpc.expose
+def bar(self):
+    pass
+```
+
+### `exception oslo_messaging.ExpectedException`
+
+封装由RPC端点引发的预期异常
+
+仅实例化此异常会记录当前的异常信息，这些异常信息将被传回给RPC客户端而无需特殊记录。
