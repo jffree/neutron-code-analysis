@@ -55,5 +55,8 @@
 
 [RabbitMQ 和 oslo.messaging](http://liaoph.com/rabbitmq-and-oslo-messaging/)
 
+# RabbitMQ 从入门到精通
 
+[RabbitMQ从入门到精通](http://blog.csdn.net/column/details/rabbitmq.html)
 
+**这里面共有9篇文章，看完之后你就完全了解 RabbitMQ 了。**
