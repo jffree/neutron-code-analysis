@@ -118,3 +118,4 @@ osprofiler 定义了一系列的驱动后端，在 _osprofiler/drivers_ 目录�
 
 我还没有找到如何使用 osprofiler 的命令，也因为我的 devstack 没有安装 ceilometer 无法尝试，不过有一篇 [osprofiler 在 cinder 中应用](http://www.cnblogs.com/sting2me/p/4393018.html) 的文章，大家可以参考。
 
+[OpenStack的性能调优工具 - osprofiler](http://iceyao.blog.51cto.com/9426658/1906273)
