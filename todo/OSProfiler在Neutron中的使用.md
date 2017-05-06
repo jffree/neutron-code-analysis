@@ -4,7 +4,7 @@
 
 * 在启动 neutron-server 时：
 
-*neutron/service.py*
+_neutron/service.py_
 
 ```
 class NeutronApiService(WsgiService):
@@ -16,7 +16,7 @@ class NeutronApiService(WsgiService):
 
 * 在启动 linuxbridge agent 时：
 
-*neutron/plugins/ml2/drivers/linuxbridge/agent/linuxbridge_neutron_agent.py*
+_neutron/plugins/ml2/drivers/linuxbridge/agent/linuxbridge\_neutron\_agent.py_
 
 ```
 def main():
@@ -25,9 +25,9 @@ def main():
     setup_profiler.setup("neutron-linuxbridge-agent", cfg.CONF.host)
 ```
 
-* 在启动 mech_sriov agent 时：
+* 在启动 mech\_sriov agent 时：
 
-*neutron/plugins/ml2/drivers/mech_sriov/agent/sriov_nic_agent.py*
+_neutron/plugins/ml2/drivers/mech\_sriov/agent/sriov\_nic\_agent.py_
 
 ```
 def main():
@@ -38,7 +38,7 @@ def main():
 
 * 在启动 openvswitch agent 时：
 
-*neutron/plugins/ml2/drivers/openvswitch/agent/main.py*
+_neutron/plugins/ml2/drivers/openvswitch/agent/main.py_
 
 ```
 def main():
@@ -49,7 +49,7 @@ def main():
 
 ## Neutron 中 OSProfiler 初始化的具体实现：
 
-*neutron/common/profiler.py*
+_neutron/common/profiler.py_
 
 ```
 from oslo_config import cfg
@@ -94,34 +94,27 @@ def setup(name, host='0.0.0.0'):  # nosec
 
 2. `setup` 方法做了具体的初始化的事情：
 
- 1. 创建一个通知器（收集器） `_notifier`
+   1. 创建一个通知器（收集器） `_notifier`
 
- 2. 为 osprofiler 设定这个通知器
+   2. 为 osprofiler 设定这个通知器
 
- 3. Enable middleware.
+   3. Enable middleware.
 
- 4. LOG 输出
+   4. LOG 输出
 
 ## 通知器（收集器） `_notifier` 的创建
 
 详细的可以自己看代码，我这里只介绍大概。
 
-osprofiler 定义了一系列的驱动后端，在 *osprofiler/drivers* 目录下，每个模块即为一个可用的驱动后端。
+osprofiler 定义了一系列的驱动后端，在 _osprofiler/drivers_ 目录下，每个模块即为一个可用的驱动后端。
 
-`"Messaging"` 就是来获取这些驱动后端 `class Messaging` (*osprofiler/drivers/messaging.py*)
+`"Messaging"` 就是来获取这些驱动后端 `class Messaging` \(_osprofiler/drivers/messaging.py_\)
 
 `oslo_messaging, {}, oslo_messaging.get_transport(CONF), "neutron", name, host` 则是传递给这个驱动后端 `Messaging` 的初始化参数。
 
 跟踪进去就可以发现这是就是将 `oslo_messaging.Notifer` 作为真正消息处理的后端，并为其做了初始化。
 
+## 命令行使用
 
-
-
-
-
-
-
-
-
-
+我还没有找到如何使用 osprofiler 的命令，也因为我的 devstack 没有安装 ceilometer 无法尝试，不过有一篇 [osprofiler 在 cinder 中应用](http://www.cnblogs.com/sting2me/p/4393018.html) 的文章，大家可以参考。
 
