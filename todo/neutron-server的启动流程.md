@@ -11,14 +11,14 @@ console_scripts =
     neutron-server = neutron.cmd.eventlet.server:main
 ```
 
-然后我们找到 _neutron/cmd/eventlet/server/**init**.py_ 中的 `main` 方法：
+然后我们找到 *neutron/cmd/eventlet/server/__init__.py* 中的 `main` 方法：
 
 ```
 def main():
     server.boot_server(_main_neutron_server)
 ```
 
-`boot_server` 方法的实现在 _neutron/server/**init**.py_
+`boot_server` 方法的实现在 *neutron/server/__init__.py*
 
 ```
 def boot_server(server_func):
@@ -37,7 +37,6 @@ def boot_server(server_func):
     except RuntimeError as e:
         sys.exit(_("ERROR: %s") % e)
 ```
-
 `boot_server` 做了如下几个工作
 
 1. 读入命令行参数
@@ -45,7 +44,7 @@ def boot_server(server_func):
 3. 设置 neutron 的默认配置
 4. 运行启动 neutron-server 的方法
 
-`_main_neutron_server` 方法依然是在 _neutron/cmd/eventlet/server/**init**.py_ 实现的：
+`_main_neutron_server` 方法依然是在 *neutron/cmd/eventlet/server/__init__.py* 实现的：
 
 ```
 def _main_neutron_server():
@@ -57,7 +56,8 @@ def _main_neutron_server():
 
 `_main_neutron_server` 是根据配置中 wsgi 框架的不同来选择不同的启动方法， neutron 中默认是以 `legacy` 的方式启动 wsgi 服务的，我们就按照这个来分析。
 
-`eventlet_wsgi_server` 方法是在 _neutron/server/wsgi\_eventlet.py_ 中实现的：
+
+`eventlet_wsgi_server` 方法是在 *neutron/server/wsgi_eventlet.py* 中实现的：
 
 ```
 def eventlet_wsgi_server():
@@ -73,7 +73,7 @@ def eventlet_wsgi_server():
 
 ### neutron 中的 wsgi 服务
 
-我先先来看 `service.serve_wsgi` 这个方法（_neutron/service.py_）
+我先先来看 `service.serve_wsgi` 这个方法（*neutron/service.py*）
 
 ```
 def serve_wsgi(cls):
@@ -98,7 +98,7 @@ def serve_wsgi(cls):
 
 3. 将这个类的实例注册到回调系统中（这个我们以后再解析）。
 
-那么下面我们就仔细看看 `service.NeutronApiService` 这个类（_neutron/service.py_）：
+那么下面我们就仔细看看 `service.NeutronApiService` 这个类（*neutron/service.py*）：
 
 ```
 class WsgiService(object):
@@ -137,7 +137,7 @@ class NeutronApiService(WsgiService):
 
 `NeutronApiService` 在实例化时，为 osprofiler（openstack 性能调优工具）做了初始化的配置。
 
-那么主要的就在 `start` 方法里面了，`start` 方法只是调用了 `_run_wsgi` 方法（也是在 _neutron/service.py_ 中）：
+那么主要的就在 `start` 方法里面了，`start` 方法只是调用了 `_run_wsgi` 方法（也是在 *neutron/service.py* 中）：
 
 ```
 def _run_wsgi(app_name):
@@ -153,9 +153,9 @@ def _run_wsgi(app_name):
 1. 加载 `neutron` app
 2. 启动 `neutron` app
 
-#### neutron app 的加载
+####  neutron app 的加载
 
-`load_paste_app` 方法在 _neutron/common/config.py_ 中定义：
+`load_paste_app` 方法在 *neutron/common/config.py* 中定义：
 
 ```
 def load_paste_app(app_name):
@@ -175,7 +175,7 @@ def load_paste_app(app_name):
 
 #### neutron app 的启动
 
-`run_wsgi_app` 在 _neutron/service.py_ 中定义：
+`run_wsgi_app` 在 *neutron/service.py* 中定义：
 
 ```
 def run_wsgi_app(app):
@@ -195,15 +195,17 @@ def _get_api_workers():
     return workers
 ```
 
-参数介绍：
+**这里就是 wsgi 服务的真正启动了**，下面我们来分析一下服务的封装 `Server`
 
-1. bind\_port 建立监听的端口
-2. bind\_host 建立监听的主机
-3. api\_workers 指定进程的数量，若不指定则默认为 cpu 的个数
+*`server.start` 的参数介绍：*
+
+1. bind_port 建立监听的端口
+2. bind_host 建立监听的主机
+3. api_workers 指定进程的数量，若不指定则默认为 cpu 的个数
 
 ##### 服务的封装 `Server` （wsgi socket and app 的大管家 `Server`）
 
-`Server` 是在 _neutron/wsgi.py_ 中实现的：
+`Server` 是在 *neutron/wsgi.py* 中实现的：
 
 ```
 class Server(object):
@@ -332,25 +334,49 @@ class Server(object):
                              socket_timeout=self.client_socket_timeout)
 ```
 
-* `__init__` 方法根据配置定义了一些默认的属性，这些定义都可以参考 _neutron.conf_   
-  1.  `max_header_line` 消息体 header 中的最大 line number  
-  2.  `num_threads(wsgi_default_pool_size)` 绿色线程池的大小  
-  3.  `disable_ssl` 是否启用 ssl  
-  4.  `poll` 启动一个绿色线程池  
-  5.  `name` `Server` 的名称  
-  6.  `client_socket_timeout` socket 连接的超时时间
 
-* `_get_socket` 方法用来建立一个 socket 的监听   
-  1. `backolog` 用来是关于TCP连接的大小：![TCP 为套接字维护的两个对立](http://pic002.cnblogs.com/images/2012/107596/2012070820074666.png)  
-  2.  `retry_until_window` 尝试去建立监听的时间（秒）  
-  3.  `tcp_keepidle` 对一个连接进行有效性探测之前运行的最大非活跃时间间隔（参考：[TCP 连接断连问题剖析](https://www.ibm.com/developerworks/cn/aix/library/0808_zhengyong_tcp/)）；  
-  4.  这个方法调用了 `eventlet.listen` 建立 socket 监听
-
+* `__init__` 方法根据配置定义了一些默认的属性，这些定义都可以参考 *neutron.conf* 
+ 1.  `max_header_line` 消息体 header 中的最大 line number
+ 2.  `num_threads(wsgi_default_pool_size)` 绿色线程池的大小
+ 3.  `disable_ssl` 是否启用 ssl
+ 4.  `poll` 启动一个大小为 1 绿色线程池
+ 5.  `name` `Server` 的名称
+ 6.  `client_socket_timeout` socket 连接的超时时间
+ 7.  `_server` 服务进程的管理后台
+ 
+* `_get_socket` 方法用来建立一个 socket 的监听 
+ 1. `backolog` 用来是关于TCP连接的大小：![TCP 为套接字维护的两个对立](http://pic002.cnblogs.com/images/2012/107596/2012070820074666.png)
+ 2.  `retry_until_window` 尝试去建立监听的时间（秒）
+ 3.  `tcp_keepidle` 对一个连接进行有效性探测之前运行的最大非活跃时间间隔（参考：[TCP 连接断连问题剖析](https://www.ibm.com/developerworks/cn/aix/library/0808_zhengyong_tcp/)）；
+ 4.  这个方法调用了 `eventlet.listen` 建立 socket 监听（**注意：建立监听就以为着这个 neutron server已经启动了**）
+ 
 * `start` 获取 socket 后调用了 `_launch` 方法
 
-##### 进程的封装 `WorkerService`
+* `_launch` 方法
 
-`WorkerService` 也是在 _neutron/wsgi.py_ 中实现的：
+ 1. 建立一个 worker 的封装（`WorkerService`）实例
+ 2. 如果 worker（进程数）小于1，那么刚才建立的 worker 即会作为本服务的 `_server`
+ 3. 如果 worker（进程数）大于1，那么会启动一个进程管理类 `ProcessLauncher` 的实例作为 `_server`，并且启动（fork）和 worker 个数一致进程
+
+* `host` 属性方法，获取监听主机的地址
+
+* `port` 属性方法，获取监听主机的端口
+
+* `stop` 停止服务后台
+
+* `wait` 阻塞执行，等待所以 worker 返回结束
+
+* `_run` 在新的绿色线程池中启动一个 wsgi 服务
+ 1. `socket` wsgi 服务的套接字
+ 2. `application` 要启动的 wsgi 应用
+ 3. `max_size` 绿色线程池的大小
+ 4. `log` 记录日志的 logging 实例
+ 5. `keepalive` 是否显示的关闭套接字连接
+ 6. `socket_timeout` socket 连接的超时时间
+ 
+##### worker（进程） 的封装 `WorkerService`
+
+`WorkerService` 也是在 *neutron/wsgi.py* 中实现的：
 
 ```
 class WorkerService(neutron_worker.NeutronWorker):
@@ -391,6 +417,58 @@ class WorkerService(neutron_worker.NeutronWorker):
     def reset():
         config.reset_service()
 ```
+
+* `__init__` 初始化方法：
+ 1. `service` 指明这个 worker 为那个服务工作
+ 2. `application` 指明这个 worker 的实际应用
+ 3. `disable_ssl` 指明这个 worker 是否启动 ssl
+ 4. `worker_process_count` 指明需要启动的多少个这样子的 worker 进程
+ 5. `_server` 这个 worker 的实际工作后端
+
+* `start` 方法
+ 1. 发送服务创建的消息
+ 2. 在服务的绿色线程池中启动一个绿色线程来发起应用（实际上这个绿色线程又创建了一个新的线程池来启动应用）
+
+* `wait` 方法：等待本 worker 的 `server` 执行结束
+ 
+* `stop` 方法：停止本 worker 的 `_server`
+
+* `reset`方法：重置服务
+
+#### 
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 总结
+
+## wsgi 服务的管理
+
+从服务的封装 `Server` 和 worker(线程) 的封装 `WorkerService` 来看我们可以发现一下几点：
+
+* neutron server 的启动标志是 socket 的建立（`_get_socket` 方法的调用）。
+
+* neutron server 的管理有两种：
+ 1. 当 workers 小于1时，用绿色线程池的方式启动管理，全局只有一个进程也就是一个 `WorkerService` 实例；
+ 2. 当 workers 大于等于 1 时，采用多线程的方式来管理，全局有一个或者多个线程，也就是一个或者多个 `WorkerService` 实例；
+
+
+# 下一步
+
+wsgi中映射关系的建立。
+
+
+
+
 
 
 
