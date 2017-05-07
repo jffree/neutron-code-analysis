@@ -11,14 +11,14 @@ console_scripts =
     neutron-server = neutron.cmd.eventlet.server:main
 ```
 
-然后我们找到 *neutron/cmd/eventlet/server/__init__.py* 中的 `main` 方法：
+然后我们找到 _neutron/cmd/eventlet/server/**init**.py_ 中的 `main` 方法：
 
 ```
 def main():
     server.boot_server(_main_neutron_server)
 ```
 
-`boot_server` 方法的实现在 *neutron/server/__init__.py*
+`boot_server` 方法的实现在 _neutron/server/**init**.py_
 
 ```
 def boot_server(server_func):
@@ -37,6 +37,7 @@ def boot_server(server_func):
     except RuntimeError as e:
         sys.exit(_("ERROR: %s") % e)
 ```
+
 `boot_server` 做了如下几个工作
 
 1. 读入命令行参数
@@ -44,7 +45,7 @@ def boot_server(server_func):
 3. 设置 neutron 的默认配置
 4. 运行启动 neutron-server 的方法
 
-`_main_neutron_server` 方法依然是在 *neutron/cmd/eventlet/server/__init__.py* 实现的：
+`_main_neutron_server` 方法依然是在 _neutron/cmd/eventlet/server/**init**.py_ 实现的：
 
 ```
 def _main_neutron_server():
@@ -56,8 +57,7 @@ def _main_neutron_server():
 
 `_main_neutron_server` 是根据配置中 wsgi 框架的不同来选择不同的启动方法， neutron 中默认是以 `legacy` 的方式启动 wsgi 服务的，我们就按照这个来分析。
 
-
-`eventlet_wsgi_server` 方法是在 *neutron/server/wsgi_eventlet.py* 中实现的：
+`eventlet_wsgi_server` 方法是在 _neutron/server/wsgi\_eventlet.py_ 中实现的：
 
 ```
 def eventlet_wsgi_server():
@@ -73,7 +73,7 @@ def eventlet_wsgi_server():
 
 ### neutron 中的 wsgi 服务
 
-我先先来看 `service.serve_wsgi` 这个方法（*neutron/service.py*）
+我先先来看 `service.serve_wsgi` 这个方法（_neutron/service.py_）
 
 ```
 def serve_wsgi(cls):
@@ -98,7 +98,7 @@ def serve_wsgi(cls):
 
 3. 将这个类的实例注册到回调系统中（这个我们以后再解析）。
 
-那么下面我们就仔细看看 `service.NeutronApiService` 这个类（*neutron/service.py*）：
+那么下面我们就仔细看看 `service.NeutronApiService` 这个类（_neutron/service.py_）：
 
 ```
 class WsgiService(object):
@@ -137,7 +137,7 @@ class NeutronApiService(WsgiService):
 
 `NeutronApiService` 在实例化时，为 osprofiler（openstack 性能调优工具）做了初始化的配置。
 
-那么主要的就在 `start` 方法里面了，`start` 方法只是调用了 `_run_wsgi` 方法（也是在 *neutron/service.py* 中）：
+那么主要的就在 `start` 方法里面了，`start` 方法只是调用了 `_run_wsgi` 方法（也是在 _neutron/service.py_ 中）：
 
 ```
 def _run_wsgi(app_name):
@@ -153,9 +153,9 @@ def _run_wsgi(app_name):
 1. 加载 `neutron` app
 2. 启动 `neutron` app
 
-####  neutron app 的加载
+#### neutron app 的加载
 
-`load_paste_app` 方法在 *neutron/common/config.py* 中定义：
+`load_paste_app` 方法在 _neutron/common/config.py_ 中定义：
 
 ```
 def load_paste_app(app_name):
@@ -175,7 +175,7 @@ def load_paste_app(app_name):
 
 #### neutron app 的启动
 
-`run_wsgi_app` 在 *neutron/service.py* 中定义：
+`run_wsgi_app` 在 _neutron/service.py_ 中定义：
 
 ```
 def run_wsgi_app(app):
@@ -197,13 +197,13 @@ def _get_api_workers():
 
 参数介绍：
 
-1. bind_port 建立监听的端口
-2. bind_host 建立监听的主机
-3. api_workers 指定进程的数量，若不指定则默认为 cpu 的个数
+1. bind\_port 建立监听的端口
+2. bind\_host 建立监听的主机
+3. api\_workers 指定进程的数量，若不指定则默认为 cpu 的个数
 
 ##### 服务的封装 `Server` （wsgi socket and app 的大管家 `Server`）
 
-`Server` 是在 *neutron/wsgi.py* 中实现的：
+`Server` 是在 _neutron/wsgi.py_ 中实现的：
 
 ```
 class Server(object):
@@ -332,28 +332,25 @@ class Server(object):
                              socket_timeout=self.client_socket_timeout)
 ```
 
+* `__init__` 方法根据配置定义了一些默认的属性，这些定义都可以参考 _neutron.conf_   
+  1.  `max_header_line` 消息体 header 中的最大 line number  
+  2.  `num_threads(wsgi_default_pool_size)` 绿色线程池的大小  
+  3.  `disable_ssl` 是否启用 ssl  
+  4.  `poll` 启动一个绿色线程池  
+  5.  `name` `Server` 的名称  
+  6.  `client_socket_timeout` socket 连接的超时时间
 
-* `__init__` 方法根据配置定义了一些默认的属性，这些定义都可以参考 *neutron.conf* 
- 1.  `max_header_line` 消息体 header 中的最大 line number
- 2.  `num_threads(wsgi_default_pool_size)` 绿色线程池的大小
- 3.  `disable_ssl` 是否启用 ssl
- 4.  `poll` 启动一个绿色线程池
- 5.  `name` `Server` 的名称
- 6.  `client_socket_timeout` socket 连接的超时时间
- 
-* `_get_socket` 方法用来建立一个 socket 的监听 
- 1. `backolog` 用来是关于TCP连接的大小：![TCP 为套接字维护的两个对立](http://pic002.cnblogs.com/images/2012/107596/2012070820074666.png)
- 2.  `retry_until_window` 尝试去建立监听的时间（秒）
- 3.  `tcp_keepidle` 对一个连接进行有效性探测之前运行的最大非活跃时间间隔（参考：[TCP 连接断连问题剖析](https://www.ibm.com/developerworks/cn/aix/library/0808_zhengyong_tcp/)）；
- 4.  这个方法调用了 `eventlet.listen` 建立 socket 监听
- 
+* `_get_socket` 方法用来建立一个 socket 的监听   
+  1. `backolog` 用来是关于TCP连接的大小：![TCP 为套接字维护的两个对立](http://pic002.cnblogs.com/images/2012/107596/2012070820074666.png)  
+  2.  `retry_until_window` 尝试去建立监听的时间（秒）  
+  3.  `tcp_keepidle` 对一个连接进行有效性探测之前运行的最大非活跃时间间隔（参考：[TCP 连接断连问题剖析](https://www.ibm.com/developerworks/cn/aix/library/0808_zhengyong_tcp/)）；  
+  4.  这个方法调用了 `eventlet.listen` 建立 socket 监听
+
 * `start` 获取 socket 后调用了 `_launch` 方法
-
-
 
 ##### 进程的封装 `WorkerService`
 
-`WorkerService` 也是在 *neutron/wsgi.py* 中实现的：
+`WorkerService` 也是在 _neutron/wsgi.py_ 中实现的：
 
 ```
 class WorkerService(neutron_worker.NeutronWorker):
@@ -394,3 +391,6 @@ class WorkerService(neutron_worker.NeutronWorker):
     def reset():
         config.reset_service()
 ```
+
+
+
