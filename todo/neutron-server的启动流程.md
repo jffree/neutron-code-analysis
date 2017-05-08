@@ -171,7 +171,7 @@ def load_paste_app(app_name):
 `Loader` 是 `oslo_service` 包中的一个类，是对于 `paste` 包的一层封装。
 
 1. `Loader.__init__` 方法实现查找用于 `paste` 包的配置文件的位置；
-2. `Loader.load_app` 通过调用 `paste.deploy.loadapp` 来加载 `neutron` app；
+2. `Loader.load_app` 通过调用 `paste.deploy.loadapp` 来加载 `neutron` app（**这里面会完成路由的映射关系**）；
 
 #### neutron app 的启动
 
@@ -435,7 +435,7 @@ class WorkerService(neutron_worker.NeutronWorker):
 
 * `reset`方法：重置服务
 
-#### 
+### neutron 中的 rpc 服务
 
 
 
@@ -458,9 +458,10 @@ class WorkerService(neutron_worker.NeutronWorker):
 * neutron server 的启动标志是 socket 的建立（`_get_socket` 方法的调用）。
 
 * neutron server 的管理有两种：
- 1. 当 workers 小于1时，用绿色线程池的方式启动管理，全局只有一个进程也就是一个 `WorkerService` 实例；
- 2. 当 workers 大于等于 1 时，采用多线程的方式来管理，全局有一个或者多个线程，也就是一个或者多个 `WorkerService` 实例；
-
+ 1. 当 workers 小于1时，全局只有一个进程也就是一个 `WorkerService` 实例，这个实例就为我们的后台服务。这时直接调用 `WorkerService` 的 `start` 方法来启动 wsgi server；
+ 2. 当 workers 大于等于 1 时，采用多线程的方式来管理（`ProcessLauncher`），全局有一个或者多个线程，也就是一个或者多个 `WorkerService` 实例；
+ 3. 多进程情况下，进程的管理用到了 oslo_service 中的 `ProcessLauncher`。在进程中`ProcessLauncher._child_process` 构造了 `Launcher` 的实例，`Laucher.launch_service` 由调用了 `Services.add` 方法，最终调用了 `ThreadGroup` 的 `add_thread` 方法启动 wsgi server。
+ 3.  wsgi serever 的启动是由 `eventlet.wsgi.server` 方法启动的
 
 # 下一步
 
