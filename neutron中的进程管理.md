@@ -94,8 +94,14 @@
 
   1. `RpcWorker` 负责启动所有插件（核心和服务）的 rpc 服务；
   2. `RpcReportsWorker` 继承于 `RpcWorker` 负责监听 rpc 状态
-  3. 每个插件中都可能会实现 `get_workers` 方法，这个方法会返回一些 worker 的列表（我搜了一下 neutron 的代码，这个应该没有用到。）
+  3. `AgentStatusCheckWorker`，监视 agent 状态
   4. `AllServicesNeutronWorker` 对于有的插件不想为 rpc 服务启动多进程，只在当前进程中启动就可以，那么 neutron 会将这些插件集合起来，在一个单独的进程中启动
+
+* 为 rpc 服务启动进程时，会先收集需要启动的 worker：
+ 1. 为所有的 plugin （包括核心和服务插件）准备 worker（`RpcWorker`），进程个数为配置文件中的`rpc_workers` 
+ 2. 若配置文件中有 `rpc_state_report_workers` 这个选项，且插件支持 report ，则准备 report woker （`RpcReportsWorker`），个数为 `rpc_state_report_workers`
+ 3. 每个插件都有 `get_workers` 方法，若某个插件需要单独的为某个动作启动一个进程时则会实现这个方法，返回 woker 的列表。（上面说到的 `AgentStatusCheckWorker` 就是在这里返回的。）
+ 4. 通过前三步收集起来的所有 worker 里面，若有的 worker 不希望单独启动一个进程，则将这些 worker 整合到一个单独的进程 `AllServicesNeutronWorker` 中。
 
 * 当有的插件希望为 rpc 服务启动多个进程有的插件不希望为 rpc 服务启动多进程时：  
   1. 用 `ProcessLauncher` 管理希望启动多进程的插件的 rpc 服务  
@@ -103,5 +109,30 @@
 
 * 当所有的插件都不想为 rpc 服务启动多进程时，那么就会利用 `ServiceLauncher` 在当前的进程中来为每个插件启动 rpc 服务。
 
+# neutron-service 进程实例：
 
+```
+[root@localhost oslo_service]# ps -aux | grep neutron-server
+stack     54006 11.8  0.5 290780 91844 pts/10   S+   12:39   0:07 /usr/bin/python /usr/bin/neutron-server --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini
+stack     54022  0.0  0.5 290780 87208 pts/10   S+   12:39   0:00 /usr/bin/python /usr/bin/neutron-server --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini
+stack     54023  0.0  0.5 290780 87204 pts/10   S+   12:39   0:00 /usr/bin/python /usr/bin/neutron-server --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini
+stack     54024  0.0  0.5 290780 87204 pts/10   S+   12:39   0:00 /usr/bin/python /usr/bin/neutron-server --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini
+stack     54025  0.0  0.5 290780 87204 pts/10   S+   12:39   0:00 /usr/bin/python /usr/bin/neutron-server --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini
+stack     54026  5.7  0.6 301832 98880 pts/10   S+   12:39   0:03 /usr/bin/python /usr/bin/neutron-server --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini
+stack     54027  0.7  0.5 294044 91072 pts/10   S+   12:39   0:00 /usr/bin/python /usr/bin/neutron-server --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini
+stack     54028  0.7  0.5 295364 92312 pts/10   S+   12:39   0:00 /usr/bin/python /usr/bin/neutron-server --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini
+root      54151  0.0  0.0 112648   960 pts/32   S+   12:40   0:00 grep --color=auto neutron-server
+```
 
+* rpc 所有的 woker 为
+
+```
+[<neutron.service.RpcWorker object at 0x4b16c10>, <neutron.service.RpcReportsWorker object at 0x4b16c90>, <neutron.db.agentschedulers_db.AgentStatusCheckWorker object at 0x4ffe410>, <neutron.db.agentschedulers_db.AgentStatusCheckWorker object at 0x4ffe6d0>, <neutron.service.RpcWorker object at 0x5018f50>]
+```
+
+* 进程分析：
+ 1. 主进程为 54006
+ 2. 配置文件中 `api_workers = 4` 意味着 wsgi 服务的进程数为为 4（54022、54023、54024、54025）
+ 3. 配置文件中 `rpc_workers=1` 意味着为所有的插件启动一个单独的进程（54026）
+ 4. 配置文件中 `rpc_state_report_workers=1` 意味着为 rpc state report启动一个单独的进程（54027）
+ 5. 通过插件的 `get_workers`方法获取了三个 worker，这三个 worker 都不要求启动队里进程，所有通过一个 `AllServicesNeutronWorker` 进程来启动他们（54028）
