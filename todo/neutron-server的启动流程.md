@@ -437,18 +437,202 @@ class WorkerService(neutron_worker.NeutronWorker):
 
 ### neutron 中的 rpc 服务
 
+我们直接看 `start_api_and_rpc_workers` 方法的实现（*neutron/server/wsgi_eventlet.py*）：
+
+```
+def start_api_and_rpc_workers(neutron_api):
+    try:
+        worker_launcher = service.start_all_workers()
+
+        pool = eventlet.GreenPool()
+        api_thread = pool.spawn(neutron_api.wait)
+        plugin_workers_thread = pool.spawn(worker_launcher.wait)
+
+        # api and other workers should die together. When one dies,
+        # kill the other.
+        api_thread.link(lambda gt: plugin_workers_thread.kill())
+        plugin_workers_thread.link(lambda gt: api_thread.kill())
+
+        pool.waitall()
+    except NotImplementedError:
+        LOG.info(_LI("RPC was already started in parent process by "
+                     "plugin."))
+
+        neutron_api.wait()
+```
+
+#### 启动 rpc workers（进程）：`start_all_workers`
+
+```
+def start_all_workers():
+    workers = _get_rpc_workers() + _get_plugins_workers()
+    return _start_workers(workers)
+```
+
+##### 获取 rpc 的 worker （进程）列表：`_get_rpc_workers` 和 `_get_plugins_workers`
+
+```
+def _get_rpc_workers():
+    plugin = manager.NeutronManager.get_plugin()
+    service_plugins = (
+        manager.NeutronManager.get_service_plugins().values())
+
+    if cfg.CONF.rpc_workers < 1:
+        cfg.CONF.set_override('rpc_workers', 1)
+
+    # If 0 < rpc_workers then start_rpc_listeners would be called in a
+    # subprocess and we cannot simply catch the NotImplementedError.  It is
+    # simpler to check this up front by testing whether the plugin supports
+    # multiple RPC workers.
+    if not plugin.rpc_workers_supported():
+        LOG.debug("Active plugin doesn't implement start_rpc_listeners")
+        if 0 < cfg.CONF.rpc_workers:
+            LOG.error(_LE("'rpc_workers = %d' ignored because "
+                          "start_rpc_listeners is not implemented."),
+                      cfg.CONF.rpc_workers)
+        raise NotImplementedError()
+
+    # passing service plugins only, because core plugin is among them
+    rpc_workers = [RpcWorker(service_plugins,
+                             worker_process_count=cfg.CONF.rpc_workers)]
+
+    if (cfg.CONF.rpc_state_report_workers > 0 and
+            plugin.rpc_state_report_workers_supported()):
+        rpc_workers.append(
+            RpcReportsWorker(
+                [plugin],
+                worker_process_count=cfg.CONF.rpc_state_report_workers
+            )
+        )
+    return rpc_workers
 
 
+def _get_plugins_workers():
+    # NOTE(twilson) get_service_plugins also returns the core plugin
+    plugins = manager.NeutronManager.get_unique_service_plugins()
 
+    # TODO(twilson) Instead of defaulting here, come up with a good way to
+    # share a common get_workers default between NeutronPluginBaseV2 and
+    # ServicePluginBase
+    return [
+        plugin_worker
+        for plugin in plugins if hasattr(plugin, 'get_workers')
+        for plugin_worker in plugin.get_workers()
+    ]
+```
 
+* 获取将要启动的进程列表：即根据插件的需求来构造多个进程对象
 
+##### 启动获取到的进程
 
+```
+def _start_workers(workers):
+    process_workers = [
+        plugin_worker for plugin_worker in workers
+        if plugin_worker.worker_process_count > 0
+    ]
 
+    try:
+        if process_workers:
+            worker_launcher = common_service.ProcessLauncher(
+                cfg.CONF, wait_interval=1.0
+            )
 
+            # add extra process worker and spawn there all workers with
+            # worker_process_count == 0
+            thread_workers = [
+                plugin_worker for plugin_worker in workers
+                if plugin_worker.worker_process_count < 1
+            ]
+            if thread_workers:
+                process_workers.append(
+                    AllServicesNeutronWorker(thread_workers)
+                )
 
+            # dispose the whole pool before os.fork, otherwise there will
+            # be shared DB connections in child processes which may cause
+            # DB errors.
+            session.context_manager.dispose_pool()
 
+            for worker in process_workers:
+                worker_launcher.launch_service(worker,
+                                               worker.worker_process_count)
+        else:
+            worker_launcher = common_service.ServiceLauncher(cfg.CONF)
+            for worker in workers:
+                worker_launcher.launch_service(worker)
+        return worker_launcher
+    except Exception:
+        with excutils.save_and_reraise_exception():
+            LOG.exception(_LE('Unrecoverable error: please check log for '
+                              'details.'))
+```
 
+* 根据需要启动的进程数的不同，创建不同的进程管理器，然后在进程管理器中启动所有插件的 rpc 服务。
 
+#### 四种 rpc 服务的进程
+
+1. `RpcWorker` 负责启动所有插件（核心和服务）的 rpc 服务；
+2. `RpcReportsWorker` 继承于 `RpcWorker` 负责监听 rpc 状态
+3. `AgentStatusCheckWorker`，监视 agent 状态
+4. `AllServicesNeutronWorker` 对于有的插件不想为 rpc 服务启动多进程，只在当前进程中启动就可以，那么 neutron 会将这些插件集合起来，在一个单独的进程中启动
+
+每个进程封装中都有一个 `start` 方法，这就是 rpc 服务的入口点，我们这里重点看 `RpcWorker` 的 `start` 方法。
+
+##### `RpcWorker`
+
+```
+class RpcWorker(neutron_worker.NeutronWorker):
+    """Wraps a worker to be handled by ProcessLauncher"""
+    start_listeners_method = 'start_rpc_listeners'
+
+    def __init__(self, plugins, worker_process_count=1):
+        super(RpcWorker, self).__init__(
+            worker_process_count=worker_process_count
+        )
+
+        self._plugins = plugins
+        self._servers = []
+
+    def start(self):
+        super(RpcWorker, self).start()
+        for plugin in self._plugins:
+            if hasattr(plugin, self.start_listeners_method):
+                try:
+                    servers = getattr(plugin, self.start_listeners_method)()
+                except NotImplementedError:
+                    continue
+                self._servers.extend(servers)
+
+    def wait(self):
+        try:
+            self._wait()
+        except Exception:
+            LOG.exception(_LE('done with wait'))
+            raise
+
+    def _wait(self):
+        LOG.debug('calling RpcWorker wait()')
+        for server in self._servers:
+            if isinstance(server, rpc_server.MessageHandlingServer):
+                LOG.debug('calling wait on %s', server)
+                server.wait()
+            else:
+                LOG.debug('NOT calling wait on %s', server)
+        LOG.debug('returning from RpcWorker wait()')
+
+    def stop(self):
+        LOG.debug('calling RpcWorker stop()')
+        for server in self._servers:
+            if isinstance(server, rpc_server.MessageHandlingServer):
+                LOG.debug('calling stop on %s', server)
+                server.stop()
+
+    @staticmethod
+    def reset():
+        config.reset_service()
+```
+从 start 方法中可以看出，需要 rpc 服务的插件会具有一个 `start_rpc_listeners`，调用插件的这个方法就会启动这个插件的 rpc 监听和服务。
 # 总结
 
 ## wsgi 服务的管理
@@ -467,9 +651,4 @@ class WorkerService(neutron_worker.NeutronWorker):
 
 wsgi中映射关系的建立。
 
-
-
-
-
-
-
+每个插件中 rpc 服务启动的具体工作。
