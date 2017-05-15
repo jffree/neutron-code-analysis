@@ -51,6 +51,18 @@
 
 * `MechanismManager` 实现机制管理（openvswitch,linuxbridge）
 
+* 订阅 `port` 资源的 `provisioning_complete` 的回调事件 `_port_provisioned`
+
+* 订阅 `segment` 资源的 `precommit_create`、 `precommit_delete`、`after_create`、 `after_delete` 的回调事件 `_handle_segment_change`
+
+* `_setup_dhcp`：加载 将网络调度到 dhcp agent 的驱动；设定每个一段时间检查 dhcp agent 的状态
+
+* `_start_rpc_notifiers` 创建 ml2 的 rpc 客户端（`AgentNotifierApi`、`DhcpAgentNotifyAPI`）
+
+* `add_workers` 增加机制端的 worker
+
+* `_verify_service_plugins_requirements` 检查扩展管理是否已经加载了所有被需要的驱动。
+
 ### `TypeManager` 
 
 * 继承于 `stevedore.named.NamedExtensionManager`，为 Neutron 的网络类型实现插件式管理。
@@ -212,3 +224,9 @@ neutron.ml2.extension_drivers =
 ```
 
 * 调用扩展的 `initialize` 方法
+
+## `Ml2Plugin.__mro__`
+
+```
+<class 'neutron.plugins.ml2.plugin.Ml2Plugin'>, <class 'neutron.db.db_base_plugin_v2.NeutronDbPluginV2'>, <class 'neutron.db.db_base_plugin_common.DbBasePluginCommon'>, <class 'neutron.neutron_plugin_base_v2.NeutronPluginBaseV2'>, <class 'neutron.worker.WorkerSupportServiceMixin'>, <class 'neutron.db.rbac_db_mixin.RbacPluginMixin'>, <class 'neutron.db.common_db_mixin.CommonDbMixin'>, <class 'neutron.db.standardattrdescription_db.StandardAttrDescriptionMixin'>, <class 'neutron.db.dvr_mac_db.DVRDbMixin'>, <class 'neutron.extensions.dvr.DVRMacAddressPluginBase'>, <class 'neutron.db.external_net_db.External_net_db_mixin'>, <class 'neutron.db.securitygroups_rpc_base.SecurityGroupServerRpcMixin'>, <class 'neutron.db.securitygroups_db.SecurityGroupDbMixin'>, <class 'neutron.extensions.securitygroup.SecurityGroupPluginBase'>, <class 'neutron.db.agentschedulers_db.AZDhcpAgentSchedulerDbMixin'>, <class 'neutron.db.agentschedulers_db.DhcpAgentSchedulerDbMixin'>, <class 'neutron.extensions.dhcpagentscheduler.DhcpAgentSchedulerPluginBase'>, <class 'neutron.db.agentschedulers_db.AgentSchedulerDbMixin'>, <class 'neutron.db.agents_db.AgentDbMixin'>, <class 'neutron.extensions.agent.AgentPluginBase'>, <class 'neutron.db.agents_db.AgentAvailabilityZoneMixin'>, <class 'neutron.extensions.availability_zone.AvailabilityZonePluginBase'>, <class 'neutron.db.availability_zone.network.NetworkAvailabilityZoneMixin'>, <class 'neutron.extensions.network_availability_zone.NetworkAvailabilityZonePluginBase'>, <class 'neutron.db.allowedaddresspairs_db.AllowedAddressPairsMixin'>, <class 'neutron.db.vlantransparent_db.Vlantransparent_db_mixin'>, <class 'neutron.db.extradhcpopt_db.ExtraDhcpOptMixin'>, <class 'neutron.db.address_scope_db.AddressScopeDbMixin'>, <class 'neutron.extensions.address_scope.AddressScopePluginBase'>, <class 'neutron.db.subnet_service_type_db_models.SubnetServiceTypeMixin'>, <type 'object'>
+```
