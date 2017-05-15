@@ -3,7 +3,7 @@
 测试命令：
 
 ```
-
+neutron net-create ext-net --router:external True --provider:physical_network external --provider:network_type flat
 ```
 
 
