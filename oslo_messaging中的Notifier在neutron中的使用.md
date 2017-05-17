@@ -77,7 +77,7 @@ def get_notifier(service=None, host=None, publisher_id=None):
 
 [Notifier](https://docs.openstack.org/developer/oslo.messaging/notifier.html) *我翻译过*
 
-[Notification Driver](https://docs.openstack.org/developer/oslo.messaging/notification_driver.html)
+[Notification Driver](https://docs.openstack.org/developer/oslo.messaging/notification_driver.html) *我翻译过*
 
 [Notification Listener](https://docs.openstack.org/developer/oslo.messaging/notification_listener.html)
 
