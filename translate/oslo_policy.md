@@ -241,30 +241,23 @@ http检查用于向远程服务器发出HTTP请求以确定检查结果。 将�
 可以定义默认规则，当正在检查的目标不存在规则时，该规则将被执行。 默认情况下，与默认规则名称相关联的规则将被用作默认规则。 通过将policy_default_rule配置设置设置为所需的规则名称，可以使用不同的规则名称作为默认规则。
 
 
+### oslo_policy.shell module
 
+1. oslo_policy.shell.main()
+2. oslo_policy.shell.tool(policy_file, access_file, apply_rule, is_admin=False)
 
+### oslo_policy.sphinxpolicygen module
 
+Generate a sample policy file.
 
+1. oslo_policy.sphinxpolicygen.generate_sample(app)
 
+Generate a sample policy file.
 
+2. oslo_policy.sphinxpolicygen.setup(app)
+
+### oslo_policy.version module
 
 ## 参考
 
 [Appendix A. The policy.json file](https://docs.openstack.org/kilo/config-reference/content/policy-json-file.html)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
