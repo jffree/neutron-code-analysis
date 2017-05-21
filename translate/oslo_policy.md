@@ -74,27 +74,69 @@ policy 的写法为：目标和相关规则
 
 在策略语言中，每个检查都指定为简单 `a：b` 类型的键值对，通过键值对来匹配正确的检查类。
 
+* 用户角色格式：
 
-| TYPE          | SYNTAX        |
-| ------------- |:-------------:|
-|User’s Role	|role:admin     |
-|Rules already defined on policy|	rule:admin_required|
-|Against URLs¹	|http://my-url.org/check|
-|User attributes²|	project_id:%(target.project.id)s|
-|Strings|	<variable>:’xpto2035abc’‘myproject’:<variable>|
-|Literals|	project_id:xpto2035abc
+```
+role:admin
+```
+
+* 引用已经定义的 Rule：
+
+```
+rule:admin_required
+```
+
+* 针对 URL
+
+```
+http://my-url.org/check
+```
+
+*URL checking must return True to be valid*
+
+* 用户属性：
+
+```
+project_id:%(target.project.id)s
+```
+
+*User attributes (obtained through the token): user_id, domain_id or project_id*
+
+* String
+
+```
+<variable>:’xpto2035abc’
+‘myproject’:<variable>
+```
+
+* Literals:
+
+```
+project_id:xpto2035abc
 domain_id:20
-True:%(user.enabled)s|
+True:%(user.enabled)s
+```
 
+可以使用连词操作符 `and` 和 `or`，允许在制定政策方面更具表现力。例如：
 
+```
+"role:admin or (project_id:%(project_id)s and role:projectadmin)"
+```
 
+策略语言还具有 `not` 运算符，允许更加丰富的策略规则：
 
+```
+"project_id:%(project_id)s and not role:dunce"
+```
 
+运算符优先级如下：
 
-
-
-
-
+|PRECEDENCE|	TYPE|	EXPRESSION|
+|--------- |:------:| -----------:|
+|4	|Grouping	|(...)|
+|3	|Logical NOT	|not ...|
+|2	|Logical AND	|... and ...|
+|1	|Logical OR	|... or ...|
 
 
 
