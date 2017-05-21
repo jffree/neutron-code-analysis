@@ -14,3 +14,7 @@
 ## `prepare_request_body`
 
 * 对用户请求的数据（消息体）做检查、填充默认数据的工作。
+
+## `_validate_network_tenant_ownership(self, request, resource_item)`
+
+* 若用户对 `subnet`、`port` 资源发出创建或更新（`create`）的方法请求，则会检查客户端是否有权限方法其依赖的 network 资源。
