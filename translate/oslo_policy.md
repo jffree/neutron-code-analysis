@@ -54,14 +54,37 @@ $ pip install oslo.policy
  1. `conf (oslo.config.cfg.ConfigOpts)` – Configuration object, managed by the caller.
  2. `policy_file (unicode)` – 定义策略的基本文件名。
 
+#### oslo_policy.policy module
+
+实现通用 policy 的引擎
+
+policy 的写法为：目标和相关规则
+
+```
+"<target>": <rule>
+```
+
+目标既是需要执行 policy 检查的服务。通常，目标是指API调用。
+
+对于<rule>部分，请参阅 Policy Rule Expressions。
+
+#### Policy Rule Expressions
+
+策略规则可以用以下两种形式之一表示：一种是用新的策略语言编写的字符串，另一种是列表。字符串格式是首选，因为大多数人更容易理解。
+
+在策略语言中，每个检查都指定为简单 `a：b` 类型的键值对，通过键值对来匹配正确的检查类。
 
 
-
-
-
-
-
-
+| TYPE          | SYNTAX        |
+| ------------- |:-------------:|
+|User’s Role	|role:admin     |
+|Rules already defined on policy|	rule:admin_required|
+|Against URLs¹	|http://my-url.org/check|
+|User attributes²|	project_id:%(target.project.id)s|
+|Strings|	<variable>:’xpto2035abc’‘myproject’:<variable>|
+|Literals|	project_id:xpto2035abc
+domain_id:20
+True:%(user.enabled)s|
 
 
 
