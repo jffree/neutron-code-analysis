@@ -241,21 +241,21 @@ class tracked_resources(object):
 
 #### `def make_reservation(self, context, tenant_id, deltas, plugin)`
 
+在这里做配额检查，同时创建一个 `Reservation` 数据记录。
 
+#### `def commit_reservation(self, context, reservation_id)`
 
+根据 `reservation_id` 删除一个 `Reservation` 记录。
 
+#### `def cancel_reservation(self, context, reservation_id)`
 
+根据 `reservation_id` 删除一个 `Reservation` 记录，同时将 `QuotaUsage` 的 `dirty` 置位。
 
+#### `def limit_check(self, context, tenant_id, **values)`
 
+检查某一资源的使用是否超限。超限则会引发异常。
 
-
-
-
-
-
-
-
-
+## quota 中的驱动管理模块
 
 
 
@@ -339,7 +339,11 @@ quota 资源的追踪分为两部分：第一部分为当资源的数据库发�
 
 * *neutron/api/v2/base.py* 中的 `Controller` 类中的 `_items` 方法。
 
+## quota的注册
 
+neutron 是如何实现为某个租户注册一个配额限制的呢？
+
+答案是：在 *neutron/extensions/quotasv2.py* 中实现的！
 
 
 
