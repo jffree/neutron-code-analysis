@@ -136,24 +136,24 @@ class tracked_resources(object):
 
 ### 在 `ResourceRegistry` 实例上抽象出来的方法
 
-### `def register_resource(resource)`
+#### `def register_resource(resource)`
 
 * 调用 `ResourceRegistry` 实例的 `register_resource` 方法来注册追踪的资源。
 
-### `def register_resource_by_name(resource_name, plural_name=None)` 
+#### `def register_resource_by_name(resource_name, plural_name=None)` 
 
 * 调用 `ResourceRegistry` 的 `register_resource_by_name` 方法通过资源名称来注册资源
 
-### `def get_all_resources`
+#### `def get_all_resources`
 
 * 返回 `ResourceRegistry` 实例中追踪的所有资源名称
 
 
-### `def get_resource(resource_name)`
+#### `def get_resource(resource_name)`
 
 * 注销所有 `ResourceRegistry` 的追踪资源
 
-### `def is_tracked(resource_name)`
+#### `def is_tracked(resource_name)`
 
 * 根据资源名称判断一个资源是否被追踪。
 
