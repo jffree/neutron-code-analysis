@@ -1,10 +1,10 @@
 # neutron 中的 quota
 
 * neutron 中 quota 的配置模块：*neutron/conf/quota.py*
-* neutron 中 quota 的管理模块：*neutron/quota/__init__.py*
-* neutron 中 quota 的注册模块：*neutron/quota/resource_registry.py*
+* neutron 中 quota 的 quota 管理模块：*neutron/quota/__init__.py*
+* neutron 中 quota 的资源注册管理模块：*neutron/quota/resource_registry.py*
 * neutron 中 quota 的资源模块：*neutron/quota/resource.py*
-* neutron 中 quota 的数据库操作模块：*neutron/db/quota*
+* neutron 中 quota 的 quota 数据库操作模块：*neutron/db/quota*
 
 ## 资源模块
 
@@ -77,7 +77,15 @@
 
 更新数据库 `in_use` 字段。
 
-## 注册模块
+### `def count(self, context, _plugin, tenant_id, resync_usage=True)`
+
+计算当前资源的使用数量（包括保留数量）
+
+保留数量是指正在创建中的资源个数（在创建网络时，会先 quota 的 `Reservation` 创建一个保留数据，网络创建完成后再删除）。
+
+若 quota 数据库（`QuotaUsage`）有 `dirty` 位存在的话，则会进行同步操作，更新数据库中 `dirty` 和 `in_use` 的值。
+
+## 注册管理模块
 
 ### 资源注册追踪 `class tracked_resources`
 
@@ -202,6 +210,55 @@ class tracked_resources(object):
 #### `def mark_resources_dirty(f)`
 
 装饰器，对 `resync_resource` 的封装。
+
+## quota 的管理模块
+
+### `class ConfDriver(object)`
+
+已废弃，被 `neutron.db.quota.driver.DbQuotaDriver` 取代。
+
+`` 是与 quota 数据库沟通的驱动类。
+
+### `class QuotaEngine(object)` 
+
+这个类是 quota 的管理类，admin 可以为每个用户设定配额，配额的设定就是通过这个类来的。
+
+#### `def get_instance(cls)`
+
+* 保证这个类只有唯一的实例。
+
+#### `def __init__(self, quota_driver_class=None)`
+
+初始化函数。
+
+#### `def get_driver(self)`
+
+获取 quota 跟数据库沟通的驱动实例，并将实例保存至 `self._driver` 中。
+
+#### `def count(self, context, resource_name, *args, **kwargs)`
+
+根据请求的上下文和资源的名称获取资源的使用数量。
+
+#### `def make_reservation(self, context, tenant_id, deltas, plugin)`
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # 总结：
 
