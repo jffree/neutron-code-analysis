@@ -38,12 +38,44 @@
 #### `__init__`
 
 * `_model_class` 资源对应的模型类
-* `_dirty_tenants` 未更新
-* `_out_of_sync_tenants` 未同步
+* `_dirty_tenants` 脏租户列表（这些租户触发了一个数据库的删除或插入操作）
+* `_out_of_sync_tenants` 未同步的资源使用个数的租户列表
 
-#### ``
+#### `def dirty(self)`
 
+* 属性方法，返回当前保存的脏租户列表。
 
+#### `def mark_dirty(self, context)`
+
+* 更新资源在 quota 数据库 (`QuotaUsage`) 中的 `dirty` 位，更新 `_out_of_sync_tenants` 和 `_dirty_tenants`列表。
+
+#### `def _db_event_handler(self, mapper, _conn, target)`
+
+数据库事件的处理方法，更新 `_dirty_tenants` 列表。
+
+#### `def register_events(self)`
+
+对于资源本身的数据库，注册此数据库的插入删除事件
+
+### `def unregister_events(self)`
+
+解除数据库事件的注册。
+
+### `def resync(self, context, tenant_id)`
+
+获取资源本身数据库中的使用个数
+
+调用 `_resync` 方法。
+
+### `def _resync(self, context, tenant_id, in_use)`
+
+调用 `_set_quota_usage` 更新 quota 数据库中的 `in_use` 字段。
+
+更新 `_dirty_tenants` 、`_out_of_sync_tenants`属性。
+
+### `def _set_quota_usage(self, context, tenant_id, in_use)`
+
+更新数据库 `in_use` 字段。
 
 ## 注册模块
 
@@ -156,6 +188,107 @@ class tracked_resources(object):
 #### `def is_tracked(resource_name)`
 
 * 根据资源名称判断一个资源是否被追踪。
+
+#### `def set_resources_dirty(context)`
+
+对于所有跟踪的资源，若有的资源接收到了数据库的删除或插入事件，则会更新其本身的 `_dirty_tenants`列表。
+
+本方法则是根据请求的上下文，更新所有跟踪资源（根据其 `_dirty_tenants` 列表）数据库（`QuotaUsage`）中的 `dirty` 位。
+
+#### `def resync_resource(context, resource_name, tenant_id)`
+
+更新资源被租户的使用量。
+
+#### `def mark_resources_dirty(f)`
+
+装饰器，对 `resync_resource` 的封装。
+
+# 总结：
+
+## 添加 quota 的配置
+
+在导入 *neuton/quota* 模块是会自动运行 *__init__.py* 中的下面代码：
+
+```
+quota.register_quota_opts(quota.core_quota_opts)
+```
+
+实现添加 quota 的配置。
+
+## 资源的注册
+
+### `register_resource_by_name`
+
+在 neutron 中使用 quota，需要为所有准备追踪的资源进行注册，注册的方法既是在 *neutron/quota/resource_registery.py* 中的 `register_resource_by_name` 方法。
+
+这个方法会在下面的地方调用：
+
+1. 在 *neutron/api/v2/router.py* 中 `APIRouter.__init__` 方法中，为 `network`、`subnet`、`subnetpool`、`port` 建立资源追踪。
+
+2. 在 *neutron/api/v2/resource_helper.py* 中 `build_resource_info` 方法（这个方法会在 extension 的 `get_resources` 中调用，用于抛出新的资源接口）中，注册追踪 extension 提供的新资源。
+
+3. 在 *neutron/extensions/rbac.py* 中被调用，同样是在该 extension 提供扩展资源时为其建立跟踪。
+
+4. 在 *neutron/extensions/securitygroup.py*中被调用，同样是在该 extension 提供扩展资源时为其建立跟踪。
+
+5. 在 *neutron/pecan_wsgi/startup.py* 中被调用，这里的调用同在 `APIRouter` 中的调用是一致的，两种不同的 WSGI 服务（启动 neutron server 时会选择一种）。
+
+`register_resource_by_name` 会进一步调用 `ResourceRegistry.register_resource_by_name`。
+
+### `ResourceRegistry.register_resource_by_name`
+
+创建 quota 的一个资源描述实例，调用 `ResourceRegistry.register_resource` 方法。
+
+### `ResourceRegistry.register_resource`
+
+为数据库类型的资源调用 `TrackedResource.register_events` 建立事件追踪。
+
+更新追踪管理类 `TrackedResource` 的 `_sources` 属性。
+
+### `TrackedResource.register_events`
+
+注册数据库的插入删除事情，事件发生后由 `TrackedResource._db_event_handler` 处理
+
+### `TrackedResource._db_event_handler`
+
+当有数据库事件（插入删除）时，会交由这个方法处理。
+
+该方法会更新 `_dirty_tenants` 属性（将触发数据库动作的 `tenant_id`记录下来）
+
+## quota 资源的追踪
+
+quota 资源的追踪分为两部分：第一部分为当资源的数据库发生插入和删除动作时更新 quota 数据库（`QuotaUsage`）中的 `dirty` 位；第二部分为根据 quota 数据库（`QuotaUsage`）中的 `dirty` 位更新资源的使用数量 `in_use` 位。
+
+**注意：**资源是不变的，变化的是使用资源的租户。
+
+### 第一部分：更新 dirty
+
+这个是有 `set_resources_dirty` 方法来完成的。它在下面几个地方被调用：
+
+1. *neutron/api/v2/base.py* 中的 `Controller` 类中的 `_delete` 方法。
+2. *neutron/api/v2/base.py* 中的 `Controller` 类中的 `_handle_action` 方法。
+3. *neutron/api/v2/base.py* 中的 `Controller` 类中的 `_update` 方法。
+4. *neutron/api/v2/base.py* 中的 `Controller` 类中的 `_create` 方法。
+
+这些方法都是在调用 plugin 的方法处理完后调用的，也就是在资源数据库发生插入或删除方法后调用的。
+
+### 第二部分，更新 in_use
+
+更新了数据库的 `dirty` 位后不是立马更新 `in_use` 位的。
+
+更新方法是 `def resync_resource(context, resource_name, tenant_id)`。
+
+这个方法在下面的地方被调用：
+
+* *neutron/api/v2/base.py* 中的 `Controller` 类中的 `_items` 方法。
+
+
+
+
+
+
+
+
 
 
 
