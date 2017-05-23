@@ -5,6 +5,7 @@
 * neutron 中 quota 的资源注册管理模块：*neutron/quota/resource_registry.py*
 * neutron 中 quota 的资源模块：*neutron/quota/resource.py*
 * neutron 中 quota 的 quota 数据库操作模块：*neutron/db/quota*
+* neutron 中 quota 的WSGI接口模块：*neutron/extensions/quotasv2.py*
 
 ## 资源模块
 
@@ -255,10 +256,55 @@ class tracked_resources(object):
 
 检查某一资源的使用是否超限。超限则会引发异常。
 
-## quota 中的驱动管理模块
+## quota 中的驱动管理模块 
 
+实现：*neutron/db/quota/driver.py* 中的 `class DbQuotaDriver(object)`
 
+### `def get_default_quotas(context, resources, tenant_id)`
 
+获取 resources 列表中各个资源的默认 quota 值。
+
+### `def get_tenant_quotas(context, resources, tenant_id)`
+
+根据 `tenant_id` 获取 `resources` 中资源的的配额，没有设定配额的返回默认值。
+
+### `def delete_tenant_quota(context, tenant_id)`
+
+在数据库（`Quota`）中删除某一用户的配额设定
+
+### `def get_all_quotas(context, resources)`
+
+获取所有资源的配额设定
+
+### `def update_quota_limit(context, tenant_id, resource, limit)`
+
+更新某一个租户关于某一个资源的 quota 设定
+
+### `def _get_quotas(self, context, tenant_id, resources)`
+
+获取某一租户关于某个资源的 quota 设定
+
+### `def _handle_expired_reservations(self, context, tenant_id)`
+
+处理 quota 数据库（`Reservation`）中的过期数据。
+
+该方法在 `make_reservation` 中调用。
+
+### `def make_reservation(self, context, tenant_id, resources, deltas, plugin)`
+
+在 `Reservation` 数据库添加一条记录作为资源的保留项来记录。（一般意味着该资源正在创建）
+
+### `def commit_reservation(self, context, reservation_id)`
+
+移除 `Reservation` 数据库中的一条保留项，但是不在为改资源设置 `dirty` 位。
+
+### `def cancel_reservation(self, context, reservation_id)`
+
+移除 `Reservation` 数据库中的一条保留项，同时为改资源设置 `dirty` 位。
+
+### `def limit_check(self, context, tenant_id, resources, values)`
+
+根据传递来的 values（一般是即将创建的资源名称及其个数的映射） 检查某一租户下的某一资源的 quota 是否超限。
 
 # 总结：
 
@@ -345,16 +391,40 @@ neutron 是如何实现为某个租户注册一个配额限制的呢？
 
 答案是：在 *neutron/extensions/quotasv2.py* 中实现的！
 
+`class Quotasv2(extensions.ExtensionDescriptor)` 提供了访问 quota 的接口。
 
+`class QuotaSetsController(wsgi.Controller)` 则实现了访问 quota 时用到的 wsgi controller。
 
+### `class QuotaSetsController(wsgi.Controller)`
 
+#### `__init__`
 
+初始化方法：设定关联的 plugin，设定驱动
 
+#### `def create(self, request, body=None)`
 
+说明不支持 create
 
+#### `def index(self, request)`
 
+GET 方法访问 `/v2.0/quotas` 时响应，返回所有资源的 quota 设定
 
+#### `def show(self, request, id)`
 
+GET 方法访问 `/v2.0/quotas/{project_id}` 时响应，返回某一租户（`id`）的 quota 设定
 
+#### `def tenant(self, request)`
 
+GET 方法访问 `/v2.0/quotas/tenant` 时响应，获取访问租户的 `tenant_id`
 
+#### `def _check_admin(self, context, reason=_("Only admin can view or configure quota")):`
+
+检测访问用户是否是 admin，不是的话引发异常
+
+#### `def delete(self, request, id)`
+
+使用 delete 方法访问 `/v2.0/quotas/{project_id}`时响应，删除某个租户的 quota 设定
+
+#### `def update(self, request, id, body=None)`
+
+使用 PUT 方法访问 `/v2.0/quotas/{project_id}`时响应，更新某个租户的 quota 设定
