@@ -10,13 +10,9 @@
 
 [sqlalchemy 中的 descriptor](http://docs.sqlalchemy.org/en/latest/glossary.html#term-descriptors)
 
-### instrumentation and mapping
+### mapping
 
-[instrumentation](http://docs.sqlalchemy.org/en/latest/glossary.html#term-instrumentation)
-
-[mapping](http://docs.sqlalchemy.org/en/latest/glossary.html#term-mapping)
-
-[Class Mapping API](http://docs.sqlalchemy.org/en/latest/orm/mapping_api.html)
+[Classical Mappings](http://docs.sqlalchemy.org/en/latest/orm/mapping_styles.html#classical-mapping)
 
 ## `declared_attr`
 
@@ -26,5 +22,5 @@ Declarative treats attributes specifically marked with @declared_attr as returni
 
 # 参考
 
-[Table of Contents](http://docs.sqlalchemy.org/en/latest/contents.html)
+[SQLAlchemy 1.2 Documentation](http://docs.sqlalchemy.org/en/latest/index.html)
 
