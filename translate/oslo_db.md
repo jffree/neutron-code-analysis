@@ -48,7 +48,7 @@ oslo.db使用oslo.config来定义和管理配置选项，以允许部署者控�
 
 ## 如何使用
 
-### 回话处理
+### 会话处理
 
 会话处理使用 `oslo_db.sqlalchemy.enginefacade` 系统实现。该模块提供了一个函数装饰器以及一个上下文管理器方法来将 `Session` 和 `Connection` 对象传递给一个函数或块。
 
@@ -196,3 +196,5 @@ oslo_db.migration的可用扩展
 [ SQLAlchemy技术文档（中文版）（上） ](http://www.cnblogs.com/iwangzc/p/4112078.html)
 
 [ SQLAlchemy技术文档（中文版）（中） ](http://www.cnblogs.com/iwangzc/p/4114913.html)
+
+[白话讲MyIsam和InnoDB的区别](http://www.dedecms.com/knowledge/data-base/mysql/2012/0819/7217.html)

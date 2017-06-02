@@ -62,6 +62,10 @@ Session = sessionmaker(autoflush=False)
 sess = Session()
 ```
 
+## Connection
+
+维护这与数据库的链接。
+
 ## 其他
 
 `__mapper_args__`  传递给 ORM 中 Mapper 的配置选项
@@ -77,3 +81,7 @@ sess = Session()
 [SQLAlchemy 对象缓存和刷新](http://www.cnblogs.com/fengyc/p/5369301.html?utm_source=tuicool&utm_medium=referral)
 
 [on delete cascade](http://www.cnblogs.com/xgcblog/archive/2011/08/25/2152918.html)
+
+[web.py开发web 第四章 Sqlalchemy（事件监听与初始化）](https://my.oschina.net/zhengnazhi/blog/120800)
+
+[How to close sqlalchemy connection in MySQL](https://stackoverflow.com/questions/8645250/how-to-close-sqlalchemy-connection-in-mysql)
