@@ -66,6 +66,10 @@ sess = Session()
 
 维护这与数据库的链接。
 
+## event
+
+注册事件通知，在数据库发生相应的事件时，会调用注册的方法
+
 ## 其他
 
 `__mapper_args__`  传递给 ORM 中 Mapper 的配置选项
@@ -85,3 +89,5 @@ sess = Session()
 [web.py开发web 第四章 Sqlalchemy（事件监听与初始化）](https://my.oschina.net/zhengnazhi/blog/120800)
 
 [How to close sqlalchemy connection in MySQL](https://stackoverflow.com/questions/8645250/how-to-close-sqlalchemy-connection-in-mysql)
+
+[sqlalchemy中使用event设置条件触发短信与邮件通知](http://www.cnblogs.com/yasmi/p/5056089.html)
