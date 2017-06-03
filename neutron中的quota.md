@@ -38,9 +38,9 @@
 
 #### `__init__`
 
-* `_model_class` 资源对应的模型类
-* `_dirty_tenants` 脏租户列表（这些租户触发了一个数据库的删除或插入操作）
-* `_out_of_sync_tenants` 未同步的资源使用个数的租户列表
+* `_model_class` 资源对应的模型类；
+* `_dirty_tenants` 脏租户列表（这些租户触发了一个数据库的删除或插入操作），还未设置 quotausages 模型中的 `dirty` 位；
+* `_out_of_sync_tenants` 未同步的资源使用个数的租户列表，但已经设置了 quotausages  `dirty` 位；
 
 #### `def dirty(self)`
 
