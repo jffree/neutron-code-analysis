@@ -232,21 +232,6 @@ def _get_id(callback):
 
 为 `callback` 获取一个独一无二的字符串名称。
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # 参考
 
 [Neutron Callback System](https://docs.openstack.org/developer/neutron-lib/devref/callbacks.html)
