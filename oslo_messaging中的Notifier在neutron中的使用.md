@@ -73,6 +73,50 @@ def get_notifier(service=None, host=None, publisher_id=None):
 
 这里就会发送 Notifier 的消息。
 
+# 示例代码
+
+* 发送端：
+
+```
+from oslo_config import cfg
+import oslo_messaging
+transport = oslo_messaging.get_transport(cfg.CONF)
+notifier = oslo_messaging.Notifier(transport, driver='messaging', publisher_id='testing', topic='notifications')
+notifier.info({'some': 'context'}, 'just.testing', {'heavy': 'payload'})
+```
+
+* 接收端
+
+```
+import json
+from oslo_config import cfg
+import oslo_messaging
+class NotificationEndpoint(object):
+    def info(self, ctxt, publisher_id, event_type, payload, metadata):
+        print 'recv notification:'
+        print json.dumps(payload, indent=4)
+    def warn(self, ctxt, publisher_id, event_type, payload, metadata):
+        None
+    def error(self, ctxt, publisher_id, event_type, payload, metadata):
+        None
+transport = oslo_messaging.get_transport(cfg.CONF)
+targets = [ oslo_messaging.Target(topic='notifications') ]
+endpoints = [ NotificationEndpoint() ]
+server = oslo_messaging.get_notification_listener(transport, targets, endpoints)
+server.start()
+server.wait()
+```
+
+* 接收到的消息
+
+```
+{
+    "heavy": "payload"
+}
+```
+
+*如果你开着 openstack 的话，有可能接收到来自 openstack 组件的消息奥。*
+
 # 参考
 
 [Notifier](https://docs.openstack.org/developer/oslo.messaging/notifier.html) *我翻译过*
