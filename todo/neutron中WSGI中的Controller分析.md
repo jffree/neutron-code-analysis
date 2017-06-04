@@ -69,7 +69,7 @@ self._notifier = n_rpc.get_notifier('network')
 9. 创建成功后会调用 `notify` 方法，
  1. 该方法会删除预定项，同时将该资源的 dirty 置位，提请改更新此资源的使用量。
  2. 调用 `self._notifier.info` 发送通知
- 3. 调用消息回调体体系的方法 `registry.notify`，发送提示消息。
+ 3. **调用消息回调体体系的方法 `registry.notify`，发送提示消息。**
 
 ## `prepare_request_body`
 
@@ -88,3 +88,15 @@ self._notifier = n_rpc.get_notifier('network')
 ## `def _filter_attributes(self, context, data, fields_to_strip=None)`
 
 该方法是删除对用户不可见的属性。
+
+## `def _view(self, context, data, fields_to_strip=None)`
+
+调用 `_exclude_attributes_by_policy` 与 `_filter_attributes` 返回用户可见的属性。
+
+## `def index(self, request, **kwargs)`
+
+* 初始化 policy
+* 调用 `_items` 方法
+
+## `def _items(self, request, do_authz=False, parent_id=None)`
+
