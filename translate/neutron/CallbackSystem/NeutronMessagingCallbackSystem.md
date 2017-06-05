@@ -11,11 +11,11 @@ Neutron已经有一个用于**进程内资源回调**的[回调系统](https://d
 * QoS policies;
 * Security Groups.
 
-使用远程发布者/订户模式，可以使用 fanout 消息向所有感兴趣的节点发布关于此类资源的信息，从而最小化代理到服务器的消息传递请求，因为代理程序在其整个生命周期中获得订阅（除非它们取消订阅）。
+使用远程发布-订阅模式，可以使用 fanout 消息向所有感兴趣的节点发布关于此类资源的信息，从而最小化代理到服务器的消息传递请求，因为代理程序在其整个生命周期中获得订阅（除非它们取消订阅）。
 
 在一个代理中，对同一资源事件可能有多个订户回调，资源更新将从单个消息分派到订户回调。 任何更新都会出现在单个消息中，在每个接收代理上只执行单个 oslo 版本的对象反序列化。
 
-这种发布/订阅机制高度依赖于传递的资源的格式。 这就是为什么库只允许版本化的对象被发布和订阅。oslo 版本的对象允许对象版本下降/上转换。 [2](https://docs.openstack.org/developer/neutron/devref/rpc_callbacks.html#vo-mkcompat) [3](https://docs.openstack.org/developer/neutron/devref/rpc_callbacks.html#vo-mkcptests)
+这种发布-订阅机制高度依赖于传递的资源的格式。 这就是为什么库只允许规定版本的对象被发布和订阅。oslo 版本的对象允许对象版本下降/上转换。 [2](https://docs.openstack.org/developer/neutron/devref/rpc_callbacks.html#vo-mkcompat) [3](https://docs.openstack.org/developer/neutron/devref/rpc_callbacks.html#vo-mkcptests)
 
 对于VO的版本化架构，请看这里：[4](https://docs.openstack.org/developer/neutron/devref/rpc_callbacks.html#vo-versioning)
 
