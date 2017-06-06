@@ -18,6 +18,18 @@ plugin 和 实现 extension 的 minxin 类会在这个字典中注册一些钩�
 
 `register_model_query_hook` 和 `unregister_query_hook` 方法专门来对这个字典进行操作。
 
+### `def register_model_query_hook(cls, model, name, query_hook, filter_hook,                                  result_filters=None)`
+
+注册用于 Query 的钩子方法。
+
+### `_dict_extend_functions`
+
+保存扩展资源属性的 API
+
+### `def register_dict_extend_funcs(cls, resource, funcs)`
+
+注册额外的方法到 `_dict_extend_functions` 中。
+
 ### `def _fields(self, resource, fields)`
 
 根据用户请求中包含的 `fields` 来过滤要返回的 `resource` 信息。
@@ -35,3 +47,53 @@ plugin 和 实现 extension 的 minxin 类会在这个字典中注册一些钩�
 ### `def _model_query(self, context, model)`
 
 利用 `_model_query_hooks` 里面的钩子方法做基本的查询和过滤操作。
+
+### `def _apply_filters_to_query(self, query, model, filters, context=None)`
+
+在已经拥有的 query 的基础上，根据 filters 的条件和使用的数据库模型 model，进行过滤操作。返回过滤后的 query 对象。
+
+### `_get_collection_query`
+
+```
+def _get_collection_query(self, context, model, filters=None,
+                              sorts=None, limit=None, marker_obj=None,
+                              page_reverse=False):
+```
+
+构造一个资源集合的查询，就是一次性在数据库中查询匹配多个资源。
+可进行排序和分页操作。
+
+### `_get_collection`
+
+```
+    def _get_collection(self, context, model, dict_func, filters=None,
+                        fields=None, sorts=None, limit=None, marker_obj=None,
+                        page_reverse=False)
+```
+
+1. 调用 `_get_collection_query` 进行批量查询
+2. 调用传递过来的 `dict_func` 将批量查询的结果转换为字典格式
+3. 调用 `attributes.populate_project_info` 填充 `tenant_id` 和 `project_id` 属性。
+
+### `def _get_collection_count(self, context, model, filters=None)`
+
+获取数据库批量查询的结果的数量。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -16,13 +16,6 @@
 curl -s -X GET http://172.16.100.106:9696//v2.0/security-groups -H 'Content-Type: application/json' -H 'X-Auth-Token: 5f4e0cc153f64653bac02dab107e2151'
 ```
 
-```
-curl -s -X GET http://172.16.100.106:9696//v2.0/security-group-rules -H 'Content-Type: application/json' -H 'X-Auth-Token: 5f4e0cc153f64653bac02dab107e2151'
-```
-
-```
-curl -s -X GET http://172.16.100.106:9696//v2.0/security-groups/e021afac-aa12-47c9-acec-5e2e1721a625 -H 'Content-Type: application/json' -H 'X-Auth-Token: 5f4e0cc153f64653bac02dab107e2151' | jq
-```
 
 ## `class SecurityGroupDbMixin(ext_sg.SecurityGroupPluginBase)`
 
@@ -62,8 +55,12 @@ curl -s -X GET http://172.16.100.106:9696//v2.0/security-group-rules/090e66b6-fa
 
 1. 调用 `_validate_security_group_rule` 检验传递过来的数据的正确性
 2. 调用 `registry.notify` 发送通知消息
-3. 调用 `_check_for_duplicate_rules_in_db` 检查是否有冲入的 rule 注册
-
+3. 调用 `_check_for_duplicate_rules` 检查是否已经有相同的 rule 注册
+4. 检查通过后创建一条 `SecurityGroupRule` 数据库记录，并添加到回话中
+5. 调用 `registry.notify` 发送通知消息 `PRECOMMIT_CREATE`
+6. 调用 `_make_security_group_rule_dict` 将创建的数据库对象解析成字典格式
+7. 再次调用 `registry.notify` 发送创建完成的通知 `AFTER_CREATE`
+8. 返回第6步转化的字典
 
 ### `def _validate_security_group_rule(self, context, security_group_rule)`
 
@@ -74,10 +71,145 @@ curl -s -X GET http://172.16.100.106:9696//v2.0/security-group-rules/090e66b6-fa
 5. 调用 `get_security_group` 检查 `remote_group_id` 指定的 security_group 是否存在
 6. 调用 `get_security_group` 检查用户是否有权限在 `security_group_id` 指定的 security_group 上增加 rule
 
+### `def _check_for_duplicate_rules(self, context, security_group_rules)`
+
+1. 调用 `_rules_equal` 判断客户端发出的请求中是否包含和相同的 rule
+2. 调用 `_check_for_duplicate_rules_in_db` 判断数据库中是否存在了相同的 rule
+
 ### `def _check_for_duplicate_rules_in_db(self, context, security_group_rule)`
 
 1. 调用 `_make_security_group_rule_filter_dict` 将客户端发送过来的请求数据转化为字典类型，用来构造数据了的 filter 选项。
-2. 
+2. 调用 `get_security_group_rules` 获取符合过滤条件的 security_group_rules
+3. 在排除 `id` 字段的情况下进行将客户端的数据与数据库的查询数据进行对比，查看该条规则是否已经存在
+
+### `def _get_ip_proto_number(self, protocol)`
+
+获取协议名称对应的协议号
+
+### `_get_ip_proto_name_and_num`
+
+获取协议名称以及协议号。
+
+### `def delete_security_group_rule(self, context, id)`
+
+测试命令
+
+```
+curl -s -X DELETE http://172.16.100.106:9696/v2.0/security-group-rules/090e66b6-fafe-4fd4-bb54-23effddc242c -H 'Content-Type: application/json' -H 'X-Auth-Token: 5f4e0cc153f64653bac02dab107e2151'
+```
+
+1. 调用 `registry.notify` 发送准备删除的通知 `BEFORE_DELETE`
+2. 查询 `SecurityGroupRule` 数据库，获取与 `id` 相同的记录
+3. 调用 `registry.notify` 发送准备删除的通知 `PRECOMMIT_DELETE`
+4. 执行数据库的删除动作
+5. 调用 `registry.notify` 发送准备删除的通知 `AFTER_DELETE`
+
+### `get_security_group_rules`
+
+```
+def get_security_group_rules(self, context, filters=None, fields=None,
+                                 sorts=None, limit=None, marker=None,
+                                 page_reverse=False)
+```
+
+测试命令：
+
+```
+curl -s -X GET http://172.16.100.106:9696//v2.0/security-group-rules -H 'Content-Type: application/json' -H 'X-Auth-Token: 5f4e0cc153f64653bac02dab107e2151'
+```
+
+1. 调用 `_get_marker_obj` 获取用于分页作用
+2. 调用 `common_db_mixin.CommonDbMixin._get_collection` 来获取结果
+
+### `def create_security_group_rule_bulk(self, context, security_group_rules)`
+
+批量创建 security_group_rule
+
+直接调用 `self._create_bulk`
+
+`def _create_bulk(self, resource, context, request_items)` 方法是在 *neutron/db/db_base_plugin_v2.py* 中的 `NeutronDbPluginV2`中实现。这个方法也是循环的调用 `create_security_group_rule`
+
+### `def create_security_group_rule_bulk_native(self, context,                                               security_group_rules)`
+
+批量创建 security_group_rule 的本地（本类）实现
+
+1. 利用 sqlalchemy 的 `scoped_session` 来管理 session [sqlalchemy 学习（二）scoped session](http://blog.csdn.net/hedan2013/article/details/54865144)
+2. 调用 `_validate_security_group_rules` 检查用户发送过来的数据的有效性
+3. 调用 `get_security_group` 获取这个 rule 的所属组
+4. 调用 `_check_for_duplicate_rules` 检查是否有已经注册的 rule
+5. 循环调用 `_create_security_group_rule` 实现 rule 的批量创建
+
+### `def _rules_equal(self, rule1, rule2)`
+
+判断 rule1 和 rule 除 `id` 属性外，其余属性是否一致
+
+### `def get_security_group(self, context, id, fields=None, tenant_id=None)`
+
+测试命令：
+
+```
+curl -s -X GET http://172.16.100.106:9696//v2.0/security-groups/e021afac-aa12-47c9-acec-5e2e1721a625 -H 'Content-Type: application/json' -H 'X-Auth-Token: 5f4e0cc153f64653bac02dab107e2151' | jq
+```
+
+1. 调用 `_get_security_group` 根据 `id` 获取 `SecurityGroup` 数据库中的记录
+2. 调用 `_make_security_group_dict` 将数据库查询记录转化为字典形式
+3. 调用 `get_security_group_rules` 获取该 security_group 下的 rules 记录，并保存于刚才的字典中。
+4. 返回结果
+
+### `def delete_security_group(self, context, id)`
+
+测试命令：
+
+```
+curl -s -X DELETE http://172.16.100.106:9696//v2.0/security-groups/e021afac-aa12-47c9-acec-5e2e1721a625 -H 'Content-Type: application/json' -H 'X-Auth-Token: 5f4e0cc153f64653bac02dab107e2151'
+```
+
+1. 调用 `_get_port_security_group_bindings` 查看是否有端口绑定在这个安全组上
+2. 默认的安全组非 admin 不可移除
+3. 调用 `registry.notify` 发送 `BEFORE_DELETE` 的消息
+4. 调用 `registry.notify` 发送 `PRECOMMIT_DELETE` 的消息
+5. 执行数据库的删除操作
+6. 调用 `registry.notify` 发送 `AFTER_DELETE` 的消息
+
+### `def _get_port_security_group_bindings(self, context,                                          filters=None, fields=None)`
+
+查询 `SecurityGroupPortBinding` 数据库查询与某个 security_group 绑定的 port信息
+
+### `def update_security_group(self, context, id, security_group)`
+
+1. 调用 `registry.notify` 发送 `BEFORE_UPDATE` 的消息
+2. 非 admin 用户不能对默认的安全组执行更新操作
+3. 调用 `registry.notify` 发送 `PRECOMMIT_UPDATE` 的消息
+4. 执行数据库的更新操作
+5. 调用 `registry.notify` 发送 `AFTER_UPDATE` 的消息
+
+### `def create_security_group(self, context, security_group, default_sg=False)`
+
+* 用户端发送的数据示例：
+
+```
+{
+    "security_group": {
+        "name": "new-webservers",
+        "description": "security group for webservers"
+    }
+}
+```
+
+1. 调用 `registry.notify` 发送 `BEFORE_CREATE` 的消息
+2. 调用 `_ensure_default_security_group` 先确保有一个默认的安全组存在
+3. 创建一条 `SecurityGroup` 数据库记录
+4. 若是创建默认的安全组的情况下会创建一条 `DefaultSecurityGroup` 数据库记录
+5. 若是创建默认的安全组的情况下回创建一条 `SecurityGroupRule` 数据库记录做默认规则
+6. 创建一条 `SecurityGroupRule` 数据库记录做本安全组的默认规则
+7. 调用 `registry.notify` 发送 `PRECOMMIT_CREATE` 的消息
+8. 调用 `_make_security_group_dict` 将数据库记录转化为字典形式
+9. 调用 `registry.notify` 发送 `AFTER_CREATE` 的消息
+10. 返回字典信息
+
+### `def _ensure_default_security_group(self, context, tenant_id)`
+
+确保该 tenant 下有一个默认的安全组。若是没有的话则会创建一个
 
 
 
