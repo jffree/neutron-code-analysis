@@ -79,6 +79,10 @@ def _get_collection_query(self, context, model, filters=None,
 
 获取数据库批量查询的结果的数量。
 
+### `def _get_by_id(self, context, model, id)`
+
+通过 id 获取数据库中的记录
+
 
 
 
