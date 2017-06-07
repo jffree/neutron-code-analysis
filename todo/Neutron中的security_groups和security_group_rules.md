@@ -10,13 +10,6 @@
 
 这个模块就一个类 `SecurityGroupDbMixin`，下面我们来详细讲一下这个类。
 
-## 测试命令
-
-```
-curl -s -X GET http://172.16.100.106:9696//v2.0/security-groups -H 'Content-Type: application/json' -H 'X-Auth-Token: 5f4e0cc153f64653bac02dab107e2151'
-```
-
-
 ## `class SecurityGroupDbMixin(ext_sg.SecurityGroupPluginBase)`
 
 ### `def get_security_group_rule(self, context, id, fields=None)`
@@ -211,7 +204,52 @@ curl -s -X DELETE http://172.16.100.106:9696//v2.0/security-groups/e021afac-aa12
 
 确保该 tenant 下有一个默认的安全组。若是没有的话则会创建一个
 
+### `get_security_groups`
 
+```
+def get_security_groups(self, context, filters=None, fields=None,                                                                               
+                            sorts=None, limit=None,
+                            marker=None, page_reverse=False, default_sg=False)
+```
 
+测试命令：
 
+```
+curl -s -X GET http://172.16.100.106:9696//v2.0/security-groups -H 'Content-Type: application/json' -H 'X-Auth-Token: 5f4e0cc153f64653bac02dab107e2151'
+```
 
+1. 根据分页需求调用 `_get_marker_obj` 
+2. 调用 `_get_collection` 获取信息并返回
+
+### `def get_security_groups_count(self, context, filters=None)`
+
+调用  `_get_collection_count` 获取数据库查询的结果个数
+
+### `def update_security_group_on_port(self, context, id, port, original_port, updated_port)`
+
+**更新 port 上的安全组，这个方法会在 ml2 的 `update_port` 中调用**
+
+1. 调用 `utils.compare_elements` 对比用户发送过来的 port 的安全组信息和 port 之前的安全组信息是否相同。若相同的话，则不会执行安全组的更新动作；不同的话，则更新 port 绑定的安全组。
+2. 若需要更新安全组，则调用 `_get_security_groups_on_port` 获取需要更新的安全组的信息
+3. 调用 `_delete_port_security_group_bindings` 删除 `SecurityGroupPortBingding` 数据库中的关于此 port_id 的记录
+4. 调用 `_process_port_create_security_group` 创建 `SecurityGroupPortBingding` 数据库记录
+
+### `def _get_security_groups_on_port(self, context, port)`
+
+根据用户发送过来的 port 资源的相关数据，获取用户感兴趣的安全组数据。
+
+### `def _create_port_security_group_binding(self, context, port_id,                                                                                 security_group_id)`
+
+根据 port_id 和 security_group_id 创建一条 `SecurityGroupPortBingding` 数据库记录。
+
+### `def _get_security_groups_on_port(self, context, port)`
+
+当用户没有为 port 资源绑定安全组时，调用此方法为 port 资源绑定一个默认的安全组。
+
+### `def _check_update_has_security_groups(self, port)`
+
+检查该 port（用户传递过来的数据） 是否分配了安全组来绑定。
+
+### `def _check_update_deletes_security_groups(self, port)`
+
+与 `_check_update_has_security_groups` 有细微的差别，该方法检查port（用户传递过来的数据） 有安全组选项，但是为空或者 `validators.is_attr_set` 检测失败
