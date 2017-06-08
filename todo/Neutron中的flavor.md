@@ -141,10 +141,37 @@ def get_flavor_next_provider(self, context, flavor_id,
 2. 在 `FlavorServiceProfileBinding` 记录中获取 `service_profile_id` 然后调用 `_get_service_profile` 获取 `ServiceProfile` 的数据库记录。
 3. 调用 `ServiceTypeManager` 的 `get_service_providers` 方法来获取实现此服务的驱动
 
+### `def get_flavor_service_profile(self, context,                                   service_profile_id, flavor_id, fields=None)`
 
+查询数据库 `FlavorServiceProfileBinding` 内是否存在 `service_profile_id` 和 `flavor_id` 绑定的记录，若存在则返回二者的 `id`
 
+### `def delete_flavor_service_profile(self, context,                                      service_profile_id, flavor_id)`
 
+测试方法：
 
+```
+DELETE   /v2.0/flavors/{flavor_id}/service_profiles/{profile_id}
+```
 
+查询数据库 `FlavorServiceProfileBinding` 内是否存在 `service_profile_id` 和 `flavor_id` 绑定的记录，若存在则删除此条记录
 
+### `def create_flavor_service_profile(self, context,                                      service_profile, flavor_id)`
 
+测试方法：
+
+```
+POST   /v2.0/flavors/{flavor_id}/service_profiles
+```
+1. 查询 `FlavorServiceProfileBinding` 是否已经存在 `service_profile_id` 和 `flavor_id` 绑定的记录
+2. 没有存在的话则创建记录，存在的话则引发异常
+3. 返回绑定后的 flavor 信息。
+
+# 参考
+
+其实neutron的 flavor 框架还是依赖于 Service Type 框架的。
+
+[ Neutron/FlavorFramework ](https://wiki.openstack.org/wiki/Neutron/FlavorFramework)
+
+[ Neutron/ServiceTypeFramework ](https://wiki.openstack.org/wiki/Neutron/ServiceTypeFramework)
+
+[ OpenStack网络指南（18）负载均衡服务（LBaaS） ](http://blog.csdn.net/fyggzb/article/details/53924976)
