@@ -4,16 +4,16 @@
 
 * 模块
 
-*neutron/plugins/ml2/managers.py*
+_neutron/plugins/ml2/managers.py_
 
 * 配置文件：
 
-*/etc/neutron/neutron.conf*
-*/etc/neutron/plugins/ml2/ml2_conf.ini*
+_/etc/neutron/neutron.conf_  
+_/etc/neutron/plugins/ml2/ml2\_conf.ini_
 
 * neutron 包信息文件
 
-*setup.cfg*
+_setup.cfg_
 
 ## `__init__` 方法
 
@@ -22,24 +22,13 @@
 3. 调用 `_check_tenant_network_types` 检查当前加载的网络类型中是否支持租户的网络类型（`cfg.CONF.ml2.tenant_network_types`）
 4. 调用 `_check_external_network_type` 检查是否支持外网默认的网络类型（`cfg.CONF.ml2.external_network_type`）
 
-*关于具体的配置信息，请大家参考手册。*
+_关于具体的配置信息，请大家参考手册。_
 
 ## `def _register_types(self)`
 
 ## `def _check_tenant_network_types(self, types)`
 
 ## `def _check_external_network_type(self, ext_network_type)`
-
-
-
-
-
-
-
-
-
-
-
 
 
 
