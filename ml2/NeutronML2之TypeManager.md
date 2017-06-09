@@ -30,5 +30,7 @@ _关于具体的配置信息，请大家参考手册。_
 
 ## `def _check_external_network_type(self, ext_network_type)`
 
+## `def initialize(self)`
 
+调用所有的驱动模块的 `initialize` 方法
 

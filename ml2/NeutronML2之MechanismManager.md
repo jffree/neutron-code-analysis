@@ -26,3 +26,34 @@
 ## `def is_host_filtering_supported(self)`
 
 循环调用驱动的 `is_host_filtering_supported` 方法，判断该驱动是否重写了 `filter_hosts_with_segment_access` 方法，若是驱动重写了该方法，则表示该驱动支持 **host filtering**，否则则是不支持。
+
+## `def initialize(self)`
+
+调用所有的驱动模块的 `initialize` 方法
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
