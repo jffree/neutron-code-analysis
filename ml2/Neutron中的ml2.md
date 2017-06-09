@@ -55,7 +55,7 @@
 
 * 订阅 `segment` 资源的 `precommit_create`、 `precommit_delete`、`after_create`、 `after_delete` 的回调事件 `_handle_segment_change`
 
-* `_setup_dhcp`：加载 将网络调度到 dhcp agent 的驱动；设定每个一段时间检查 dhcp agent 的状态
+* `_setup_dhcp`：加载网络调度驱动 `cfg.CONF.network_scheduler_driver` ；设定每个一段时间检查 dhcp agent 的状态
 
 * `_start_rpc_notifiers` 创建 ml2 的 rpc 客户端（`AgentNotifierApi`、`DhcpAgentNotifyAPI`）
 
