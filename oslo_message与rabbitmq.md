@@ -273,5 +273,6 @@ test    <rabbit@wlw.3.476.0>    1       true    0       []
 4. server 端创建三个 queue 和6个 bind，一个用来接收广播消息（所有的接受者），一个用来接收组消息（多个接收者），一个用来接收指定消息（单个接收者）
 5. client 端创建一个 queue 和两个 bind，用来接收指定消息
 
+# 参考
 
-
+[oslo.messaging组件的学习之call方法](http://bingotree.cn/?p=207)
