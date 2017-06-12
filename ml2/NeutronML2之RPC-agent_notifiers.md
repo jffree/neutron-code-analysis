@@ -33,11 +33,13 @@ class AZDhcpAgentSchedulerDbMixin(DhcpAgentSchedulerDbMixin,
 
 ## `AZDhcpAgentSchedulerDbMixin` 与 `NetworkAvailabilityZoneMixin` 
 
-这俩类与 `network_availability_zone` 有关 
+这俩类用于实现 WSGI 中的 `network_availability_zone` 
 
-## ``
+## `DhcpAgentSchedulerDbMixin` 与 `DhcpAgentSchedulerPluginBase`
 
+这俩类用于实现 WSGI 中的 `dhcp agent scheduler` 
 
+##
 
 
 
