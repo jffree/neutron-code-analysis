@@ -11,7 +11,7 @@
 
 `agent_notifiers` 是在 `AgentSchedulerDbMixin` 这个类中定义的。
 
-这个类位于 *neutron/db/agentsschedulers_db.py*
+这个类位于 *neutron/db/agentschedulers_db.py*
 
 我们来看一下这个模块中的继承关系：
 
@@ -28,6 +28,23 @@ class AZDhcpAgentSchedulerDbMixin(DhcpAgentSchedulerDbMixin,
 
 关于 `agents_db.AgentDbMixin` 请参考我写的 **Neutron WSGI 中的 agent**
 
-我们从底向上看：
+关于 `network_availability_zone` 请参考我写的 **Neutron WSGI 之 network_availability_zone**
+
 
 ## `AZDhcpAgentSchedulerDbMixin`
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

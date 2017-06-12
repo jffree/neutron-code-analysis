@@ -1,6 +1,6 @@
 # neutron db 中的公共方法
 
-neutron db 中使用的公共方法在 *neutron/db/mixin.py* 中被封装成了一个类：`CommonDbMixin`
+neutron db 中使用的公共方法在 *neutron/db/common_db_mixin.py* 中被封装成了一个类：`CommonDbMixin`
 
 我们来慢慢的看这个类
 
