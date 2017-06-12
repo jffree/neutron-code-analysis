@@ -31,7 +31,11 @@ class AZDhcpAgentSchedulerDbMixin(DhcpAgentSchedulerDbMixin,
 关于 `network_availability_zone` 请参考我写的 **Neutron WSGI 之 network_availability_zone**
 
 
-## `AZDhcpAgentSchedulerDbMixin`
+## `AZDhcpAgentSchedulerDbMixin` 与 `NetworkAvailabilityZoneMixin` 
+
+这俩类与 `network_availability_zone` 有关 
+
+## ``
 
 
 
