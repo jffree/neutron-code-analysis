@@ -233,3 +233,7 @@ class AgentAvailabilityZoneMixin(az_ext.AvailabilityZonePluginBase):
 ```
 
 这里看的比较清楚了，`get_availability_zones` 方法会调用 `_list_availability_zones`，`_list_availability_zones` 会访问 `agents` 的数据库来获取数据，这也是我们开始两个实验的目的。
+
+# 参考
+
+[OpenStack Neutron Availability Zone 简介](https://www.ibm.com/developerworks/cn/cloud/library/1607-openstack-neutron-availability-zone/)

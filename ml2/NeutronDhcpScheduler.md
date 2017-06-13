@@ -77,7 +77,27 @@ class BaseScheduler(object):
 
 从这里看，最重要的还是 `resource_filter`，也就是 `DhcpFilter()`
 
-### `class DhcpFilter(base_resource_filter.BaseResourceFilter)`
+## `class DhcpFilter(base_resource_filter.BaseResourceFilter)`
+
+### `def _get_dhcp_agents_hosting_network(self, plugin, context, network)`
+
+1. 获取配置 `cfg.CONF.dhcp_agents_per_network` 该配置用于指定每个网络可以绑定到几个 dhcp agent 上面，默认为 1。
+2. 调用 `plugin.get_dhcp_agents_hosting_networks` 也就是 `DhcpAgentSchedulerDbMixin.get_dhcp_agents_hosting_networks` 根据 `network_ids` 和 `hosts` 获取与之绑定的处于活动状态的 agent
+3. 若是已经绑定的 `hosts` 的数量大于配置中设定的数量，则返回空
+4. 若是小于则返回已经绑定的 agents
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
