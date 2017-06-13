@@ -153,19 +153,13 @@ class DhcpAgentSchedulerDbMixin(dhcpagentscheduler
         self.add_periodic_dhcp_agent_status_check()
 ```
 
+在 */etc/neutron/neutron.conf* 中，我们可以找到这个调度驱动的选项：
 
+```
+network_scheduler_driver = neutron.scheduler.dhcp_agent_scheduler.WeightScheduler
+```
 
-
-
-
-
-
-
-
-
-
-
-
+剩下的请参考：**Neutron Dhcp Scheduler**
 
 ### `def _filter_bindings(self, context, bindings)`
 
@@ -239,6 +233,3 @@ def reschedule_resources_from_down_agents(self, agent_type,
 ```
 
 对于已经死掉的 agent 上的资源进行重新调度，这个方法在 l3 agent 上用到，到时候我们再讲。
-
-
-### ``
