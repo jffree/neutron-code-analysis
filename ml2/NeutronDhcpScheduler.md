@@ -28,19 +28,7 @@ class WeightScheduler(base_scheduler.BaseWeightScheduler, AutoScheduler):
 
 在 *neutron/scheduler/base_scheduler.py* 中：
 
-```
-class BaseWeightScheduler(BaseScheduler):
-    """Choose agents based on load."""
- 
-    def __init__(self, resource_filter):
-        self.resource_filter = resource_filter
- 
-    def select(self, plugin, context, resource_hostable_agents,
-               resource_hosted_agents, num_agents_needed):
-        chosen_agents = sorted(resource_hostable_agents,
-                           key=attrgetter('load'))[0:num_agents_needed]
-        return chosen_agents 
-```
+## `class BaseScheduler(object)`
 
 ```
 @six.add_metaclass(abc.ABCMeta)
@@ -74,8 +62,31 @@ class BaseScheduler(object):
         return chosen_agents
 ```
 
+抽象基类，主要看一下 `schedule` 方法的实现：
 
-从这里看，最重要的还是 `resource_filter`，也就是 `DhcpFilter()`
+1. 调用 `self.resource_filter.filter_agents` 选择可以绑定 resource 的 agent
+2. 调用 `self.select` 对刚才获取的 agent 列表进行一个排序选择
+3. 调用 `self.resource_filter.bind` 进行 resource 与 agent 的绑定
+
+## `class BaseWeightScheduler(BaseScheduler)`
+
+```
+class BaseWeightScheduler(BaseScheduler):
+    """Choose agents based on load."""
+ 
+    def __init__(self, resource_filter):
+        self.resource_filter = resource_filter
+ 
+    def select(self, plugin, context, resource_hostable_agents,
+               resource_hosted_agents, num_agents_needed):
+        chosen_agents = sorted(resource_hostable_agents,
+                           key=attrgetter('load'))[0:num_agents_needed]
+        return chosen_agents 
+```
+
+`BaseWeightScheduler` 实现了 `BaseScheduler` 的 `select` 方法，就是根据 agent 的 `load` 属性进行排序。这里的 `load` 是指该 agent 的负载，即该 agent 已经绑定了多少个 network。
+
+* 从这里看，最重要的还是 `resource_filter`，也就是 `DhcpFilter()`
 
 ## `class DhcpFilter(base_resource_filter.BaseResourceFilter)`
 
@@ -86,19 +97,31 @@ class BaseScheduler(object):
 3. 若是已经绑定的 `hosts` 的数量大于配置中设定的数量，则返回空
 4. 若是小于则返回已经绑定的 agents
 
+### `def _get_active_agents(self, plugin, context, az_hints)`
 
+根据 `agent_type:'DHCP agent'` 、`admin_state_up:True`、`availability_zone=az_hints` 调用 `plugin.get_agents_db` 来获取活动的 dhcp agent
 
+### `def _filter_agents_with_network_access(self, hostable_agents, plugin, context, network)`
 
+在 `hostable_agents` 中过滤出来可挂载该 network 的 dhcp agent
 
+### `def _get_network_hostable_dhcp_agents(self, plugin, context, network)`
 
+1. 调用 `_get_dhcp_agents_hosting_network` 获取该 network 已经绑定的 agent
+2. 调用 `_get_active_agents` 获取已启动的 dhcp agent
+3. 在活动的 dhcp agent 列表中获取那些未绑定该 network 且活动的 dhcp agent
+4. 调用 `_filter_agents_with_network_access` 对 dhcp agent 做进一步的过滤操作
+5. 返回结果：`{'n_agents': n_agents, 'hostable_agents': hostable_dhcp_agents,                'hosted_agents': hosted_agents} `，启动 `n_agents` 指可以绑定的 agent 数量；`hostable_agents` 指可以绑定的 agent；`hosted_agents`指已经绑定的 agent
 
+### `def filter_agents(self, plugin, context, network)`
 
+直接调用 `_get_network_hostable_dhcp_agents`
 
+### `def bind(self, context, agents, network_id)`
 
+1. 根据 `agents` 和 `network_id` 创建 `NetworkDhcpAgentBinding` 的数据库记录（绑定记录）
+2. 调用 `super(DhcpFilter, self).bind(context, bound_agents, network_id)` 更新这些 agents 的负载 `load+1`。
 
+# 参考
 
-
-
-
-
-
+[OpenStack Neutron Availability Zone 简介](https://www.ibm.com/developerworks/cn/cloud/library/1607-openstack-neutron-availability-zone/)
