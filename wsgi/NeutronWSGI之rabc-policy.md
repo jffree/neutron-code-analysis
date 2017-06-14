@@ -51,3 +51,7 @@ curl -s -X GET http://172.16.100.106:9696//v2.0/rbac-policies/f45714ee-4e51-452b
 curl -s -X GET http://172.16.100.106:9696//v2.0/rbac-policies -H 'Content-Type: application/json' -H 'X-Auth-Token: 939fa920fdf34003b502cd7a8141f109' | jq
 ```
 直接调用 `_get_collection` 方法获取结果
+
+# 参考
+
+[Neutron RBAC-network 介绍](https://www.ibm.com/developerworks/cn/cloud/library/cl-cn-neutronRBACnetwork/index.html)
