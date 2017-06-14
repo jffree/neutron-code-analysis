@@ -132,3 +132,13 @@ def _get_rpc_workers():
                                           fanout=False)
         return self.conn_reports.consume_in_threads()
 ```
+
+## ML2 中的 RPC server
+
+* 在 `start_rpc_listeners` 中我们可以看到创建了这么几个 server：
+ 1. **topic**：`q-plugin`；**endpoints**：`self.endpoints`；**fanout**:`False`
+ 2. **topic**：`q-server-resource-versions`；**endpoints**：`resources_rpc.ResourcesPushToServerRpcCallback()`；**fanout**:`True`
+ 3. **topic**：`q-reports-plugin`；**endpoints**：`agents_db.AgentExtRpcCallback()`；**fanout**:`False`
+
+* 在 `start_rpc_state_reports_listener` 方法中：
+ 1. **topic**：`q-reports-plugin`；**endpoints**：`agents_db.AgentExtRpcCallback()`；**fanout**:`False`
