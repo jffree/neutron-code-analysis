@@ -28,6 +28,10 @@
 * [Neutron中的plugin的加载流程](Neutron中的plugin的加载流程.md)
 * [neutron中的policy](neutron中的policy.md)
 * [neutron中的quota](neutron中的quota.md)
+* [neutron中的资源属性管理](neutron中的资源属性管理.md)
+* [neutron中的进程管理](neutron中的进程管理.md)
+* [Neutron之CallbackSystem](Neutron之CallbackSystem.md)
+* [oslo\_service分析](oslo_service分析.md)
 
 ## extension
 
@@ -39,4 +43,6 @@
 ## RPC
 
 * [neutron中的common.rpc模块](neutron中的common.rpc模块.md)
+* [oslo\_message与rabbitmq](oslo_message与rabbitmq.md)
+* [oslo\_messaging中的Notifier在neutron中的使用](oslo_messaging中的Notifier在neutron中的使用.md)
 
