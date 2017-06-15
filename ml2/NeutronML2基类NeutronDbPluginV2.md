@@ -123,7 +123,9 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 
 调用 sqlalchemy 的 `outerjoin` 方法，与 `Network` 模型进行联合查询
 
-## 类属性
+## `NeutronDbPluginV2`
+
+### 类属性
 
 ```
     __native_bulk_support = True
@@ -133,7 +135,7 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 
 这表明支持批量、分页、排序操作。
 
-## `def __init__(self)`
+### `def __init__(self)`
 
 1. 定义 ipam 后端（关于ipam，请参考我写的 **Neutron 之 IPAM**）
 2. 若在配置文件中设置了 `notify_nova_on_port_status_changes`，则会监听几个数据库事件：
@@ -146,6 +148,15 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
  3. self.validate_network_rbac_policy_change,rbac_mixin.RBAC_POLICY, events.BEFORE_DELETE
 
 
+### `def validate_network_rbac_policy_change(self, resource, event, trigger, context, object_type, policy, **kwargs)`
+
+回调函数，用于接收 rbac_policy 资源的变化。
+
+1. 只关心在 network 资源上的 access_as_shared 动作
+2. 对于资源的创建和删除来说，用户必须有对应的权限
+3. 对于资源的创建和删除来说，若是改变了可访问资源的 tenant，则需要调用 `ensure_no_tenant_ports_on_network` 来检查是否还有改租户的 port 资源绑定在这个网络资源上。
+
+### `def ensure_no_tenant_ports_on_network(self, network_id, net_tenant_id, tenant_id)`
 
 
 
@@ -158,10 +169,9 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 
 
 
+# 参考
 
-
-
-
+[ Mysql left join，right join，inner join，outer join之图解 ](http://narutolby.iteye.com/blog/1893506)
 
 
 
