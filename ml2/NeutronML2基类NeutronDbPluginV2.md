@@ -16,6 +16,37 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 
 这个类实现了 ML2 所需要的大部分公共，其子类 `Ml2Plugin` 也是在此基础上提供其他一些 extension 的功能。
 
+我们先来看 `DbBasePluginCommon` 这个类：
+
+## `class DbBasePluginCommon(common_db_mixin.CommonDbMixin)`
+
+`common_db_mixin.CommonDbMixin` 这个是数据库操作的公共方法类，我介绍过这个模块了。
+
+### `def _generate_mac()`
+
+调用 `utils.get_random_mac` 在 `cfg.CONF.base_mac` 基础上产生 mac 地址
+
+### `def _get_network(self, context, id)`
+
+调用公共方法里面的 `_get_by_id` 查询 `models_v2.Network` 数据库
+
+### `def _get_subnet(self, context, id)`
+
+调用公共方法里面的 `_get_by_id` 查询 `models_v2.Subnet` 数据库
+
+### `def _get_subnetpool(self, context, id)`
+
+
+### `def _get_port(self, context, id)`
+
+调用公共方法里面的 `_get_by_id` 查询 `models_v2.Port` 数据库
+
+### ``
+
+
+
+
+
 ## 类属性
 
 ```
