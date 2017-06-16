@@ -158,10 +158,52 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 
 ### `def ensure_no_tenant_ports_on_network(self, network_id, net_tenant_id, tenant_id)`
 
+1. 根据 `network_id` 查询 `NetworkRBAC` 数据库
+2. 根据 `network_id` 查询 `Port` 数据库
+3. 查询该 `tenant_id` 租户下否有 `port` 资源绑定在这个 `network` 上，有的话则引发异常。
+
+### `def get_network(self, context, id, fields=None)`
+
+从这里开始，我们开始接触核心资源的 WSGI 接口
+
+1. 调用 `DbBasePluginCommon._get_network` 获取数据库记录
+2. 调用 `_make_network_dict` 将数据库记录转化为字典形式
+
+### `def get_networks(self, context, filters=None, fields=None, sorts=None, limit=None, marker=None, page_reverse=False)`
+
+1. 构造 Maker
+2. 调用 `_get_collection` 进行数据库查询，并返回字典格式
+
+### `def get_networks_count(self, context, filters=None)`
+
+调用 `_get_collection_count` 返回过滤后的网络资源数量
+
+### `def delete_network(self, context, id)`
+
+1. 调用 `_get_network` 获取数据库记录
+2. 查询该 network 上是否有再使用的 port（非 dhcp），若是有的话则引发异常
+3. 调用 `_get_subnets_by_network` 获取与该网络绑定的子网
+4. 循环调用 `delete_subnet` 删除该网络下的所有子网 
+
+### `def delete_subnet(self, context, id)`
+
+1. 调用 `_get_subnet` 获取数据库记录
+2. 调用 `_check_subnet_not_used` 判断该子网是否被使用
 
 
 
 
+
+## 其他方法
+
+### `def _check_subnet_not_used(context, subnet_id)`
+
+调用 `registry.notify` 发送调用订阅程序
+
+```
+registry.notify(
+            resources.SUBNET, events.BEFORE_DELETE, None, **kwargs)
+```
 
 
 
