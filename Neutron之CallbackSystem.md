@@ -232,6 +232,20 @@ def _get_id(callback):
 
 为 `callback` 获取一个独一无二的字符串名称。
 
+# 测试
+
+想要一个个记住这个资源、事件与回调方法的关系太困难了，我这里写了一个方法，大家把它放在个合适的地方，比如说 `get_network` 方法里面，然后发起了 `openstack network list` 的请求，就可以在 `/tmp/callbacks` 看到所有的对应了：
+
+```
+def get_all_callbacks():
+    cm = registry._get_callback_manager()    file_object = open('/tmp/callbacks', 'w+')
+    file_object.writelines("wlw============================Start Get CallbacksManager._callbacks\n")    file_object.writelines("resource, event, callback, callback_id\n")
+    for resource in cm._callbacks:        for event in cm._callbacks[resource]:
+            for callback_id in cm._callbacks[resource][event]:                file_object.writelines("%s, %s, %s, %s\n" % (resource, event, cm._callbacks[resource][event][callback_id], callback_id))    file_object.writelines('wlw============================End Get CallbacksManager._callbacks')
+    file_object.close()
+``` 
+
+
 # 参考
 
 [Neutron Callback System](https://docs.openstack.org/developer/neutron-lib/devref/callbacks.html)
