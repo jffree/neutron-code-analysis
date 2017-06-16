@@ -185,6 +185,32 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 3. 调用 `_get_subnets_by_network` 获取与该网络绑定的子网
 4. 循环调用 `delete_subnet` 删除该网络下的所有子网 
 
+### `def update_network(self, context, id, network)`
+
+1. 调用 `_get_network` 获取网络信息
+2. 当要更新 network 的 shared 属性时，需要对该 network 的 rbac 规则进行检查
+ 1. 调用 `_validate_shared_update` 验证 share 属性是否可以被更新
+ 2. 若 share 要被更新为 true，则会创建
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### `def _validate_shared_update(self, context, id, original, updated)`
+
+验证是否可以更新 network 资源的 shared 属性
+
+当想要更新 shared 为 false 时，若有多个租户在使用这个 network 资源，则不可以更新，引发异常。
+
 ### `def delete_subnet(self, context, id)`
 
 1. 调用 `_get_subnet` 获取数据库记录
@@ -201,6 +227,7 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 ### `def _subnet_check_ip_allocations(self, context, subnet_id)`
 
 查询该子网上是否有 port 绑定（分配了 ip）
+
 
 
 
