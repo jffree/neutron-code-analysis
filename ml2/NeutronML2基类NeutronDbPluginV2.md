@@ -189,8 +189,18 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 
 1. 调用 `_get_subnet` 获取数据库记录
 2. 调用 `_check_subnet_not_used` 判断该子网是否被使用
+3. 将 `IPAllocation` 与 `Port` 进行联合查询，找到与该子网绑定的端口
+4. 调用 `ipv6_utils.is_auto_address_subnet` 方法，判断该子网是否是 ipv6 且自动生成 ipv6 地址的类型
+5. 若该子网是自动生成 ipv6 地址的类型，则调用 `_subnet_check_ip_allocations_internal_router_ports` 判断是否该子网是否拥有路由器用于分配 ip 的端口，若是有的话则不能删除
+6. 若该子网不是自动生成 ipv6 地址的类型，则过滤出可以自动删除的与该子网绑定的端口
+7. 删除所有可自动删除的端口
+8. 调用 `_subnet_check_ip_allocations` 查询是否还有分配了 ip 的 port 与该子网绑定，若有的话则引发异常，不能删除子网
+9. 没有其余的绑定后，删除子网的数据库记录
+10. 调用 ipam 的 `delete_subnet`
 
+### `def _subnet_check_ip_allocations(self, context, subnet_id)`
 
+查询该子网上是否有 port 绑定（分配了 ip）
 
 
 
@@ -205,7 +215,7 @@ registry.notify(
             resources.SUBNET, events.BEFORE_DELETE, None, **kwargs)
 ```
 
-
+没有找到订阅 subnet before_delete 的回调
 
 
 
