@@ -83,7 +83,9 @@ def _get_collection_query(self, context, model, filters=None,
 
 通过 id 获取数据库中的记录
 
+### `def _filter_non_model_columns(self, data, model)`
 
+根据 model 中的数据类型，过滤掉 data 中非数据库的部分
 
 
 

@@ -190,11 +190,44 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 1. 调用 `_get_network` 获取网络信息
 2. 当要更新 network 的 shared 属性时，需要对该 network 的 rbac 规则进行检查
  1. 调用 `_validate_shared_update` 验证 share 属性是否可以被更新
- 2. 若 share 要被更新为 true，则会创建
+ 2. 根据 shared 的设定进行 rbac 的规则更新
+3. 调用 `_filter_non_model_columns` 过滤掉  `network` 数据中非数据库的那部分
+4. 更新数据库
 
+### `def create_network(self, context, network)`
 
+1. 调用 `create_network_db` 
+2. 调用 `_make_network_dict` 返回字典类型的创建结果
 
+### `def create_network_db(self, context, network)`
 
+1. 创建一个 `Network` 的数据库记录
+2. 若是该 network 的 shared 为 True，则创建一条 `NetworkRBAC` 数据库记录
+
+从这里我们看出：**网络资源只是一个概念，真正的有效的是子网和端口**
+
+### `def create_network_bulk(self, context, networks)`
+
+批量创建网络，直接调用 `_create_bulk` 方法
+
+### `def _create_bulk(self, resource, context, request_items)`
+
+这个方法比较简单，就是对 `'create_%s' % resource` 的循环调用
+
+### `def get_subnet(self, context, id, fields=None)`
+
+1. 调用 `_get_subnet` 获取数据库记录
+2. 调用 `_make_subnet_dict` 将数据库记录转化为字典形式
+
+### `def get_subnets(self, context, filters=None, fields=None,                    sorts=None, limit=None, marker=None, page_reverse=False)`
+
+直接调用 `_get_subnets` 
+
+### `def _get_subnets(self, context, filters=None, fields=None, sorts=None, limit=None, marker=None, page_reverse=False)`
+
+根据过滤条件、分页、排序的要求调用 `_get_collection` 
+
+### ``
 
 
 
