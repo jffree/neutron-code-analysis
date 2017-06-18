@@ -227,7 +227,11 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 
 根据过滤条件、分页、排序的要求调用 `_get_collection` 
 
-### ``
+### `def get_subnets_count(self, context, filters=None)`
+
+根据过滤条件，调用 `_get_collection_count`，获取子网数量
+
+
 
 
 
@@ -261,7 +265,28 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 
 查询该子网上是否有 port 绑定（分配了 ip）
 
+### `def _subnet_get_user_allocation(self, context, subnet_id)`
 
+检查是否有非 `AUTO_DELETE_PORT_OWNERS` 类型的 port 与该子网绑定
+
+### `def update_subnet(self, context, id, subnet)`
+
+1. 调用 `_get_subnet` 获取数据库记录
+
+
+### `def _validate_subnet(self, context, s, cur_subnet=None)`
+
+验证新的子网数据 s 与旧子网数据 cur_subnet 是否有冲突。当 cur_subnet 为空时，验证 s 是否合法。
+
+1. 调用 `_validate_ip_version` 验证 ip 版本的设定是否合法
+2. 检查 cidr 是否符合要求：
+ 1. 网络前缀是否符合要求
+ 2. 是否为多播地址
+ 3. 是否为本地回环地址
+3. 检查子网网关设置是否合法
+ 1. 调用 `_validate_ip_version` 检查网关的ip类型是否合法
+ 2. 调用 ipam 的 `check_gateway_invalid_in_subnet` 方法，验证网关地址对于子网地址来说是否合法（在子网地址内且不为网络地址和广播地址）
+ 3. 
 
 
 ## 其他方法
@@ -284,6 +309,7 @@ registry.notify(
 # 参考
 
 [ Mysql left join，right join，inner join，outer join之图解 ](http://narutolby.iteye.com/blog/1893506)
+[netaddr 0.7.19 documentation](https://netaddr.readthedocs.io/en/latest/#netaddr-0-7-19-documentation)
 
 
 
