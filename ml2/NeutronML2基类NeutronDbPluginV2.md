@@ -272,7 +272,15 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 ### `def update_subnet(self, context, id, subnet)`
 
 1. 调用 `_get_subnet` 获取数据库记录
-
+2. 调用 `_validate_subnet` 验证数据
+3. 对于 ipv6 来说，若 `subnetpool_id` 为 `const.IPV6_PD_POOL_ID`，则自动生成 `gateway_ip` 和 `allocation_pools` 对应的数据
+4. 若数据中包含 `allocation_pools` 的数据，则调用 `ipam` 的 `pools_to_ip_range` 和 `validate_allocation_pools` 来验证数据。
+5. 当 `gateway_ip` 发生被更新时，需要调用 `ipam.validate_gw_out_of_pools` 来进行验证 gateway 是否在 pools 中。调用 `registry.notify` 发送 gateway 变更的通知（貌似还没有客户订阅这个消息）
+6. 调用 `ipam.update_db_subnet` 更新数据库
+7. 调用 `_make_subnet_dict` 生成子网的字典类型的数据
+8. 对于 ipv6 来说可能会自动更新一些与该子网绑定的 port 
+9. 更新 port 的同时可能会更新路由器信息
+10. 调用 `registry.notify` 发送网关更新完毕的消息
 
 ### `def _validate_subnet(self, context, s, cur_subnet=None)`
 
@@ -337,7 +345,9 @@ registry.notify(
 
 没有找到订阅 subnet before_delete 的回调
 
+### `def get_first_host_ip(net, ip_version)`
 
+获取 net 中的第一个可用的 ip 地址
 
 
 
