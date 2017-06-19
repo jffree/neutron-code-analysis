@@ -358,8 +358,20 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 4. 若该子网为 ipv6 且自动分配地址则调用 `ipam.add_auto_addrs_on_network_ports` 获取需要更新的 port，同时更新 port
 5. 调用 `_make_subnet_dict` 返回创建成功的 subnet 信息。
 
-
 ### `def _update_router_gw_ports(self, context, network, subnet)`
+
+这个方法要达到这么一个目的：当外部网关接口上只绑定了一定类型（ipv4/ipv6）的网络地址时，若有新的类型的子网地址加入的话，会自动在这个端口上绑定一个新类型的子网地址。
+
+1. 获取 L3 的 service plugin
+2. 获取与该网络绑定的网关接口
+3. 获取这些端口所有的 router id
+4. 查看网关地址是否为两个不同的种类，若不是的话，则增加新的这个子网种类。
+
+**注意：**当你在 horizon 上操作来尝试这个功能时，一定要在 admin 面板下的 network 下添加子网，这样在才会生效。在 project 下的 network 下添加是不会生效的。
+
+### `def create_subnet_bulk(self, context, subnets)`
+
+批量创建子网：直接调用 `_create_bulk` 方法实现。
 
 ## 其他方法
 
