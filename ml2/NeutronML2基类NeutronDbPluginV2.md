@@ -286,8 +286,43 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 3. 检查子网网关设置是否合法
  1. 调用 `_validate_ip_version` 检查网关的ip类型是否合法
  2. 调用 ipam 的 `check_gateway_invalid_in_subnet` 方法，验证网关地址对于子网地址来说是否合法（在子网地址内且不为网络地址和广播地址）
- 3. 
+ 3. 验证该 gateway 没有被分配到 port 端口上
+4. 若是子网数据 s 中包含了 `dns_nameservers`，则验证此数据是否合法
+5. 若是子网数据 s 中包含了 `host_routes`，则调用 `_validate_host_route` 验证此数据是否合法
+6. 如果为 ipv4 版本，则不可以设置 `ipv6_ra_mode` 和 `ipv6_address_mode`
+7. 若果为 ipv6Ban本，则调用 `_validate_ipv6_attributes` 来验证数据是否符合规定
 
+### `def _validate_host_route(self, route, ip_version)`
+
+验证路由记录是否合法。
+
+路由记录是个列表，列表里面是一系列的字典：
+```
+[
+  {'destination':data,
+   'nexthop':data
+  },
+  {
+   ...
+  },
+]
+```
+
+1. 验证是否为合法的网络地址和ip 地址
+2. 验证 ip 的版本是否符合要求
+
+### `def _validate_ipv6_update_dhcp(self, subnet, cur_subnet)`
+
+对于 ipv6 版本，来说若是更新子网的 `enable_dhcp` 为 False，则不允许设定 `ipv6_ra_mode` 和 `ipv6_address_mode` 两个选项。
+
+### `def _validate_ipv6_attributes(self, subnet, cur_subnet)`
+
+验证 ipv6 版本的子网数据。 subnet 代表新的（将要更新的）数据，cur_subnet 代表当前数据。
+
+1. 最是更新数据（即 cur_subnet 不为空），则调用 `_validate_ipv6_update_dhcp` 检查 dhcp 的更新是否合法
+2. 若不是更新那么就是创建，则调用 `_validate_ipv6_dhcp` 验证 subnet 的dhcp 数据是否合法
+3. 若是 `ipv6_ra_mode` 和 `ipv6_address_mode` 被同时设定，则这两个属性的数据必须系统，这里会调用 `_validate_ipv6_combination` 来验证
+4. 调用 `_validate_eui64_applicable` 验证 ipv6 的 cidr 的网络前缀是否合法，openstack 中要求必须为 64位
 
 ## 其他方法
 
