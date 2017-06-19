@@ -332,6 +332,35 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 3. 若是 `ipv6_ra_mode` 和 `ipv6_address_mode` 被同时设定，则这两个属性的数据必须系统，这里会调用 `_validate_ipv6_combination` 来验证
 4. 调用 `_validate_eui64_applicable` 验证 ipv6 的 cidr 的网络前缀是否合法，openstack 中要求必须为 64位
 
+
+### `def create_subnet(self, context, subnet)`
+
+1. `cidr` 和 `prefixlen` 不可同时提供
+2. 提供了 cidr 时，构造 cidr
+3. 调用 `_get_subnetpool_id` 查看用户是否声明了使用那个 subnetpool 
+4. 如果确认了 subnetpool_id 则调用 `ipam.validate_pools_with_subnetpool` 进行检查工作。同时，若是 ipv6，则进行 ipv6 的一些检查（`_validate_subnet`）
+5. 没有 subnetpool_id 则执行 `_validate_subnet` 进行检查
+6. 调用 `_create_subnet`
+
+### `def _get_subnetpool_id(self, context, subnet)`
+
+从创建 subnet 的请求中提取 `subnetpool_id`。（默认的或者用户提供的）
+
+若使用默认的 subnetpool 则会调用 `get_default_subnetpool` 方法
+
+`get_default_subnetpool` 方法会调用 `get_subnetpools` 来获取默认的 subnetpool
+
+### `def _create_subnet(self, context, subnet, subnetpool_id)`
+
+1. 调用 `_get_network` 来获取子网绑定的网络
+2. 调用 `ipam.allocate_subnet` 生成子网
+3. 若该子网绑定的网络的 externel 属性为 True，则调用 `_update_router_gw_ports` 更新路由信息
+4. 若该子网为 ipv6 且自动分配地址则调用 `ipam.add_auto_addrs_on_network_ports` 获取需要更新的 port，同时更新 port
+5. 调用 `_make_subnet_dict` 返回创建成功的 subnet 信息。
+
+
+### `def _update_router_gw_ports(self, context, network, subnet)`
+
 ## 其他方法
 
 ### `def _check_subnet_not_used(context, subnet_id)`
