@@ -373,6 +373,54 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 
 批量创建子网：直接调用 `_create_bulk` 方法实现。
 
+### `def get_subnetpool(self, context, id, fields=None)`
+
+调用 `_get_subnetpool` 获取数据库记录
+调用 `_make_subnetpool_dict` 构造消息体
+
+### `def get_subnetpools(self, context, filters=None, fields=None, sorts=None, limit=None, marker=None, page_reverse=False)`
+
+调用 `subnetpool_obj.SubnetPool.get_objects` 获取数据库记录
+调用 `_make_subnetpool_dict` 构造消息体
+
+### `def delete_subnetpool(self, context, id)`
+
+1. 调用 `_get_subnetpool` 获取数据库记录
+2. 调用 `_get_subnets_by_subnetpool` 判断有没有分配出去的子网
+3. 删除数据库
+
+### `def update_subnetpool(self, context, id, subnetpool)`
+
+1. 调用 `_get_subnetpool` 获取之前的数据库记录
+2. 调用 `_update_subnetpool_dict` 构造升级数据
+3. 若将此 subnetpool 升级为 default 子网池，则会调用 `_check_default_subnetpool_exists` 检查是否已经存在默认的子网池。
+4. 若旧数据有 `address_scope_id`，则会调用 `_check_subnetpool_update_allowed` 检查该地址范围是否符合要求
+5. 调用 `_validate_address_scope_id` 方法验证地址范围是否合法
+6. 升级数据库记录
+7. 若是地址范围发生了变化，则调用 `registry.notify` 发送通知，这个还真有方法在监听 `_notify_subnetpool_address_scope_update`
+8. 调用 `_apply_dict_extend_functions` 施加附加方法构造返回的结构体
+
+### `def _validate_address_scope_id(self, context, address_scope_id,                                   subnetpool_id, sp_prefixes, ip_version)`
+
+1. 检查 `is_address_scope_owned_by_tenant` 地址范围
+2. 调用 `get_ip_version_for_address_scope` 获取地址范围的 ip 版本，检查 subnetpool 的 ip 版本是否符合地址范围的版本
+3. 根据 `address_scope_id` 获取所有与之绑定的子网池，判断子网池内的地址是否出现了重叠，重叠则引发异常
+
+### `def create_subnetpool(self, context, subnetpool)`
+
+1. 若该子网池被设定为默认的，则调用 `_check_default_subnetpool_exists` 检查是否有默认的子网池存在
+2. 调用 `_validate_address_scope_id` 验证数据
+3. 创建数据库记录
+4. 返回创建结果
+
+
+
+
+
+
+
+
+
 ## 其他方法
 
 ### `def _check_subnet_not_used(context, subnet_id)`
@@ -390,6 +438,10 @@ registry.notify(
 
 获取 net 中的第一个可用的 ip 地址
 
+### `def _update_subnetpool_dict(orig_pool, new_pool)`
+
+将新的 subnetpool 数据与旧的数据对比，构造出将要升级的数据
+这里面会检查 prefix，要求更新的 prefix 的范文要比旧的大
 
 
 # 参考
