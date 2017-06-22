@@ -27,11 +27,28 @@ class NeutronDbObject(NeutronObject)
 4. 若是该类有 `has_standard_attributes` 属性且 `has_standard_attributes` 方法调用为真的话，则调用 `standardattributes.add_standard_attributes` 来更新类的 `fields`
 5. 设定 `extra_filter_names` 属性
 
+## `class NeutronDbObject(NeutronObject)`
 
+这个类是 Neutron 中所有 object 的基类
 
+### `def get_object(cls, context, **kwargs)`
 
+类方法，从数据库中提取记录，并将其转化为versioned object。
 
+`**kwargs` 是指数据库的过滤字段
 
+1. 判断 `**kwargs` 是否在对象的 `primary_keys` 和 `unique_keys` 中。
+2. 调用 `modify_fields_to_db` 实现对象名称到数据库名称的转换
+3. 调用 `get_object` （objects 中的数据库操作方法） 获取数据库记录
+4. 若存在数据库记录，则调用 `_load_object` 将数据库记录转化为 versioned object。
+
+### `def modify_fields_to_db(cls, fields)`
+
+类方法，实现对象名称到数据库字段名称的转换。（利用 `fields_need_translation` 属性）
+
+### `def _load_object(cls, context, db_obj)`
+
+实例化此 Object
 
 
 
