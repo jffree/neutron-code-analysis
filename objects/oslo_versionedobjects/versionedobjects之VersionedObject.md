@@ -49,7 +49,11 @@ obj_relationships = {}  # 对象与对象的版本关系
 
 ### `def obj_set_defaults(self, *attrs)`
 
+为对象的属性设置默认值。
 
+1. 若是 `*attr` 为 None 的话，则从 `field` 获取带有默认值的属性
+2. 若 `*attr` 不为 None 的话，则检查该属性是否有默认值
+3. 检查这些属性是否已经设置，若没有设置，则为其设置默认值。
 
 
 

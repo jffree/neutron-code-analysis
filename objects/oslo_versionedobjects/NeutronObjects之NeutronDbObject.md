@@ -49,8 +49,16 @@ class NeutronDbObject(NeutronObject)
 ### `def _load_object(cls, context, db_obj)`
 
 1. 实例化此 Object
+2. 调用 `from_db_object`
 
 
+
+
+### `def from_db_object(self, db_obj)`
+
+1. 调用 `modify_fields_from_db` 
+
+### `def modify_fields_from_db(cls, db_obj)`
 
 
 
@@ -73,6 +81,13 @@ class NeutronObject(obj_base.VersionedObject,
 
 ### `def __init__(self, context=None, **kwargs)`
 
+```
+    def __init__(self, context=None, **kwargs):
+        super(NeutronObject, self).__init__(context, **kwargs)
+        self.obj_set_defaults()
+```
+
+主要是调用 `obj_set_defaults` 为对象的属性设置默认值。
 
 ## 其他方法
 
