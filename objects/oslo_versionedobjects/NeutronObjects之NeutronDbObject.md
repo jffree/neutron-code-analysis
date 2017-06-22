@@ -48,16 +48,30 @@ class NeutronDbObject(NeutronObject)
 
 ### `def _load_object(cls, context, db_obj)`
 
-实例化此 Object
+1. 实例化此 Object
 
 
 
 
 
 
+## `NeutronObject`
 
+```
+@six.add_metaclass(abc.ABCMeta)
+class NeutronObject(obj_base.VersionedObject,
+                    obj_base.VersionedObjectDictCompat,
+                    obj_base.ComparableVersionedObject)
+```
 
+### 类属性
 
+```
+    synthetic_fields = []
+    extra_filter_names = set()
+```
+
+### `def __init__(self, context=None, **kwargs)`
 
 
 ## 其他方法
