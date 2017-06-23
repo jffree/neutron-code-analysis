@@ -14,7 +14,9 @@ class NeutronDbObject(NeutronObject)
 3. `fields_no_update` 更新操作时不需要操作的属性
 4. `fields_need_translation` 属性在 object 里面的名称与在 db 里面名称的对应关系（`{'field_name_in_object': 'field_name_in_db'}`）
 5. `unique_keys` 代表着数据库中独一无二的字段
-6. `extra_filter_names` 
+6. `extra_filter_names`
+7. `synthetic_fields` 标记着与当前 object 有关系的其他 object（也就是数据库中的一对一、一对多、多对多的关系 `orm.relationship`）。
+8. `_changed_fields`，若对该 object 的某一属性设置过值，则会在 `_changed_fields` 属性中进行记录，调用 `obj_reset_changes` 会清除记录。 
 
 
 ## `class DeclarativeObject(abc.ABCMeta)`
@@ -49,21 +51,43 @@ class NeutronDbObject(NeutronObject)
 ### `def _load_object(cls, context, db_obj)`
 
 1. 实例化此 Object
-2. 调用 `from_db_object`
-
-
-
+2. 调用 `from_db_object` 将数据库记录转化为 versioned object。
+3. 从数据库会话中去掉实例（数据库中还是存在的）。
 
 ### `def from_db_object(self, db_obj)`
 
 1. 调用 `modify_fields_from_db` 将数据库记录转化为 object 记录。
-2. 
+2. 调用 `load_synthetic_db_fields` 加载与当前对象有关系的 object（`synthetic_fields`）。
+3. 设置 `_captured_db_model` 属性
+4. 调用 `obj_reset_changes` 清除所有的被改变过属性的记录。
 
 ### `def modify_fields_from_db(cls, db_obj)`
 
 提取数据库记录的数据，并根据 `fields_need_translation` 将数据库名称转换为 object 名称。
 
 ### `def load_synthetic_db_fields(self, db_obj=None)`
+
+处理 `synthetic_fields` 中保存的该 object 与其他 object 的对应关系。
+
+在这里会加载与该 object 有关的其他 object。
+
+### `def obj_reset_changes(self, fields=None, recursive=False)`
+
+清除 `_changed_fields` 的记录。
+
+1. 若设置了 `recursive` 为 True，则对于该 object 有关系的 object 也执行 `obj_reset_changes` 操作。
+2. 若 `fields` 不为空，则之删除 `fields` 记录。
+3. 若 `fields` 为空，则删除所有记录。
+
+### `def obj_get_changes(self)`
+
+调用 `obj_what_changed` 获取当前 object 被改变的属性。
+返回被改变的属性，及其该属性的当前值。
+
+### `def obj_what_changed(self)`
+
+返回当前 object 被修改的属性名称，若是与该 object 相关的 object 的属性也被修改过的话，则相关 object 的名称也要加入到其中。
+
 
 
 
