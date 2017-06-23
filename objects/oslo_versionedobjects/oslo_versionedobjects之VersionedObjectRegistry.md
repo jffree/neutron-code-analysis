@@ -111,6 +111,14 @@ _registry = None
 setattr(cls, name, property(getter, setter, deleter))
 ```
 
+* 在每个属性的 `setter` 方法里面，有这么一句：
+
+```
+self._changed_fields.add(name)
+```
+
+这句话意味着，每次给这个属性设置新值的时候都会在 `_changed_fields` 增加一个记录。
+
 ## 总结（技巧）
 
 1. 在 `__new__` 方法中，保证了类变量 `_registry` 的唯一性

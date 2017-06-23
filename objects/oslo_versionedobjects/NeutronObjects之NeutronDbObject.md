@@ -56,10 +56,14 @@ class NeutronDbObject(NeutronObject)
 
 ### `def from_db_object(self, db_obj)`
 
-1. 调用 `modify_fields_from_db` 
+1. 调用 `modify_fields_from_db` 将数据库记录转化为 object 记录。
+2. 
 
 ### `def modify_fields_from_db(cls, db_obj)`
 
+提取数据库记录的数据，并根据 `fields_need_translation` 将数据库名称转换为 object 名称。
+
+### `def load_synthetic_db_fields(self, db_obj=None)`
 
 
 
