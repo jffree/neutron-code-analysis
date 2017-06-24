@@ -186,4 +186,35 @@ class AutoTypedField(Field):
 
 ### `class DictProxyField(object)`
 
+# 重点
+
+**说明：** Object 对象类似于数据库中的记录，是可以有对应关系的（一对一，一对多），我们在 object 中称为父对象和子对象。
+
+若父对象与子对象是一对一关系，则子对象会在父对象中占据一个 field，用 `ObjectField` 表示。
+
+若父对象与子对象是一对多关系，则子对象会在父对象中占据一个 field，用 `ListOfObjectsField` 表示。
+
+## `class ObjectField(AutoTypedField)`
+
+```
+class ObjectField(AutoTypedField):
+    def __init__(self, objtype, subclasses=False, **kwargs):
+        self.AUTO_TYPE = Object(objtype, subclasses)
+        self.objname = objtype
+        super(ObjectField, self).__init__(**kwargs)
+```
+
+## `class ListOfObjectsField(AutoTypedField)` 
+
+```
+class ListOfObjectsField(AutoTypedField):
+    def __init__(self, objtype, subclasses=False, **kwargs):
+        self.AUTO_TYPE = List(Object(objtype, subclasses))
+        self.objname = objtype
+        super(ListOfObjectsField, self).__init__(**kwargs)
+```
+
+## `class Object(FieldType)`
+
+### ``
 

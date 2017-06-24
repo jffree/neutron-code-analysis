@@ -147,6 +147,8 @@ obj_relationships = {}  # 对象与对象的版本关系
 
 主要是调用 `_obj_make_obj_compatible` 对单个的 field 来实现版本转换
 
+这里需要转换的 field 是 `ObjectField` 或者 `ListOfObjectsField`，也就是与本 object 有关的其他 object（我们成为子 object）。
+
 ### `def _obj_make_obj_compatible(self, primitive, target_version, field)`
 
 ```
@@ -168,7 +170,11 @@ obj_relationships = {}  # 对象与对象的版本关系
             del primitive[field]
 ```
 
+### `def _obj_relationship_for(self, field, target_version)`
 
+获得当前 object 与 `field` 所代表的子 object 的版本关系。
+
+**请参考：** `obj_relationships` 属性的说明。
 
 ## 其他方法
 
@@ -180,11 +186,20 @@ def _get_attrname(name):
     return '_obj_' + name
 ```
 
+### `def _get_subobject_version(tgt_version, relationships, backport_func)`
 
+* `tgt_version`：父对象的目标版本
+* `relationships`：父对象与子对象的版本关系
+* `backport_func`：获取子目标版本后，调用该方法处理子目标版本
 
+请参考 `obj_relationships` 属性的说明。
 
+### `def _do_subobject_backport(to_version, parent, field, primitive)`
 
+* `to_version`：子目标版本
+* `parent`：父对象实例
+* `field`：子对象在父对象中的 field
+* `primitive`：父对象所有的 primitive 类型的 field
 
-
-
-
+1. 获取子对象实例
+2. 从父对象中获取 `manifest`
