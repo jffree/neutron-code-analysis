@@ -33,6 +33,10 @@ class NeutronDbObject(NeutronObject)
 
 这个类是 Neutron 中所有 object 的基类
 
+### `def db_obj(self)`
+
+返回该 object 是从哪个数据库记录转化来的，也就是返回 `_captured_db_model` 属性
+
 ### `def get_object(cls, context, **kwargs)`
 
 类方法，从数据库中提取记录，并将其转化为versioned object。
@@ -88,6 +92,44 @@ class NeutronDbObject(NeutronObject)
 
 返回当前 object 被修改的属性名称，若是与该 object 相关的 object 的属性也被修改过的话，则相关 object 的名称也要加入到其中。
 
+### `def get_objects(cls, context, _pager=None, validate_filters=True, **kwargs)`
+
+获取数据库中的多个对象。
+
+1. _pager 用于分页和排序
+2. validate_filters 为 true 时，检测过滤参数（`**kwargs`）是否正确
+
+1. 调用 `validate_filters` 验证数据库过滤参数
+2. 调用 `modify_fields_to_db` 将 object 的属性转化为数据库认识的属性
+3. 调用数据库方法 `obj_db_api.get_objects` 获取查询结果
+4. 调用 `_load_object` 将所有查询到的结果转化为 versioned object
+
+### `def modify_fields_to_db(cls, fields)`
+
+将对象形式的 fields 转化为数据库形式的 fields，主要和 `fields_need_translation` 属性有关
+
+### `def is_accessible(cls, context, db_obj)`
+
+根据 context 判断是否有权限访问这个数据库记录（`db_obj`）
+
+### `def filter_to_str(value)`
+
+将 value 转化为字符串格式
+
+```
+    @staticmethod
+    def filter_to_str(value):
+        if isinstance(value, list):
+            return [str(val) for val in value]
+        return str(value)
+```
+
+### ``
+
+
+
+
+
 
 
 
@@ -116,6 +158,36 @@ class NeutronObject(obj_base.VersionedObject,
 ```
 
 主要是调用 `obj_set_defaults` 为对象的属性设置默认值。
+
+### `def validate_filters(cls, **kwargs)`
+
+验证过滤参数是否正确
+
+### `def create(self)`
+
+创建数据库记录
+
+1. 调用 `_get_changed_persistent_fields` 获取被改变了的 field
+2. 调用 `modify_fields_to_db` 将 object 的 field 转化为数据库识别的字段
+3. 调用数据库方法 `obj_db_api.create_object` 创建数据库记录
+4. 若数据库记录创建成功，则调用 ``
+
+
+### `def _get_changed_persistent_fields(self)`
+
+获取被修改过的 field，在其中排除非本 object 对应数据库的字段
+
+```
+    def _get_changed_persistent_fields(self):
+        fields = self.obj_get_changes()
+        for field in self.synthetic_fields:
+            if field in fields:
+                del fields[field]
+        return fields
+```
+
+
+
 
 ## 其他方法
 

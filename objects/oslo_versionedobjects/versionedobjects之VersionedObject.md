@@ -55,6 +55,65 @@ obj_relationships = {}  # 对象与对象的版本关系
 2. 若 `*attr` 不为 None 的话，则检查该属性是否有默认值
 3. 检查这些属性是否已经设置，若没有设置，则为其设置默认值。
 
+### `def obj_name(cls)`
+
+类方法：
+
+```
+    @classmethod
+    def obj_name(cls):
+        return cls.__name__
+```
+
+### `def __repr__(self)`
+
+### `def __contains__(self, name)`
+
+```
+    def __contains__(self, name):
+        try:
+            return self.obj_attr_is_set(name)
+        except AttributeError:
+            return False
+```
+
+### `def to_json_schema(cls)`
+
+获取 json 格式的 schema
+
+### `def _obj_primitive_key(cls, field)`
+
+```
+    @classmethod
+    def _obj_primitive_key(cls, field):
+        return '%s.%s' % (cls.OBJ_SERIAL_NAMESPACE, field)
+```
+
+### `def obj_clone(self)`
+
+```
+    def obj_clone(self):
+        """Create a copy."""
+        return copy.deepcopy(self)
+```
+
+### `def __deepcopy__(self, memo)`
+
+1. 拷贝 context
+2. 拷贝已经设置的 object 属性
+3. 拷贝 changed_fields
+
+### `def obj_context(self)`
+
+属性方法，返回 context
+
+
+
+
+
+
+
+
 
 
 
