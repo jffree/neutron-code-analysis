@@ -14,7 +14,7 @@ class NeutronDbObject(NeutronObject)
 3. `fields_no_update` 更新操作时不需要操作的属性
 4. `fields_need_translation` 属性在 object 里面的名称与在 db 里面名称的对应关系（`{'field_name_in_object': 'field_name_in_db'}`）
 5. `unique_keys` 代表着数据库中独一无二的字段
-6. `extra_filter_names`
+6. `extra_filter_names`，用户可以那这个选项进行数据的查询，但是这个选项却不可以用到数据库的查询中，在进行数据库查询前，需要将这个查询选项删除掉。
 7. `synthetic_fields` 标记着与当前 object 有关系的其他 object（也就是数据库中的一对一、一对多、多对多的关系 `orm.relationship`）。
 8. `_changed_fields`，若对该 object 的某一属性设置过值，则会在 `_changed_fields` 属性中进行记录，调用 `obj_reset_changes` 会清除记录。 
 
@@ -124,14 +124,84 @@ class NeutronDbObject(NeutronObject)
         return str(value)
 ```
 
-### ``
+### `def create(self)`
+
+创建数据库记录
+
+1. 调用 `_get_changed_persistent_fields` 获取被改变了的 field
+2. 调用 `modify_fields_to_db` 将 object 的 field 转化为数据库识别的字段
+3. 调用数据库方法 `obj_db_api.create_object` 创建数据库记录
+4. 若数据库记录创建成功，则调用 `from_db_object`加载新创建的数据库记录的属性（也就是当前的 object 要和新的数据库记录关联起来了）。
 
 
+### `def _get_changed_persistent_fields(self)`
 
+获取被修改过的 field，在其中排除非本 object 对应数据库的字段
 
+```
+    def _get_changed_persistent_fields(self):
+        fields = self.obj_get_changes()
+        for field in self.synthetic_fields:
+            if field in fields:
+                del fields[field]
+        return fields
+```
 
+### `def update(self)`
 
+更新数据库记录
 
+1. 调用 `_get_changed_persistent_fields` 获取被改变了的 field
+2. 调用 `_validate_changed_fields` 验证是否存在不允许更新的字段
+3. 调用 `_get_composite_keys` 获取 primary key，并根据 primary key 获取数据库记录
+4. 调用 `modify_fields_to_db` 将 object 的 field 转化为数据库的字段
+5. 调用 `obj_db_api.update_object` 更新数据库记录
+
+ 
+### `def _validate_changed_fields(self, fields)`
+
+类属性 `fields_no_update` 存储着 object （数据库）不允许更新的字段
+
+该方法就是检测 fields 中是否含有了不允许更新的字段
+
+### `def _get_composite_keys(self)`
+
+获取 primary key
+
+```
+    def _get_composite_keys(self):
+        keys = {}
+        for key in self.primary_keys:
+            keys[key] = getattr(self, key)
+        return keys
+```
+
+### `def update_fields(self, obj_data, reset_changes=False)`
+
+更新 object 的 fields，而不是更新 object 对应数据库的数据。
+
+若 `reset_changes` 为 True，则调用 `obj_reset_changes` 方法清空 object 的更新记录。
+
+```
+    def update_fields(self, obj_data, reset_changes=False):
+        if reset_changes:
+            self.obj_reset_changes()
+        for k, v in obj_data.items():
+            if k not in self.fields_no_update:
+                setattr(self, k, v)
+```
+
+### `def delete(self)`
+
+1. 调用 `_get_composite_keys` 获取 primary keys
+2. 调用 `modify_fields_to_db` 将 object field 转化为数据库字段
+3. 调用 `obj_db_api.delete_object` 删除这条数据库记录
+4. 设 `_captured_db_model` 属性为空
+
+### `def count(cls, context, **kwargs)`
+
+1. 调用 `validate_filters` 验证过滤参数 `**kwargs` 是否合法
+2. 调用 `obj_db_api.count` 获取数据库查询到记录的数量
 
 ## `NeutronObject`
 
@@ -163,27 +233,34 @@ class NeutronObject(obj_base.VersionedObject,
 
 验证过滤参数是否正确
 
-### `def create(self)`
+### `def add_extra_filter_name(cls, filter_name)`
 
-创建数据库记录
+在 `extra_filter_names` 属性中增加新的项目
 
-1. 调用 `_get_changed_persistent_fields` 获取被改变了的 field
-2. 调用 `modify_fields_to_db` 将 object 的 field 转化为数据库识别的字段
-3. 调用数据库方法 `obj_db_api.create_object` 创建数据库记录
-4. 若数据库记录创建成功，则调用 ``
-
-
-### `def _get_changed_persistent_fields(self)`
-
-获取被修改过的 field，在其中排除非本 object 对应数据库的字段
+### `def _synthetic_fields_items(self)`
 
 ```
-    def _get_changed_persistent_fields(self):
-        fields = self.obj_get_changes()
+    def _synthetic_fields_items(self):
         for field in self.synthetic_fields:
-            if field in fields:
-                del fields[field]
-        return fields
+            if field in self:
+                yield field, getattr(self, field)
+```
+
+### `def is_synthetic(cls, field)`
+
+```
+    @classmethod
+    def is_synthetic(cls, field):
+        return field in cls.synthetic_fields
+```
+
+### `def is_object_field(cls, field)`
+
+```
+    @classmethod
+    def is_object_field(cls, field):
+        return (isinstance(cls.fields[field], obj_fields.ListOfObjectsField) or
+                isinstance(cls.fields[field], obj_fields.ObjectField))
 ```
 
 
