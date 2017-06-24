@@ -216,5 +216,6 @@ class ListOfObjectsField(AutoTypedField):
 
 ## `class Object(FieldType)`
 
-### ``
+### `def __init__(self, obj_name, subclasses=False, **kwargs)`
 
+1. obj_name 是指在 `VersionedObjectRegistry` 中注册的 object 类名称
