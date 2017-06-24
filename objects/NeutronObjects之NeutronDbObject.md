@@ -272,14 +272,18 @@ class NeutronObject(obj_base.VersionedObject,
 
 从 session 中分离（删除）db_obj，这是个装饰器方法
 
+### `def get_object_class_by_model(model)`
 
+从数据模型 model 获取 object 的最新类
 
+### `def get_updatable_fields(cls, fields)`
 
+获取 object （`cls`）中可更新的 field。
 
+### `def register_filter_hook_on_model(model, filter_name)`
 
-
-
-
+1. 调用 `get_object_class_by_model` 根据模型获取 object 类
+2. 调用 object 的 `add_extra_filter_name` 增加额外的过滤选项
 
 
 

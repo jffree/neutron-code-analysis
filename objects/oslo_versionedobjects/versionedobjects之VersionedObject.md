@@ -107,14 +107,66 @@ obj_relationships = {}  # 对象与对象的版本关系
 
 属性方法，返回 context
 
+### `def obj_to_primitive(self, target_version=None, version_manifest=None)`
+
+以 primitive 形式的数据来描述 object，并且允许 object 的版本转化。
+
+1. 不允许低版本向高版本转化
+2. 获取 object 所有 field 的 primitive 类型的数据
+3. 调用 `obj_make_compatible_from_manifest`
+
+### `def obj_make_compatible_from_manifest(self, primitive, target_version, version_manifest)`
+
+1. 设置 `_obj_version_manifest` 属性（`version_manifest`）
+2. 调用 `obj_make_compatible` 方法
+3. 删除 `_obj_version_manifest` 属性
 
 
+```
+    def obj_make_compatible_from_manifest(self, primitive, target_version,
+                                          version_manifest):
+        self._obj_version_manifest = version_manifest
+        try:
+            return self.obj_make_compatible(primitive, target_version)
+        finally:
+            delattr(self, '_obj_version_manifest')
+```
 
+### `def obj_make_compatible(self, primitive, target_version)`
 
+```
+    def obj_make_compatible(self, primitive, target_version)
+        for key, field in self.fields.items():
+            if not isinstance(field, (obj_fields.ObjectField,
+                                      obj_fields.ListOfObjectsField)):
+                continue
+            if not self.obj_attr_is_set(key):
+                continue
+            self._obj_make_obj_compatible(primitive, target_version, key)
+```
 
+主要是调用 `_obj_make_obj_compatible` 对单个的 field 来实现版本转换
 
+### `def _obj_make_obj_compatible(self, primitive, target_version, field)`
 
+```
+    def _obj_make_obj_compatible(self, primitive, target_version, field):
+        relationship_map = self._obj_relationship_for(field, target_version)
+        if not relationship_map:
+            # NOTE(danms): This means the field was not specified in the
+            # version manifest from the client, so it must not want this
+            # field, so skip.
+            return
 
+        try:
+            _get_subobject_version(target_version,
+                                   relationship_map,
+                                   lambda ver: _do_subobject_backport(
+                                       ver, self, field, primitive))
+        except exception.TargetBeforeSubobjectExistedException:
+            # Subobject did not exist, so delete it from the primitive
+            del primitive[field]
+```
 
 
 
