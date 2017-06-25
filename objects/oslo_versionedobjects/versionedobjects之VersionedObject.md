@@ -89,6 +89,8 @@ obj_relationships = {}  # 对象与对象的版本关系
         return '%s.%s' % (cls.OBJ_SERIAL_NAMESPACE, field)
 ```
 
+获取 object 对应的 primitive 数据的 key。
+
 ### `def obj_clone(self)`
 
 ```
@@ -112,8 +114,9 @@ obj_relationships = {}  # 对象与对象的版本关系
 以 primitive 形式的数据来描述 object，并且允许 object 的版本转化。
 
 1. 不允许低版本向高版本转化
-2. 获取 object 所有 field 的 primitive 类型的数据
-3. 调用 `obj_make_compatible_from_manifest`
+2. 获取 object 所有 field 的 primitive 类型的数据（通过调用 field 的 `to_primitive` 方法）
+3. 调用 `obj_make_compatible_from_manifest` 确定与父对象兼容的子对象的版本。
+4. 最终获取的是 object 的 primitive 类型的数据
 
 ### `def obj_make_compatible_from_manifest(self, primitive, target_version, version_manifest)`
 
@@ -145,9 +148,11 @@ obj_relationships = {}  # 对象与对象的版本关系
             self._obj_make_obj_compatible(primitive, target_version, key)
 ```
 
-主要是调用 `_obj_make_obj_compatible` 对单个的 field 来实现版本转换
+若 field 为 `ObjectField` 或者 `ListOfObjectsField`，则这个 field 代表着一个子 object。
 
-这里需要转换的 field 是 `ObjectField` 或者 `ListOfObjectsField`，也就是与本 object 有关的其他 object（我们成为子 object）。
+调用 `_obj_make_obj_compatible` 获取子对象的版本。
+
+这里兼容的意思是：子对象要与父对象兼容。所以，我们先确定父对象的版本，然后再确定子对象的版本，若还有孙对象，则再确定孙对象的版本，一级一级向下查找。
 
 ### `def _obj_make_obj_compatible(self, primitive, target_version, field)`
 
@@ -170,11 +175,30 @@ obj_relationships = {}  # 对象与对象的版本关系
             del primitive[field]
 ```
 
+1. 调用 `_obj_relationship_for` 获取父对象与子对象的版本对应关系
+2. 调用 `_get_subobject_version` 计算与父对象兼容的子对象的版本
+3. 在 `_get_subobject_version` 中调用 `_do_subobject_backport` 处理获取到的子对象的版本（主要是看盖子对象下面是否还有子对象）。
+
 ### `def _obj_relationship_for(self, field, target_version)`
 
 获得当前 object 与 `field` 所代表的子 object 的版本关系。
 
 **请参考：** `obj_relationships` 属性的说明。
+
+类似的关系如下：
+
+```
+obj_relationships = {
+     'subobject1': [('1.2', '1.1'), ('1.4', '1.2')],
+     'subobject2': [('1.2', '1.0')],
+ }
+```
+
+### `def _obj_primitive_field(cls, primitive, field,                default=obj_fields.UnspecifiedDefault)`
+
+1. primitive 是指 object 的转换后的 primitive 类型的数据
+
+获取 primitive 数据中 field 字段的所对应的数据
 
 ## 其他方法
 
@@ -201,5 +225,10 @@ def _get_attrname(name):
 * `field`：子对象在父对象中的 field
 * `primitive`：父对象所有的 primitive 类型的 field
 
-1. 获取子对象实例
-2. 从父对象中获取 `manifest`
+这个方法做了这样子的事情：
+
+调用了子 object 的 `obj_make_compatible_from_manifest`。
+
+若子对象下面还有子对象，则该方法就会重复之前的过程（获取与子对象兼容的版本，然后调用子对象的 `obj_make_compatible_from_manifest`）。
+
+在 primitive 数据中记录子对象的版本

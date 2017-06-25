@@ -10,3 +10,5 @@
  2. 创建：`create`
  3. 修改（更新）：`update`
  4. 删除：`delete`
+6. object 本身不仅可以代表数据库，每个 object 还可以转化成为 primitive 格式的数据（也就是字典类型的），primitive 类型的数据包含了 object 的所有 Field。
+7. 当然，也可以从 primitive 数据转换成为一个 object。
