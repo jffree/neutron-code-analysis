@@ -200,6 +200,31 @@ obj_relationships = {
 
 获取 primitive 数据中 field 字段的所对应的数据
 
+### `def obj_class_from_name(cls, objname, objver)`
+
+类方法，根据 object 的名称和版本获取对应的类
+
+* `objname`：object 的名称
+* `objver`：object 的版本
+
+1. 判断 `VersionedObjectRegistry.obj_classes()` 是否存在名为 objname 的对象
+2. 获取与 objver 版本一致或者兼容的类
+3. 无法获取则引发异常，可以获取则返回类
+
+### `def obj_from_primitive(cls, primitive, context=None)`
+
+从 primitive 数据中构造 object
+
+1. 获取 primitive 中的 `namespace`、`name`、`version` 属性
+2. namespace 要与本类的 `OBJ_PROJECT_NAMESPACE` 一致
+3. 调用 `obj_class_from_name` 获取 object 的类 objclass
+4. 调用 `objclass._obj_from_primitive` 构造一个新的 object
+
+### `def _obj_from_primitive(cls, context, objver, primitive)`
+
+从 primitive 数据中构造 object
+
+
 ## 其他方法
 
 ### `def _get_attrname(name)`

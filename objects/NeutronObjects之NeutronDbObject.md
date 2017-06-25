@@ -263,8 +263,16 @@ class NeutronObject(obj_base.VersionedObject,
                 isinstance(cls.fields[field], obj_fields.ObjectField))
 ```
 
+### `def clean_obj_from_primitive(cls, primitive, context=None)`
 
+1. 调用 `obj_from_primitive` 从 primitive 中构造一个 object
+2. 调用 `obj_reset_changes` 清除新的 object 中的 changed_field
 
+### `def to_dict(self)`
+
+以字典的形式来展示 object 的 primitive 数据。
+
+这个方法要比 `obj_to_primitive` 方法获取的 primitive 数据少一些属性，只相当于其中的 `data`。
 
 ## 其他方法
 
