@@ -219,3 +219,76 @@ class ListOfObjectsField(AutoTypedField):
 ### `def __init__(self, obj_name, subclasses=False, **kwargs)`
 
 1. obj_name 是指在 `VersionedObjectRegistry` 中注册的 object 类名称
+
+### `def _get_all_obj_names(obj)`
+
+```
+    @staticmethod
+    def _get_all_obj_names(obj):
+        obj_names = []
+        for parent in obj.__class__.mro():
+            # Skip mix-ins which are not versioned object subclasses
+            if not hasattr(parent, "obj_name"):
+                continue
+            obj_names.append(parent.obj_name())
+        return obj_names
+```
+
+获取从子类到父类所有的 obj_name
+
+### `def coerce(self, obj, attr, value)`
+
+这个方法主要是判断 obj 是否为 `self._obj_name` 所代表的对象的子类。
+
+若是的话，则返回 value ，不是的话则引发异常。
+
+### `def to_primitive(obj, attr, value)`
+
+```
+    @staticmethod
+    def to_primitive(obj, attr, value):
+        return value.obj_to_primitive()
+```
+
+这个方法非常的关键，当一个 obejct 拥有子 object 的时候，就是调用这个方法来获取子 object 的数据的。
+
+### `def from_primitive(obj, attr, value)`
+
+```
+    @staticmethod
+    def from_primitive(obj, attr, value):
+        # FIXME(danms): Avoid circular import from base.py
+        from oslo_versionedobjects import base as obj_base
+        # NOTE (ndipanov): If they already got hydrated by the serializer, just
+        # pass them back unchanged
+        if isinstance(value, obj_base.VersionedObject):
+            return value
+        return obj.obj_from_primitive(value, obj._context)
+```
+
+### `def describe(self)`
+
+```
+    def describe(self):
+        return "Object<%s>" % self._obj_name
+```
+
+### `def stringify(self, value)`
+
+```
+    def stringify(self, value):
+        if 'uuid' in value.fields:
+            ident = '(%s)' % (value.obj_attr_is_set('uuid') and value.uuid or
+                              'UNKNOWN')
+        elif 'id' in value.fields:
+            ident = '(%s)' % (value.obj_attr_is_set('id') and value.id or
+                              'UNKNOWN')
+        else:
+            ident = ''
+
+        return '%s%s' % (self._obj_name, ident)
+```
+
+### `def get_schema(self)`
+
+由 `self._obj_name` 获得 object 的最新类（注册在 `VersionedObjectRegistry`中的），然后由 object 类获取详细数据。
