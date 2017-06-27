@@ -1,5 +1,7 @@
 # Neutron objects 之 QosPolicy
 
+**导读：**Neutron 中有 network 和 qos 两种资源实现了 rbac 管理。对于这两种资源，若其 `shared` 属性为 True，则其可以被所有的租户访问。那么其对应的 rbac 规则中，`target_tenant` 应该为 `*`。
+
 *neutron/object/qos/policy.py*
 
 ```
@@ -57,6 +59,36 @@ rbac-policy, before_update, validate_rbac_policy_change
 rbac-policy, before_create, validate_rbac_policy_change
 ```
 
+## `def _to_dict_hook(self, to_dict_orig)`
+
+更新后的名为 `to_dict` 的方法
+
+1. 先调用原版的 `to_dict` 方法
+2. 调用 `is_shared_with_tenant` 判断该租户是否有权限访问该 object 权限，若是有权限则设定 `shared` 为 True，否则设定为 False
+
+## `def _create_hook(self, orig_create)`
+
+更新后的名为 `create` 的方法
+
+1. 调用原版的 `create` 方法
+2. 调用 `_create_post` 方法
+
+## `def _create_post(self)`
+
+如果新创建的 object 的 `shared` 属性为真，则调用 `attach_rbac` 方法来创建 rbac 的条目。
+
+## `def _update_hook(self, update_orig)`
+
+新版本的名为 `update` 的方法
+
+1. 调用 `obj_get_changes` 获取被修改的 field
+2. 调用原版的 update 方法
+3. 调用 `_update_post` 方法
+
+## `def _update_post(self, obj_changes)`
+
+如果 `shared` 在 obj_changes 中，则调用 `update_shared` 方法
+ 
 ## `class RbacNeutronDbObjectMixin(rbac_db_mixin.RbacPluginMixin, base.NeutronDbObject)`
 
 mixin 类，配合别的类完成功能
@@ -85,6 +117,20 @@ mixin 类，配合别的类完成功能
 3. tenant_id：准备访问该资源的租户的 id
 
 直接调用 `common_db_mixin.model_query` 查询 `rbac_db_model` 查看该租户是否有访问这个资源的权利。
+
+### `def attach_rbac(self, obj_id, tenant_id, target_tenant='*')`
+
+调用 `RbacPluginMixin.create_rbac_policy` 来构造一个 rbac 数据库记录。
+
+### `def update_shared(self, is_shared_new, obj_id)`
+
+更新 shared field。
+
+1. 获取 admin 权限
+2. 调用 `obj_db_api.get_object` 查询 `shared` 为 true 时的 rbac 的数据库记录
+3. 若 shared 属性与之前一致（未发生变化），则不作处理
+4. 若 shared 由 false 变 true，则调用 `attach_rbac` 创建 rbac 的数据库记录
+5. 若 shared 由 ture 变为 false，则调用删除数据库记录。
 
 ## 黑魔法：`six.with_metaclass`
 
