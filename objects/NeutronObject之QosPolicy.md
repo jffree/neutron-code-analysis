@@ -24,7 +24,7 @@ NeutronRbacObject = with_metaclass(RbacNeutronMetaclass, base.NeutronDbObject)
 1. 调用 `validate_existing_attrs`；
 2. 调用 `update_synthetic_fields` 更新 object 的 `synthetic_fields` 属性；
 3. 调用 `replace_class_methods_with_hooks` 更新 `create`、`update`、`to_dict` 方法；
-4. 调用 type 实现新类
+4. 调用 type 实现新类（增加了基类 `RbacNeutronDbObjectMixin`）
 5. 在新类的 `add_extra_filter_name` 增加 `shared` 选项
 6. 调用 `subscribe_to_rbac_events` 对 rbac 资源的创建、删除、更新事件进行监听
 
@@ -47,14 +47,44 @@ NeutronRbacObject = with_metaclass(RbacNeutronMetaclass, base.NeutronDbObject)
 
 使用心得方法替换 dct （新类属性）中的 `create`、`update`、`to_dict`方法。
 
+### `def subscribe_to_rbac_events(class_instance)`
 
+订阅事件：
 
+```
+rbac-policy, before_delete, validate_rbac_policy_change
+rbac-policy, before_update, validate_rbac_policy_change
+rbac-policy, before_create, validate_rbac_policy_change
+```
 
+## `class RbacNeutronDbObjectMixin(rbac_db_mixin.RbacPluginMixin, base.NeutronDbObject)`
 
+mixin 类，配合别的类完成功能
 
+### `def get_bound_tenant_ids(cls, context, obj_id)`
 
+抽象类方法，查找有多少个 tenant 用到了这个 object
 
+### `def is_network_shared(context, rbac_entries)`
 
+类方法，根据 rbac 的记录，判断该用户是否有权限访问这个网络
+
+### `def is_accessible(cls, context, db_obj)`
+
+判断该用户是否有权限访问这个 db object。
+
+### `def is_shared_with_tenant(cls, context, obj_id, tenant_id)`
+
+1. 提升 context 权限
+2. 调用 `get_shared_with_tenant` 做实际的检查
+
+### `def get_shared_with_tenant(context, rbac_db_model, obj_id, tenant_id)`
+
+1. rbac_db_model：记录 rbac 规则的数据库
+2. obj_id：待访问资源 object 的id（目前只有 network 或者 qos 实现了基于 rbac 的规则访问，所以，这里的 obj_id 可以是某个 network 的 id，或者某个 qos 的 id。）
+3. tenant_id：准备访问该资源的租户的 id
+
+直接调用 `common_db_mixin.model_query` 查询 `rbac_db_model` 查看该租户是否有访问这个资源的权利。
 
 ## 黑魔法：`six.with_metaclass`
 
