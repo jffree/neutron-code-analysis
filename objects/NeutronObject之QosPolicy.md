@@ -1,4 +1,11 @@
-# Neutron objects 之 NeutronRbacObject
+# Neutron objects 之 QosPolicy
+
+*neutron/object/qos/policy.py*
+
+```
+@obj_base.VersionedObjectRegistry.register
+class QosPolicy(rbac_db.NeutronRbacObject)
+```
 
 *neutron/objects/rbac_db.py*
 
@@ -8,20 +15,45 @@
 NeutronRbacObject = with_metaclass(RbacNeutronMetaclass, base.NeutronDbObject)
 ```
 
-关于 `with_metaclass` 分析请看本篇文章的最后，从哪里我们可以知道 `NeutronRbacObject` 是没有意义的，有意义的是它的子类。
-
-```
-@obj_base.VersionedObjectRegistry.register
-class QosPolicy(rbac_db.NeutronRbacObject)
-```
-
-这个 object 在 *neutron/objects/qos/policy.py* 中实现
+关于 `with_metaclass` 分析请看本篇文章的最后，从哪里我们可以知道 `NeutronRbacObject` 是没有意义的，有意义的是它的子类（`QosPolicy`）。
 
 ## 元类：`class RbacNeutronMetaclass(type)`
 
 ### `def __new__(mcs, name, bases, dct)`
 
-1. 调用 `validate_existing_attrs`
+1. 调用 `validate_existing_attrs`；
+2. 调用 `update_synthetic_fields` 更新 object 的 `synthetic_fields` 属性；
+3. 调用 `replace_class_methods_with_hooks` 更新 `create`、`update`、`to_dict` 方法；
+4. 调用 type 实现新类
+5. 在新类的 `add_extra_filter_name` 增加 `shared` 选项
+6. 调用 `subscribe_to_rbac_events` 对 rbac 资源的创建、删除、更新事件进行监听
+
+### `def validate_existing_attrs(cls_name, dct)`
+
+1. `fields` 中必须要含有 `shared`
+2. 都必须要定义 `rbac_db_model`
+
+### `def update_synthetic_fields(mcs, bases, dct)`
+
+更新 `synthetic_fields`，将 `shared` 加入到其中。
+
+若 dct 中没有 `synthetic_fields` ，则调用 `get_attribute` 获取。
+
+### `def get_attribute(mcs, attribute_name, bases, dct)`
+
+在 `dct` 中获取名为 `attribute_name` 的属性，若 dct 中没有，则调用 `_get_attribute` 从父类中获取。
+
+### `def replace_class_methods_with_hooks(mcs, bases, dct)`
+
+使用心得方法替换 dct （新类属性）中的 `create`、`update`、`to_dict`方法。
+
+
+
+
+
+
+
+
 
 
 ## 黑魔法：`six.with_metaclass`
