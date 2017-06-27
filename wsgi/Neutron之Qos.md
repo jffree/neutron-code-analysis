@@ -66,18 +66,17 @@ extension 我们就略过了，架构都是一样的。
             driver_mgr.QosServiceNotificationDriverManager())
 ```
 
-创建了一个 rpc 的通知驱动管理器的实例，默认的 driver 为 `message_queue`（可以看一下 qos 配置的加载方法：*neutron/conf/services/qos_driver_manager.py* 的 `register_qos_plugin_opts`。）。
-
-我们看在 setup.cfg 中：
-
-```
-neutron.qos.notification_drivers =
-    message_queue = neutron.services.qos.notification_drivers.message_queue:RpcQosServiceNotificationDriver
-```
+创建了一个 rpc 的通知驱动管理器的实例。
 
 关于通知驱动管理器我们会在下面介绍。
 
 ### `def create_policy(self, context, policy)`
+
+测试方法：
+
+```
+neutron qos-policy-create --shared --description 'This is a test qos policy' test-policy
+```
 
 创建一个 `QosPolicy` 对象 `policy_obj`，调用该对象的 `create` 方法。
 
@@ -88,6 +87,12 @@ neutron.qos.notification_drivers =
 同样通过创建 `QosPolicy` 对象来实现。
 
 ### `def delete_policy(self, context, policy_id)`
+
+测试方法：
+
+```
+neutron qos-policy-delete test-policy
+```
 
 通过创建 `QosPolicy` 对象来实现。
 
@@ -132,3 +137,67 @@ curl -s -X GET http://172.16.100.106:9696//v2.0/qos/rule-types -H 'Content-Type:
 ### `def get_policy_rules(self, context, rule_cls, policy_id, filters=None,  fields=None, sorts=None, limit=None, marker=None, page_reverse=False)`
 
 通过创建 `QosPolicy` 对象和创建 `rule` 对象（有三种）联合实现。
+
+## `class QosServiceNotificationDriverManager(object)`
+
+*neutron/services/qos/notification_drivers/manager.py*
+
+### `def __init__(self)`
+
+```
+    def __init__(self):
+        self.notification_drivers = []
+        self._load_drivers(cfg.CONF.qos.notification_drivers)
+```
+
+这个很简单就是加载下发通知的驱动。
+
+默认的 driver 为 `message_queue`（可以看一下 qos 配置的加载方法：*neutron/conf/services/qos_driver_manager.py* 的 `register_qos_plugin_opts`。）。
+
+我们看在 setup.cfg 中：
+
+```
+neutron.qos.notification_drivers =
+    message_queue = neutron.services.qos.notification_drivers.message_queue:RpcQosServiceNotificationDriver
+```
+
+这个驱动我们也会在下面讲解。
+
+### `def _load_drivers(self, notification_drivers)`
+
+调用 `_load_driver_instance` 实现，用 `notification_drivers` 保存驱动实例。
+
+### `def _load_driver_instance(self, notification_driver)`
+
+通过 `manager.NeutronManager.load_class_for_provider` 加载驱动。
+
+### `def update_policy(self, context, qos_policy)`
+
+调用驱动的 `update_policy` 来实现。
+
+### `def delete_policy(self, context, qos_policy)`
+
+调用驱动的 `delete_policy` 来实现。
+
+### `def create_policy(self, context, qos_policy)`
+
+调用驱动的 `create_policy` 来实现。
+
+## `class RpcQosServiceNotificationDriver(qos_base.QosServiceNotificationDriverBase):`
+
+`QosServiceNotificationDriverBase` 是一个抽象基类，定义了子类必须实现的方法。
+
+### `def __init__(self)`
+
+
+
+
+
+
+
+
+
+
+
+
+
