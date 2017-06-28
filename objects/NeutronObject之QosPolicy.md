@@ -2,6 +2,14 @@
 
 **导读：**Neutron 中有 network 和 qos 两种资源实现了 rbac 管理。对于这两种资源，若其 `shared` 属性为 True，则其可以被所有的租户访问。那么其对应的 rbac 规则中，`target_tenant` 应该为 `*`。
 
+**注意：**
+
+`rules` 是 qos policy object 的子 object，共有三种（在 *neutron/objects/qos/rules.py* 中实现）。
+
+这三种子 object 是在 qos policy object 的不同版本加入的，所有 qos policy object 会有一个 `obj_make_compatible` 来做版本兼容。
+
+**其他：**
+
 *neutron/object/qos/policy.py*
 
 ```
@@ -164,11 +172,68 @@ mixin 类，配合别的类完成功能
 
 检查删除某一个 rbac 记录是否会对 `target_tenant` 造成影响
 
+* 参数说明：
+
+1. obj_id：这是一个 object 的 id，那么这个 objcet 是指什么呢：qos policy 的 id。（仔细想一下：qospolicyrbacs 不就是针对 qospolicy 的 rbac 的策略控制吗，也就是谁可以修改这个 qospolicy）
+
 1. 提升为 admin 权限
-2. 调用 `get_bound_tenant_ids` 获取所有正在使用该 Object 的 租户 id（`get_bound_tenant_ids` 是一个抽象方法，该方法在子类中实现。）
-3. 
+2. 调用 `get_bound_tenant_ids` 获取所有正在使用该 policy 的租户 id（`get_bound_tenant_ids` 是一个抽象方法，该方法在子类中实现。）
+3. 调用 `_get_db_obj_rbac_entries` 获取 rbac 数据库中与该 policy 绑定且 action 为 `models.ACCESS_SHARED` 的 rbac 数据库记录
+4. 若是删除掉该 rbac 记录后会影响别的租户的使用则引发异常
+
+### `def _get_db_obj_rbac_entries(cls, context, rbac_obj_id, rbac_action)`
+
+根据 `object_id` 和 `action` 针对 rbac 数据库做过滤查询
 
 ## `class QosPolicy(rbac_db.NeutronRbacObject)`
+
+为了让大家更好的理解这一部分，我把测试方法和数据库记录贴出来给大家看看：
+
+* 创建 network qos-policy、创建 qos policy rule、将 qos-policy 绑定 Network
+
+```
+neutron qos-policy-create --shared bw-limiter
+neutron qos-bandwidth-limit-rule-create bw-limiter --max-kbps 3000 --max-burst-kbps 300
+neutron net-update 534b42f8-f94c-4322-9958-2d1e4e2edd47 --qos-policy bw-limiter
+```
+
+* 数据库记录：
+
+```
+MariaDB [neutron]> select * from qos_policies;
++--------------------------------------+------------+----------------------------------+------------------+
+| id                                   | name       | project_id                       | standard_attr_id |
++--------------------------------------+------------+----------------------------------+------------------+
+| 963d9997-7e3c-4018-92e2-d81e1db9efcc | bw-limiter | d4edcc21aaca452dbc79e7a6056e53bb |               32 |
++--------------------------------------+------------+----------------------------------+------------------+
+```
+
+```
+MariaDB [neutron]> select * from qos_bandwidth_limit_rules;
++--------------------------------------+--------------------------------------+----------+----------------+
+| id                                   | qos_policy_id                        | max_kbps | max_burst_kbps |
++--------------------------------------+--------------------------------------+----------+----------------+
+| 6714616e-cf73-4c6c-9158-cd0927247a2d | 963d9997-7e3c-4018-92e2-d81e1db9efcc |     3000 |            300 |
++--------------------------------------+--------------------------------------+----------+----------------+
+```
+
+```
+MariaDB [neutron]> select * from qospolicyrbacs;                                                                                                                        
++--------------------------------------+----------------------------------+---------------+------------------+--------------------------------------+
+| id                                   | project_id                       | target_tenant | action           | object_id                            |
++--------------------------------------+----------------------------------+---------------+------------------+--------------------------------------+
+| 04945a9d-fac2-478c-80e7-87f32b68e96b | d4edcc21aaca452dbc79e7a6056e53bb | *             | access_as_shared | 963d9997-7e3c-4018-92e2-d81e1db9efcc |
++--------------------------------------+----------------------------------+---------------+------------------+--------------------------------------+
+```
+
+```
+MariaDB [neutron]> select * from qos_network_policy_bindings;
++--------------------------------------+--------------------------------------+
+| policy_id                            | network_id                           |
++--------------------------------------+--------------------------------------+
+| 963d9997-7e3c-4018-92e2-d81e1db9efcc | 534b42f8-f94c-4322-9958-2d1e4e2edd47 |
++--------------------------------------+--------------------------------------+
+```
 
 ### 类属性
 
@@ -200,8 +265,78 @@ mixin 类，配合别的类完成功能
 
 ### `def get_bound_tenant_ids(cls, context, policy_id)`
 
+可能与 qos policy 有关的资源为：network、port。我们自然要根据 qos policy 的 id `policy_id` 看看有哪些资源和这个 qos policy 绑定，然后再根据资源查找到这个资源所属的租户，最后返回使用该 qos policy 的租户列表。
 
+### `def obj_load_attr(self, attrname)`
 
+只允许加载 `rules` 属性，调用 `reload_rules` 实现
+
+### `def reload_rules(self)`
+
+调用 `rule_obj_impl.get_rules` 加载所有与该 qos object 绑定的 rule。
+
+为 object 设置 `rules` 属性
+
+### `def get_rule_by_id(self, rule_id)`
+
+通过 rule id 获取该 qos object 绑定的 rule
+
+### `def get_object(cls, context, **kwargs)`
+
+object 的关键方法，调用父类的 `get_object` 实现，同时为 object 增加 rules 属性
+
+### `def get_objects(cls, context, _pager=None, validate_filters=True, **kwargs)`
+
+类似于 `get_object` 方法
+
+### `def get_network_policy(cls, context, network_id)`
+
+根据 network 的 id，获取与之绑定的 qos policy 的 object
+
+### `def get_port_policy(cls, context, port_id)`
+
+根据 port 的 id，获取与之绑定的 qos policy 的 object
+
+### `def create(self)`
+
+这个方法会被 __metaclass__ 修饰
+
+在父类的 `create` 方法上调用了 `reload_rules` 方法
+
+### `def delete(self)`
+
+该方法会被 `__metaclass__` 修饰
+
+1. 检查该 qos policy object 是否被别的资源使用
+2. 若未使用则调用父类的 `delete` 删除
+
+### `def attach_network(self, network_id)`
+
+将该 qos object 与一个 network 资源绑定
+
+### `def attach_port(self, port_id)`
+
+将该 qos object 与一个 port 资源绑定
+
+### `def detach_network(self, network_id)`
+
+将该 qos object 与一个 network 资源解除绑定
+
+### `def detach_port(self, port_id)`
+
+将该 qos object 与一个 port 资源解除绑定
+
+### `def get_bound_networks(self)`
+
+获取与该 qos policy object 绑定的 network
+
+### `def get_bound_ports(self)`
+
+获取与该 qos policy object 绑定的 port
+
+### `def obj_make_compatible(self, primitive, target_version)`
+
+父 object 与子 object 的版本兼容
 
 ## 黑魔法：`six.with_metaclass`
 

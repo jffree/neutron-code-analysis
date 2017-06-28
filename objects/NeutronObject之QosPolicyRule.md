@@ -76,6 +76,7 @@ class QosDscpMarkingRule(QosRule):
                                  objname="QosDscpMarkingRule")
 ```
 
+
 ## `class QosMinimumBandwidthRule(QosRule)`
 
 ```
