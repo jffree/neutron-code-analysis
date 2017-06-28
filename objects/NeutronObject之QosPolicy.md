@@ -164,6 +164,44 @@ mixin 类，配合别的类完成功能
 
 检查删除某一个 rbac 记录是否会对 `target_tenant` 造成影响
 
+1. 提升为 admin 权限
+2. 调用 `get_bound_tenant_ids` 获取所有正在使用该 Object 的 租户 id（`get_bound_tenant_ids` 是一个抽象方法，该方法在子类中实现。）
+3. 
+
+## `class QosPolicy(rbac_db.NeutronRbacObject)`
+
+### 类属性
+
+```
+    VERSION = '1.3'
+
+    # required by RbacNeutronMetaclass
+    rbac_db_model = QosPolicyRBAC
+    db_model = qos_db_model.QosPolicy
+
+    port_binding_model = qos_db_model.QosPortPolicyBinding
+    network_binding_model = qos_db_model.QosNetworkPolicyBinding
+
+    fields = {
+        'id': obj_fields.UUIDField(),
+        'tenant_id': obj_fields.StringField(),
+        'name': obj_fields.StringField(),
+        'shared': obj_fields.BooleanField(default=False),
+        'rules': obj_fields.ListOfObjectsField('QosRule', subclasses=True),
+    }
+
+    fields_no_update = ['id', 'tenant_id']
+
+    synthetic_fields = ['rules']
+
+    binding_models = {'network': network_binding_model,
+                      'port': port_binding_model}
+```
+
+### `def get_bound_tenant_ids(cls, context, policy_id)`
+
+
+
 
 ## 黑魔法：`six.with_metaclass`
 
