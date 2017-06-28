@@ -132,6 +132,39 @@ mixin 类，配合别的类完成功能
 4. 若 shared 由 false 变 true，则调用 `attach_rbac` 创建 rbac 的数据库记录
 5. 若 shared 由 ture 变为 false，则调用删除数据库记录。
 
+### `def validate_rbac_policy_change(cls, resource, event, trigger, context, object_type, policy, **kwargs)`
+
+事件回调函数，用来验证对 rbac 策略的改动是否合法
+
+1. 判断 rbac 对应的类型是否是当前 object 的类型。（因为 rbac 资源是一样的，但是 rbac 实现了对 qos 和 network 的策略访问，这个区分就是靠 `object_type` 来进行的，所以这里首先会判断 `object_type` 是否一致。）
+2. 当对 rbac 资源进行创建和更新操作时，要求客户端具有相应的权限。
+3. 这里只处理了 update 和 delete 操作，没有处理 create 操作。
+
+```
+{events.BEFORE_UPDATE: cls.validate_rbac_policy_update,
+ events.BEFORE_DELETE: cls.validate_rbac_policy_delete}
+```
+
+### `def validate_rbac_policy_update(cls, resource, event, trigger, context, object_type, policy, **kwargs)`
+
+ rbac 资源被更新前，调用此方法
+
+当 rbac 的 `target_tenant` 发生改变时，可能会影响到一些租户对该资源的访问，这里会继续调用 `validate_rbac_policy_delete` 进行进一步的检测，看是否有租户依赖此 rbac 来访问资源。
+
+### `def validate_rbac_policy_delete(cls, resource, event, trigger, context, object_type, policy, **kwargs)`
+
+对 rbac 资源执行删除前，会调用此方法
+
+1. 这里只处理 action 为 `models.ACCESS_SHARED` 的 rbac
+2. 调用 `obj_db_api.get_object` 获取该 object 的数据库记录
+3. 若 `db_obj.tenant_id == target_tenant`，对象本身所属的租户肯定有权限访问该对象，所以删除这样的 rbac 是无影响的
+4. 调用 `_validate_rbac_policy_delete` 做进一步的检测
+
+### `def _validate_rbac_policy_delete(cls, context, obj_id, target_tenant)`
+
+检查删除某一个 rbac 记录是否会对 `target_tenant` 造成影响
+
+
 ## 黑魔法：`six.with_metaclass`
 
 ```
