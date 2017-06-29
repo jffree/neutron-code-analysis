@@ -413,6 +413,68 @@ class NeutronDbPluginV2(db_base_plugin_common.DbBasePluginCommon,
 3. 创建数据库记录
 4. 返回创建结果
 
+### `def get_default_subnetpool(self, context, ip_version)`
+
+获取相应 ip 版本的默认 subnetpool
+
+### `def get_port(self, context, id, fields=None)`
+
+测试方法：
+
+```
+curl -s -X GET http://172.16.100.106:9696//v2.0/ports/c8e9b3ac-bb05-4aaf-90be-11c2e9dcae00 -H 'Content-Type: application/json' -H 'X-Auth-Token: e2d4d0dc4dcc4234aaaa891ced686b80' | jq
+```
+
+调用 `_get_port` 获取 port 资源
+
+### `def get_ports(self, context, filters=None, fields=None, sorts=None, limit=None, marker=None, page_reverse=False)`
+
+1. 调用 `_get_marker_obj` 处理分页相关
+2. 调用 `_get_ports_query` 获取查询结果
+3. 调用 `_make_port_dict` 将查询结果转化为字典格式
+
+### `def _get_ports_query(self, context, filters=None, sorts=None, limit=None, marker_obj=None, page_reverse=False)`
+
+1. 处理 `fixed_ips` 的过滤参数
+2. 调用 `_apply_filters_to_query` 做进一步的过滤
+3. 处理排序和分页
+
+### `def get_ports_count(self, context, filters=None)`
+
+获取符合过滤条件的 port 资源数量
+
+### `def create_port(self, context, port)`
+
+1. 调用 `create_port_db` 创建数据库记录
+2. 调用 `_make_port_dict` 返回创建的结果
+
+### `def create_port_db(self, context, port)`
+
+1. 若在 port 属性中指定了 `device_owner`，则调用 `_enforce_device_owner_not_router_intf_or_device_id` 检查若该 port 想要绑定到 route 上时，租户是否有全向访问该 route
+2. 构造 port 的属性
+3. 调用 `_get_network` 获取 network 数据库记录
+4. 调用 `_create_db_port_obj` 创建 port 的数据库记录
+5. 调用 `ipam.allocate_ips_for_port_and_store` 为 port 分配一个 ip
+6. 根据 ip 的分配结果设定 port 的 `ip_allocation` 属性。
+
+### `def _enforce_device_owner_not_router_intf_or_device_id(self, context, device_owner, device_id, tenant_id)`
+
+port 资源有两个属性： `device_owner` 和 `device_id`，分别制定了和该 port 绑定的资源类型和资源的 id。
+
+若是该资源类型为 route 接口（`ROUTER_INTERFACE_OWNERS`），则需要判断该租户是否有权限访问这个 route。
+
+若有权限则正常返回，若没有权限则引发异常
+
+### `def _create_db_port_obj(self, context, port_data)`
+
+若是 port 属性中包含了 `mac_address`，则检查该mac 地址是否被使用（`_is_mac_in_use`）
+
+若没有包含 `mac_address`，则调用 `_generate_mac` 生产一个 mac 地址
+
+添加一个 port 数据库记录
+
+### `` 
+
 
 
 
