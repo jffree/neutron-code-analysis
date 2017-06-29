@@ -473,15 +473,47 @@ port 资源有两个属性： `device_owner` 和 `device_id`，分别制定了�
 
 添加一个 port 数据库记录
 
-### `` 
+### `def create_port_bulk(self, context, ports)`
+
+调用 `_create_bulk` 实现 
+
+### `def update_port(self, context, id, port)`
+
+1. 调用 `_get_port` 获取旧的 port 数据库记录
+2. 调用 `_validate_port_for_update` 验证更新数据是否合法
+3. 调用 `self.ipam.update_port` 更新 port 资源
+4. 返回更新后的 port 信息
+
+### `def _validate_port_for_update(self, context, db_port, new_port, new_mac)`
+
+1. 若 `device_id` 或 `device_owner` 发生变化，则调用 `_enforce_device_owner_not_router_intf_or_device_id` 验证变化是否合理
+2. 如果 Mac 地址发生变化，则调用 `_check_mac_addr_update` 检查变化是否合理
+
+### `def _check_mac_addr_update(self, context, port, new_mac, device_owner)`
+
+根据 `device_owner` 检查是否可更新 mac 地址，以 `network` 开头的 `device_owner` 不可被更新 mac 地址。
+
+### `def delete_port(self, context, id)`
+
+调用 `self.ipam.delete_port` 实现。
+
+### 其他
 
 
+在这个类的最后有这么几行代码
 
+```
+    db_base_plugin_common.DbBasePluginCommon.register_model_query_hook(
+        models_v2.Port,
+        "port",
+        '_port_query_hook',
+        '_port_filter_hook',
+        None)
+```
 
+这几行代码在 `_model_query_hooks` 中注册了 `port` 的查询和过滤的钩子方法。
 
-
-
-
+当对 `port` 资源进行查询或者过滤时（`_apply_filters_to_query`、`_model_query`），会自动调用对于的方法。
 
 ## 其他方法
 
