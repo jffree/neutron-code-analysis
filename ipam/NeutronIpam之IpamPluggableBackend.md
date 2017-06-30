@@ -70,6 +70,22 @@ neutron subnet-create --name simple-subnet --allocation-pool start=10.10.12.200,
 
 1. 若更新数据中包含 `dns_nameservers` 属性，则调用 `_update_subnet_dns_nameservers` 更新 dns nameserver 的数据库记录
 2. 若更新数据中包含 `host_routes` 属性，则调用 `_update_subnet_host_routes` 更新 host routes 的数据库记录
+3.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### `def _update_subnet_dns_nameservers(self, context, id, s)`
 
@@ -94,8 +110,47 @@ MariaDB [neutron]> select * from dnsnameservers;
 1. 调用 `DbBasePluginCommon._get_dns_by_subnet` 获取该子网在更新前对应的 dns namserver 的 object（**注意：**一个 subnet 可能包含多个 dns nameserver）。
 2. 删除旧的 dns nameserver 数据库记录
 3. 创建新的 dns nameserver 的数据库记录
+4. 删除更新数据中的 `dns_nameservers` 属性（因为已经更新），返回更新的结果
  
 ### `def _update_subnet_host_routes(self, context, id, s)`
+
+* 测试方法：
+
+```
+neutron subnet-update b4634777-a30d-4001-a0c0-256530a01619 --host-route destination=172.16.100.0/24,nexthop=10.10.12.1 --host-route destination=192.168.40.0/24,nextho
+p=10.10.12.2
+```
+
+* 数据库记录
+
+```
+MariaDB [neutron]> select * from subnetroutes;
++-----------------+------------+--------------------------------------+
+| destination     | nexthop    | subnet_id                            |
++-----------------+------------+--------------------------------------+
+| 172.16.100.0/24 | 10.10.12.1 | b4634777-a30d-4001-a0c0-256530a01619 |
+| 192.168.40.0/24 | 10.10.12.2 | b4634777-a30d-4001-a0c0-256530a01619 |
++-----------------+------------+--------------------------------------+
+```
+
+1. 调用 `DbBasePluginCommon._get_route_by_subnet` 根据子网的 id，获取该子网下的路由（数据库 `SubnetRoute`）记录
+2. 删除无效的数据库记录，增加新增的数据库记录
+3. 删除更新数据中的 `host_routes` 属性（因为已经更新），返回更新的结果
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
