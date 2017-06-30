@@ -176,11 +176,24 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 
 ### `def _update_subnet_service_types(self, context, subnet_id, s)`
 
+**关于 subnet 的 `service_types` 属性的解释：**
 
+*`service_types`，定义该 subnet 的用途，为手动指定的 device_owner 的列表。如：`network:floatingip_agent_gateway`、`network:router_gateway`。port 分配 IP 时, 通过 port 的 `device_owner` 匹配 subnet 的 `service_type`，来决定在哪个 subnet 中分配 IP。*
 
+[Neutron社区每周记（10.24-10.28）| Neutron 终于不“浪费”公网 IP 了](http://www.wxzhi.com/archives/576/5pncjemqwbsgav7f/)
 
+* 测试方法：
 
-
+```
+neutron net-create simple-public --router:external=True --shared
+neutron subnet-create 75295f60-1643-4269-a446-2063f70f3bec --name sp-router-gateway 10.10.10.0/24 --service-types list=true network:router_gateway --enable_dhcp=False
+neutron subnet-create 75295f60-1643-4269-a446-2063f70f3bec --name sp-floatingip 20.20.20.0/24 --service-types list=true network:floatingip --enable_dhcp=False
+neutron router-create legacy
+neutron router-gateway-set 084924e3-9ace-4a86-8304-d62abe1e5e35 75295f60-1643-4269-a446-2063f70f3bec
+neutron router-show legacy
+neutron floatingip-create 75295f60-1643-4269-a446-2063f70f3bec
+ip netns qrouter-084924e3-9ace-4a86-8304-d62abe1e5e35 
+```
 
 
 
