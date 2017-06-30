@@ -70,7 +70,8 @@ neutron subnet-create --name simple-subnet --allocation-pool start=10.10.12.200,
 
 1. 若更新数据中包含 `dns_nameservers` 属性，则调用 `_update_subnet_dns_nameservers` 更新 dns nameserver 的数据库记录
 2. 若更新数据中包含 `host_routes` 属性，则调用 `_update_subnet_host_routes` 更新 host routes 的数据库记录
-3.
+3. 若更新数据中包含 `allocation_pools` 属性，则调用 `_update_subnet_allocation_pools` 更新 allocation pools 的数据库记录
+4. 若更新数据中包含 `service_types` 属性，则调用 `_update_subnet_service_types` 更新 service type 的数据库记录
 
 
 
@@ -137,8 +138,43 @@ MariaDB [neutron]> select * from subnetroutes;
 2. 删除无效的数据库记录，增加新增的数据库记录
 3. 删除更新数据中的 `host_routes` 属性（因为已经更新），返回更新的结果
 
+### `def _update_subnet_allocation_pools(self, context, subnet_id, s)`
 
+* 更新前的 `IPAllocationPool` 记录：
 
+```
+MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30d-4001-a0c0-256530a01619';
++--------------------------------------+--------------------------------------+--------------+--------------+
+| id                                   | subnet_id                            | first_ip     | last_ip      |
++--------------------------------------+--------------------------------------+--------------+--------------+
+| 1665256b-5f5f-4230-b9d2-96cd24d9837b | b4634777-a30d-4001-a0c0-256530a01619 | 10.10.12.220 | 10.10.12.230 |
+| b9710743-50e6-4828-8854-87d2065266f1 | b4634777-a30d-4001-a0c0-256530a01619 | 10.10.12.200 | 10.10.12.210 |
++--------------------------------------+--------------------------------------+--------------+--------------+
+```
+
+* 更新 subnet：
+
+```
+neutron subnet-update b4634777-a30d-4001-a0c0-256530a01619 --allocation-pool start=10.10.12.100,end=10.10.12.110 --allocation-pool start=10.10.12.120,end=10.10.12.130 
+```
+
+* 更新后的 `IPAllocationPool` 记录
+
+```
+MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30d-4001-a0c0-256530a01619';
++--------------------------------------+--------------------------------------+--------------+--------------+
+| id                                   | subnet_id                            | first_ip     | last_ip      |
++--------------------------------------+--------------------------------------+--------------+--------------+
+| 80a3f992-0fc1-400a-8c6e-0068485518cd | b4634777-a30d-4001-a0c0-256530a01619 | 10.10.12.100 | 10.10.12.110 |
+| 89f3405c-be87-40ac-8aa6-33e6c5f24d4c | b4634777-a30d-4001-a0c0-256530a01619 | 10.10.12.120 | 10.10.12.130 |
++--------------------------------------+--------------------------------------+--------------+--------------+
+```
+
+1. 根据子网的 id 删除该子网下的原 allocation pools 数据库 `IPAllocationPool` 的记录
+2. 根据更新的子网资源的数据 s，增加新的数据库 `IPAllocationPool` 的记录
+3. 删除更新数据中的 `allocation_pools` 属性（因为已经更新），返回增加的数据库的结果
+
+### `def _update_subnet_service_types(self, context, subnet_id, s)`
 
 
 
