@@ -2,6 +2,8 @@
 
 *neutron/ipam/request.py*
 
+## 简介
+
 1. Ipam（ip address management，ip 地址管理）中两种请求：
  1. 一种是从子网池（subnet pool）中为网络（network）分配子网（subnet）的请求
  2. 另一种是从子网（subnet）中为端口（port）分配 ip 地址的请求
@@ -17,15 +19,59 @@
  3. 若分配 ip 地址的请求数据中包含了 `device_owner` 属性，则调用 `PreferNextAddressRequest` 做进一步的处理
  4. 若分配 ip 地址的请求数据中不包含以上三种属性，则调用 `AnyAddressRequest` 做进一步的处理
 
+## 测试
+
+```
+neutron address-scope-create --shared simple-scope 4  #创建地址范围
+neutron subnetpool-create --pool-prefix 10.0.1.0/8 --pool-prefix 10.0.2.0/8 --address-scope simple-scope --min-prefixlen 12 --max-prefixlen 20 --default-prefixlen 16 --shared --description 'This is a test simple subnet pool.' simple-subnetpool #创建子网池
+
+```
+
+## 参考
+
+[OpenStack网络指南（12）BGP动态路由](http://www.2cto.com/net/201612/581717.html)
+[ Neutron 中的 Provider Network 和 Tenant Network ](http://blog.csdn.net/zhaoeryi/article/details/38494929)
+
+
 ## `class SubnetRequestFactory(object)`
 
 ### `def get_request(cls, context, subnet, subnetpool)`
 
-根据 subnet 的请求数据中是否包含了 `cidr` 属性，来进行更进一步的处理：
-
-1. 若请求数据中包含了 `cidr` 属性，则调用 `SpecificSubnetRequest` 做进一步的处理
-2. 若请求数据中不包含 `cidr` 属性，则调用 `AnySubnetRequest` 做进一步处理
-
 ## `class AddressRequestFactory(object)`
 
+### `def get_request(cls, context, port, ip_dict)`
  
+## `class SubnetRequest(object)`
+
+```
+@six.add_metaclass(abc.ABCMeta)
+class SubnetRequest(object)
+```
+
+抽象基类，
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
