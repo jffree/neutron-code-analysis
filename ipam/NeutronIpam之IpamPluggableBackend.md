@@ -72,9 +72,10 @@ neutron subnet-create --name simple-subnet --allocation-pool start=10.10.12.200,
 2. 若更新数据中包含 `host_routes` 属性，则调用 `_update_subnet_host_routes` 更新 host routes 的数据库记录
 3. 若更新数据中包含 `allocation_pools` 属性，则调用 `_update_subnet_allocation_pools` 更新 allocation pools 的数据库记录
 4. 若更新数据中包含 `service_types` 属性，则调用 `_update_subnet_service_types` 更新 service type 的数据库记录
+5. 调用 `_get_subnet` 获取原 subnet 的数据库记录，更新数据库记录
+6. 返回更新后的 subnet 数据库记录，返回更新的与 subnet 数据有关的其他数据库记录
 
-
-
+从这里可以看出，与 subnet 有关的数据库分别为：`DNSNameServer`、`SubnetRoute`、`IPAllocationPool`、`SubnetServiceType`
 
 
 
@@ -182,18 +183,9 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 
 [Neutron社区每周记（10.24-10.28）| Neutron 终于不“浪费”公网 IP 了](http://www.wxzhi.com/archives/576/5pncjemqwbsgav7f/)
 
-* 测试方法：
-
-```
-neutron net-create simple-public --router:external=True --shared
-neutron subnet-create 75295f60-1643-4269-a446-2063f70f3bec --name sp-router-gateway 10.10.10.0/24 --service-types list=true network:router_gateway --enable_dhcp=False
-neutron subnet-create 75295f60-1643-4269-a446-2063f70f3bec --name sp-floatingip 20.20.20.0/24 --service-types list=true network:floatingip --enable_dhcp=False
-neutron router-create legacy
-neutron router-gateway-set 084924e3-9ace-4a86-8304-d62abe1e5e35 75295f60-1643-4269-a446-2063f70f3bec
-neutron router-show legacy
-neutron floatingip-create 75295f60-1643-4269-a446-2063f70f3bec
-ip netns qrouter-084924e3-9ace-4a86-8304-d62abe1e5e35 
-```
+1. 根据子网的 id 删除该子网下的数据库 `SubnetServiceType` 的记录
+2. 根据更新的子网资源的数据 s，增加新的数据库 `SubnetServiceType` 的记录
+3. 删除更新数据中的 `service_types` 属性（因为已经更新），返回增加的数据库的结果
 
 
 
