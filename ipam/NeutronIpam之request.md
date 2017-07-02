@@ -11,9 +11,11 @@
 3. 对于分配子网的请求来说，根据请求数据的不同又可以分为两类：
  1. 若分配子网的请求数据中包含了 `cidr` 属性，则调用 `SpecificSubnetRequest` 做进一步的处理
  2. 若分配子网的请求数据中不包含 `cidr` 属性，则调用 `AnySubnetRequest` 做进一步的处理
-4. 对于分配地址来说，分为四种处理方式
- 1. 
-
+4. 对于分配 ip 地址来说，分为四种处理方式
+ 1. 若分配 ip 地址的请求数据中包含了 `ip_address` 属性，则调用 `SpecificAddressRequest` 做进一步的处理
+ 2. 若分配 ip 地址的请求数据中包含了 `eui64_address` 属性，则调用 `AutomaticAddressRequest` 做进一步的处理
+ 3. 若分配 ip 地址的请求数据中包含了 `device_owner` 属性，则调用 `PreferNextAddressRequest` 做进一步的处理
+ 4. 若分配 ip 地址的请求数据中不包含以上三种属性，则调用 `AnyAddressRequest` 做进一步的处理
 
 ## `class SubnetRequestFactory(object)`
 
