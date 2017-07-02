@@ -44,6 +44,18 @@ neutron.ipam_drivers =
     internal = neutron.ipam.drivers.neutrondb_ipam.driver:NeutronDbPool
 ```
 
+我们看一下这个 `NeutronDbPool` ：
+
+```
+class NeutronDbPool(subnet_alloc.SubnetAllocator)
+```
+
+```
+class SubnetAllocator(driver.Pool)
+```
+
+追踪下来，其实这个 driver 是本类 `Pool` 的一个实例。
+
 ### `def get_subnet_request_factory(self)`
 
 ```
