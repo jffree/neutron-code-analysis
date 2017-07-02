@@ -76,3 +76,39 @@ class SubnetAllocator(driver.Pool)
     def needs_rollback(self):
         return True
 ```
+
+## `class SubnetAllocator(driver.Pool)`
+
+*neutron/ipam/subnet_alloc.py*
+
+在 `Pool` 类的基础上实现了一些
+
+### `def __init__(self, subnetpool, context)`
+
+```
+    def __init__(self, subnetpool, context):
+        super(SubnetAllocator, self).__init__(subnetpool, context)
+        self._sp_helper = SubnetPoolHelper()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

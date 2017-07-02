@@ -207,8 +207,11 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
  * `s`：子网的新属性
  * `old_pools`：子网之前的地址池
 
-1. 调用父类的 `update_db_subnet`
+1. 调用父类的 `update_db_subnet` 完成与 subnet 有关的数据库的升级处理
+2. 调用 `_ipam_update_allocation_pools` 
 
+
+### `def _ipam_update_allocation_pools(self, context, ipam_driver, subnet)`
 
 
 
