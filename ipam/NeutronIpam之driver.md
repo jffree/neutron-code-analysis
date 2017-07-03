@@ -93,14 +93,18 @@ class SubnetAllocator(driver.Pool)
 
 
 
+## `class NeutronDbPool(subnet_alloc.SubnetAllocator)`
 
+子网池实现后端
 
+### `def get_subnet(self, subnet_id)`
 
+类方法，获取 `NeutronDbSubent` 描述的一个 subnet
 
-
-
-
-
+```
+    def get_subnet(self, subnet_id):
+        return NeutronDbSubnet.load(subnet_id, self._context)
+```
 
 
 
