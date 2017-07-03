@@ -29,4 +29,4 @@ Ipam：Ip 地址管理
 
 `IpamSubnetManager`
 
-* subnet 地址分配的实际管理类，负责与 ipam 相关的数据库交互
+* subnet 地址分配的管理类，只负责与 ipam 相关的数据库交互

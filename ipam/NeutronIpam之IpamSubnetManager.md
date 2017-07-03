@@ -1,6 +1,6 @@
 # Neutron Ipam 之 IpamSubnetManager
 
-subnet 地址分配的实际管理类，负责与 ipam 相关的数据库交互
+**subnet 地址分配的管理类，只负责与 ipam 相关的数据库交互**
 
 *neutron/ipam/drivers/neutrondb_ipam/db_api.py*
 
@@ -43,13 +43,22 @@ subnet 地址分配的实际管理类，负责与 ipam 相关的数据库交互
 
 创建一个 `IpamAllocation` 的数据库记录，也就是从子网中分配了一个地址
 
+### `def delete_allocation(self, session, ip_address)`
 
+根据该子网的 ip 地址获取 `IpamAllocation` 数据库的记录，删除这条记录
 
+### `def create(self, session)`
 
+创建一个 `IpamSubnet` 的数据库记录。（类似于从 object 创建数据库记录）
 
+### `def delete(cls, session, neutron_subnet_id)`
 
+根据 subnet 的 id，删除一条 `IpamSubnet` 数据库记录（意味着删除从 ipam 分配的该子网）
 
+### `def create_pool(self, session, pool_start, pool_end)`
 
+创建一条 `IpamAllocationPool` 数据库记录，意味着为该子网增加一个地址池
 
+### `def delete_allocation_pools(self, session)`
 
-
+删除该子网的所有地址池记录。从 `IpamAllocationPool` 数据库中。

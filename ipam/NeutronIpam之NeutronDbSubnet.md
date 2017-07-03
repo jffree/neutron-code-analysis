@@ -74,10 +74,21 @@
 3. 将地址池中已分配的 Ip 地址去掉后，取出一个 ip 地址
 4. 返回 Ip 地址，以及 Ip 地址对应的 ip 地址池的 id
 
-### ``
+### `def deallocate(self, address)`
+
+1. 调用 `IpamSubnetManager.delet_allocation` 删除一个 `IpamAllocation` 数据库记录，表示地址被回收
+
+### `def create_allocation_pools(cls, subnet_manager, session, pools, cidr)`
+
+
+### `def create_from_subnet_request(cls, subnet_request, ctx)`
 
 
 
+### `def _no_pool_changes(self, session, pools)`
+
+
+### `def update_allocation_pools(self, pools, cidr)`
 
 
 
