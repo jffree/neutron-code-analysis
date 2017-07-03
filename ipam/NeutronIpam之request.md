@@ -24,8 +24,15 @@
 ```
 neutron address-scope-create --shared simple-scope 4  #创建地址范围
 neutron subnetpool-create --pool-prefix 10.0.1.0/8 --pool-prefix 10.0.2.0/8 --address-scope simple-scope --min-prefixlen 12 --max-prefixlen 20 --default-prefixlen 16 --shared --description 'This is a test simple subnet pool.' simple-subnetpool #创建子网池
-
+neutron net-create --router:external --provider:physical_network simple --provider:network_type flat --shared --description 'This is a simple network' simple-net #创建网络
+neutron subnet-create --name simple-subnet --subnetpool simple-subnetpool --prefixlen 14 simple-net #创建子网
 ```
+
+## 如何增加一个 physical network？
+
+在创建网络的时候，我们会看到这么几个参数：`--provider:network_type`、`--provider:physical_network`、`--provider:segmentation_id`，这几个是创建 provider 网络的。
+
+关于 provider 网络与 tenant 网络的区别请参考：[ Neutron 中的 Provider Network 和 Tenant Network](http://blog.csdn.net/zhaoeryi/article/details/38494929)
 
 ## 参考
 
