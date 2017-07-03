@@ -34,6 +34,37 @@ neutron subnet-create --name simple-subnet --subnetpool simple-subnetpool --pref
 
 关于 provider 网络与 tenant 网络的区别请参考：[ Neutron 中的 Provider Network 和 Tenant Network](http://blog.csdn.net/zhaoeryi/article/details/38494929)
 
+```
+vim /etc/neutron/plugins/ml2/ml2_conf.ini
+```
+
+```
+[ml2]
+type_drivers = flat,vlan
+tenant_network_types =
+mechanism_drivers = openvswitch
+extension_drivers = port_security
+
+[ml2_type_flat]
+flat_networks = provider
+
+[ml2_type_vlan]
+network_vlan_ranges = provider
+
+[securitygroup]
+enable_ipset = True
+
+[ovs]
+bridge_mappings = provider:br-provider
+```
+
+```
+ovs-vsctl add-br br-provider
+ovs-vsctl add-port br-provider PROVIDER_INTERFACE
+```
+
+`PROVIDER_INTERFACE` 指的是你的物理网卡的名称
+
 ## 参考
 
 [OpenStack网络指南（12）BGP动态路由](http://www.2cto.com/net/201612/581717.html)
@@ -55,23 +86,33 @@ neutron subnet-create --name simple-subnet --subnetpool simple-subnetpool --pref
 class SubnetRequest(object)
 ```
 
-抽象基类，
+抽象基类，定义了一些实例属性
 
+### `def __init__(self, tenant_id, subnet_id, gateway_ip=None, allocation_pools=None)`
 
+1. 验证 `allocation_pool`、`gateway_ip` 属性是否合法
+2. 设定实例的 `_tanant_id`、`_subnet_id`、`_gateway_ip`、`_allocation_pool`
 
+### `def tenant_id(self)`
 
+属性方法，返回 `self._tenant_id`
 
+### `def subnet_id(self)`
 
+属性方法，返回 `self._subnet_id`
 
+### `def gateway_ip(self)`
 
+属性方法，返回 `self._gateway_ip`
 
+### `def allocation_pools(self)`
 
+属性方法，返回 `self._allocation_pools`
 
+### `def _validate_with_subnet(self, subnet_cidr)`
 
-
-
-
-
+1. 验证 `_allocation_pools` 内的 IP 版本是否和 `cidr` 版本一致
+2. 验证 `_allocation_pools` 是否在 `cidr` 内
 
 
 
