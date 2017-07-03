@@ -114,12 +114,66 @@ class SubnetRequest(object)
 1. 验证 `_allocation_pools` 内的 IP 版本是否和 `cidr` 版本一致
 2. 验证 `_allocation_pools` 是否在 `cidr` 内
 
+## `class AnySubnetRequest(SubnetRequest)`
 
+处理带有 `prefixlen` 的分配子网请求，若是没有声明 `prefixlen`，则使用默认的 `default_prefixlen`。
 
+### `def __init__(self, tenant_id, subnet_id, version, prefixlen, gateway_ip=None, allocation_pools=None)`
 
+增加了 `_prefixlen` 属性
 
+### `def prefixlen(self)`
 
+属性方法，返回 `self._prefixlen`
 
+## `class SpecificSubnetRequest(SubnetRequest)`
 
+处理带有 `cidr` 属性的分配子网的请求，并且从 `cidr` 属性中推断出 `prefixlen` 属性。
 
+### `def __init__(self, tenant_id, subnet_id, subnet_cidr, gateway_ip=None, allocation_pools=None)`
 
+增加了 `_subnet_cidr` 属性
+
+### `def subnet_cidr(self)` 
+
+属性方法，返回 `self._subnet_cidr`
+
+### `def prefixlen(self)`
+
+属性方法，返回 `self._subnet_cidr.prefixlen`
+
+## `class AddressRequest(object)`
+
+空抽象基类
+
+```
+@six.add_metaclass(abc.ABCMeta)
+class AddressRequest(object):
+    """Abstract base class for address requests"""
+```
+
+## `class SpecificAddressRequest(AddressRequest)`
+
+处理有明确 Ip 地址的分配请求。
+
+### `def __init__(self, address)`
+
+### `def address(self)`
+
+属性方法，返回 `self._address`。 
+
+## `class AnyAddressRequest(AddressRequest):`
+
+空类
+
+## `class PreferNextAddressRequest(AnyAddressRequest)`
+
+空类
+
+## `class AutomaticAddressRequest(SpecificAddressRequest)`
+
+处理自动生成 `eui64` 类型的 Ip 地址的请求
+
+## `class RouterGatewayAddressRequest(AddressRequest)`
+
+空类
