@@ -191,6 +191,57 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 4. 调用 `validate_gw_out_of_pools` 验证网关地址不在地址池内
 5. 返回以 `IPRange` 描述的地址池
 
+### `def _make_subnet_args(self, detail, subnet, subnetpool_id)`
+
+将创建 subnet 的请求数据转化为字典格式
+
+### `def _save_subnet(self, context, network, subnet_args, dns_nameservers, host_routes, subnet_request)`
+
+1. 调用 `_validate_subnet_cidr` 验证待创建子网的 `cidr` 属性是否合法
+2. 调用 `_validate_network_subnetpools` 验证该子网与所属网络下的其他子网是否是在同一子网池中分配的
+3. 创建一条 `Subnet` 的数据看记录
+
+
+
+
+### `def _validate_subnet_cidr(self, context, network, new_subnet_cidr)`
+
+1. `cidr` 的 `prefixlen` 不能为0
+2. 若配置中设置 `allow_overlapping_ips` （允许不同的网络拥有重复的 ip）为 True，则获取该网络下的所有子网，否则则获取这个 openstack 中所有的子网
+3. 对比上一步获取的子网列表，检查当前请求创建的子网的 `cidr` 是否和这些子网中有重复的 Ip 地址，若有则引发异常，若没有则正确返回
+
+### `def _validate_network_subnetpools(self, network, new_subnetpool_id, ip_version)`
+
+**neutron 中有这么一个要求，同一网络下，若是子网都是从子网池中分配的，那么则要求所有的子网都在同一子网池中分配**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -222,7 +273,14 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
  2. 调用 `_validate_ip_version_with_subnetpool` 验证待创建的子网的 ip 版本与子网池的 Ip 版本一致
 2. 如果 subnet 包含了 `cidr` 属性：
  1. 调用 `_gateway_ip_str` 获取欲创建的子网的网关地址
- 2. 调用 `_prepare_allocation_pools` 
+ 2. 调用 `_prepare_allocation_pools` 验证地址池是否合法，并且获得以 `IPRange` 描述的地址池
+3. 调用 `driver.Pool.get_instance` 获取驱动实例（`NeutronDbPool`） `ipam_driver`
+4. 调用 `get_subnet_request_factory`、`get_request` 来构造创建子网的请求
+5. 调用 `ipam_driver.allocate_subnet` 进行 IpamSubnet（注意，不是 `Subnet`） 子网的分配、创建工作
+6. 调用 `_make_subnet_args` 将创建子网的请求数据 subnet 转化为详细的字典格式
+7. 调用 `_save_subnet`
+
+
 
 
 
