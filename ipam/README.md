@@ -30,3 +30,11 @@ Ipam：Ip 地址管理
 `IpamSubnetManager`
 
 * subnet 地址分配的管理类，只负责与 ipam 相关的数据库交互
+
+## subnetpool 的 quota
+
+subnetpool 的 quota 是根据用户可用的 ip 地址的个数来限制的。
+
+限制字段在 `SubnetPool` 数据库的 `default_quota` 字段中。
+
+从这里看，同一个地址池，真多所用的可访问它的用户的 quota 配额是一样的。

@@ -6,7 +6,7 @@
 
 ## `def generate_pools(cidr, gateway_ip)`
 
-根据 cidr 和设定的 gateway_ip 生成地址池（利用 `netaddr` 模块实现）。
+根据 cidr 和设定的 gateway_ip 生成以 `netaddr.IPRange` 表示的地址池（利用 `netaddr` 模块实现）。
 
 对于 ipv4，要掐头去尾；
 对于 ipv6，要去头；

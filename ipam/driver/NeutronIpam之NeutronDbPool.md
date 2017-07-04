@@ -96,19 +96,18 @@ class SubnetAllocator(driver.Pool)
 ### `def allocate_subnet(self, request)`
 
 1. 判断分配子网请求的 `prefixlen` 属性在子网池的 `max_prefixlen` 和 `min_prefixlen` 的范围之间
-2. 若请求为 `AnySubnetRequest` 类型，则调用 `_allocate_any_subnet` 方法
+2. 若请求为 `AnySubnetRequest` 类型，则调用 `_allocate_any_subnet` 方法（该方法的最终目的也是构造一个 `SpecificSubnetRequest` 类型的请求）
 3. 若请求为 `SpecificSubnetRequest` 类型，则调用 `_allocate_specific_subnet` 方法
 
 
 ### `def _allocate_any_subnet(self, request)`
 
-1. 调用 `_lock_subnetpool` 锁住当前的数据库记录，防止同时进行两次子网的分配操作。
+1. 调用 `_lock_subnetpool` 锁住当前子网池的数据库记录，防止同时进行两次子网的分配操作。
 2. 调用 `_check_subnetpool_tenant_quota` 检查这次请求是否满足 quota 的限制
 3. 调用 `_get_available_prefix_list` 获取当前子网池中可分配的 `cidr`
 4. 从可用的子网池中分配子网
-5. 调用 `ipam_utils.generate_pools` 
-
-
+5. 根据 `cidr` 调用 `ipam_utils.generate_pools` 生成以 `netaddr.IPRange` 表示的地址池。
+6. 返回一个以 `IpamSubnet` 的实例（**该实例的主要作用是构造了一个 `SpecificSubnetRequest` 类型的请求**）。
 
 ### `def _lock_subnetpool(self)`
 
@@ -146,6 +145,12 @@ class SubnetAllocator(driver.Pool)
 ### `def _get_allocated_cidrs(self)`
 
 查询从当前子网池中所有分配出去的子网的 `cidr`，并按照 `cidr` 中的 `prefixlen` 进行由大到小的排序。
+
+### ` def _allocate_specific_subnet(self, request)`
+
+1. 调用 `_lock_subnetpool` 锁住当前子网池的数据库记录，防止同时进行两次子网的分配操作。
+2. 调用 `_check_subnetpool_tenant_quota` 检查这次请求是否满足 quota 的限制
+
 
 
 
