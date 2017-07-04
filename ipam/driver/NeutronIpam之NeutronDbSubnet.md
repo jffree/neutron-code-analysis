@@ -80,18 +80,30 @@
 
 ### `def create_allocation_pools(cls, subnet_manager, session, pools, cidr)`
 
+调用 `IpamSubnetManager.create_pool` 创建一个 `IpamAllocationPool` 数据库记录
 
 ### `def create_from_subnet_request(cls, subnet_request, ctx)`
 
+根据请求创建一个子网。
 
+1. 调用 `uuidutils.generate_uuid` 产生一个 `IpamSubnet` 数据库记录的 id
+2. 构造一个 `IpamSubnetManager` 实例
+3. 调用 `IpamSubnetManager.create` 创建一条 `IpamSubnet` 的数据库记录
+4. 调用 `create_allocation_pools` 创建与 `IpamSubnet` 相关联的 `IpamAllocationPool` 数据库记录
+5. 返回一个描述该 subne 的 `NeutronDbSubnet` 的实例。
 
 ### `def _no_pool_changes(self, session, pools)`
 
+1. 获取当前子网所拥有的地址池
+2. 对比待更新的地址池（pools）和当前子网的地址池是否一样，若一样则返回 True，否则返回 False
 
 ### `def update_allocation_pools(self, pools, cidr)`
 
+更新子网的地址池。
 
-
+1. 调用 `_no_pool_changes` 检查待更新的地址池是否与原地址池一致，若一致则直接退出
+2. 调用 `IpamSubnetManager.delete_allocation_pools` 删除原地址池的数据库记录
+3. 调用 `create_allocation_pools` 创建新的地址池数据库记录
 
 
 

@@ -77,18 +77,6 @@ neutron subnet-create --name simple-subnet --allocation-pool start=10.10.12.200,
 
 从这里可以看出，与 subnet 有关的数据库分别为：`DNSNameServer`、`SubnetRoute`、`IPAllocationPool`、`SubnetServiceType`
 
-
-
-
-
-
-
-
-
-
-
-
-
 ### `def _update_subnet_dns_nameservers(self, context, id, s)`
 
 * 测试方法：
@@ -187,10 +175,21 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 2. 根据更新的子网资源的数据 s，增加新的数据库 `SubnetServiceType` 的记录
 3. 删除更新数据中的 `service_types` 属性（因为已经更新），返回增加的数据库的结果
 
+### `def _validate_ip_version_with_subnetpool(self, subnet, subnetpool)`
 
+验证子网数据中的 ip 版本与子网池的 ip 版本一致
 
+### `def _gateway_ip_str(subnet, cidr_net)`
 
+获取子网数据的网关地址，若子网数据中不包含网关地址，则将网络地址之上的第一个地址作为网关地址
 
+### `def _prepare_allocation_pools(self, allocation_pools, cidr, gateway_ip)`
+
+1. 若 `allocation_pools` 没有设置，则调用 `generate_pools` 方法生成地址池并返回。
+2. 若 `allocation_pools` 被设置，则调用 `pools_to_ip_range` 用 `netaddr.IPRange` 来描述地址池
+3. 调用 `validate_allocation_pools` 验证地址池相对于 `cidr` 来说是否合法
+4. 调用 `validate_gw_out_of_pools` 验证网关地址不在地址池内
+5. 返回以 `IPRange` 描述的地址池
 
 
 
@@ -209,6 +208,25 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 
 1. 调用父类的 `update_db_subnet` 完成与 subnet 有关的数据库的升级处理
 2. 调用 `_ipam_update_allocation_pools` 
+
+## `def allocate_subnet(self, context, network, subnet, subnetpool_id)`
+
+分配子网，参数介绍：
+
+* `network`：该子网绑定到哪个网络之上，这里网络的数据库记录
+* `subnet`：欲创建的子网的参数
+* `subnetpool_id`：想要从哪个子网池中分配子网
+
+1. 当 `subnetpool_id` 不为空且不为 `IPV6_PD_POOL_ID` 时：
+ 1. 调用 `_get_subnetpool` 获取 SubnetPool object 对象
+ 2. 调用 `_validate_ip_version_with_subnetpool` 验证待创建的子网的 ip 版本与子网池的 Ip 版本一致
+2. 如果 subnet 包含了 `cidr` 属性：
+ 1. 调用 `_gateway_ip_str` 获取欲创建的子网的网关地址
+ 2. 调用 `_prepare_allocation_pools` 
+
+
+
+### ``
 
 
 ### `def _ipam_update_allocation_pools(self, context, ipam_driver, subnet)`

@@ -99,6 +99,7 @@ class SubnetAllocator(driver.Pool)
 2. 若请求为 `AnySubnetRequest` 类型，则调用 `_allocate_any_subnet` 方法（该方法的最终目的也是构造一个 `SpecificSubnetRequest` 类型的请求）
 3. 若请求为 `SpecificSubnetRequest` 类型，则调用 `_allocate_specific_subnet` 方法
 
+*通过分析 `_allocate_any_subnet` 和 `_allocate_specific_subnet` 方法可知：这两个方法只是对子网分配的请求做了验证，验证可以在子网池中分配该子网，但是并没有真正的分配子网。验证通过后，构造一个 `SpecificSubnetRequest` 类型的分配请求。*
 
 ### `def _allocate_any_subnet(self, request)`
 
@@ -150,10 +151,17 @@ class SubnetAllocator(driver.Pool)
 
 1. 调用 `_lock_subnetpool` 锁住当前子网池的数据库记录，防止同时进行两次子网的分配操作。
 2. 调用 `_check_subnetpool_tenant_quota` 检查这次请求是否满足 quota 的限制
+3. 调用 `_get_available_prefix_list` 获取子网池中可用的 `cidr`
+4. 调用 `netaddr.all_matching_cidrs` 查询是否有满足要求的 `cidr`
+5. 若是有满足要求的 `cidr`，则构造一个 `IpamSubnet` 实例（**该实例的主要作用是构造了一个 `SpecificSubnetRequest` 类型的请求**）
+6. 若没有满足要求的 `cidr`，则引发异常
 
+### `def get_allocator(self, subnet_ids)`
 
-
-
+```
+    def get_allocator(self, subnet_ids):
+        return IpamSubnetGroup(self, subnet_ids)
+```
 
 ## `class NeutronDbPool(subnet_alloc.SubnetAllocator)`
 
@@ -170,16 +178,27 @@ class SubnetAllocator(driver.Pool)
 
 ### `def allocate_subnet(self, subnet_request)`
 
-1. 若本实例的 `_subnetpool` 不为空，则调用父类的 `allocate_subnet` 方法
+1. 若本实例的 `_subnetpool` 不为空，则调用父类的 `allocate_subnet` 方法，验证请求分配的子网是否可以在自己的子网池中分配。验证通过后，构造一个 `SpecificSubnetRequest` 类型的分配请求。
+2. 调用 `NeutronDbSubnet.create_from_subnet_request` 进行子网的实际分配（创建数据库记录）。
 
+### `def update_subnet(self, subnet_request)`
 
+1. 检查 `subnet_request` 应该包含 `subnet_id` 和 `allocation_pools` 属性
+2. 调用 `NeutronDbSubnet.load` 构造一个以 `NeutronDbSubnet` 实例，用来描述的待更新的子网。
+3. 调用 `NeutronDbSubnet.update_allocation_pools` 更新子网的地址池
+ 
+*可以看出，这里的更新只处理子网的地址池的更新。*
 
+### `def remove_subnet(self, subnet_id)`
 
+直接调用 `IpamSubnetManager.delete` 删除子网的数据库记录
 
+### `def needs_rollback(self)`
 
-
-
-
+```
+    def needs_rollback(self):
+        return False
+```
 
 
 
