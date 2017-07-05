@@ -199,10 +199,12 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 
 1. 调用 `_validate_subnet_cidr` 验证待创建子网的 `cidr` 属性是否合法
 2. 调用 `_validate_network_subnetpools` 验证该子网与所属网络下的其他子网是否是在同一子网池中分配的
-3. 创建一条 `Subnet` 的数据看记录
-
-
-
+3. 创建一条 `Subnet` 的数据库记录
+4. 调用 `_validate_segment` 验证 `segment_id` 是否满足要求
+5. 若新创建的 subnet 数据中包含 `dns_namservers` 属性，则会创建 `DNSNameServer` object 实例，进一步创建数据库记录。
+6. 若新创建的 subnet 数据中包含 `host_routes` 属性，则会创建 `SubnetRouter` 的数据库记录
+7. 若新创建的 subnet 数据中包含 `service_types` 属性，则会创建 `SubnetServiceType` 的数据库记录
+8. 调用 `save_allocation_pools` 创建 `IPAllocationPool` 的数据库记录
 
 ### `def _validate_subnet_cidr(self, context, network, new_subnet_cidr)`
 
@@ -214,9 +216,11 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 
 **neutron 中有这么一个要求，同一网络下，若是子网都是从子网池中分配的，那么则要求所有的子网都在同一子网池中分配**
 
+### `def _validate_segment(self, context, network_id, segment_id)`
 
-
-
+1. 根据 `network_id` 获取该网络下的所有子网记录，并获取这些字网的 `segment_id`
+2. **同一网络下的所有子网要么都有 `segment_id`，要么都没有 `segment_id`**
+3. **每个 `segment_id` 只能属于一个网络**
 
 
 
@@ -274,17 +278,19 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 2. 如果 subnet 包含了 `cidr` 属性：
  1. 调用 `_gateway_ip_str` 获取欲创建的子网的网关地址
  2. 调用 `_prepare_allocation_pools` 验证地址池是否合法，并且获得以 `IPRange` 描述的地址池
-3. 调用 `driver.Pool.get_instance` 获取驱动实例（`NeutronDbPool`） `ipam_driver`
+3. 调用 `driver.Pool.get_instance` 获取 ipam 驱动实例（`NeutronDbPool`） `ipam_driver`
 4. 调用 `get_subnet_request_factory`、`get_request` 来构造创建子网的请求
 5. 调用 `ipam_driver.allocate_subnet` 进行 IpamSubnet（注意，不是 `Subnet`） 子网的分配、创建工作
 6. 调用 `_make_subnet_args` 将创建子网的请求数据 subnet 转化为详细的字典格式
 7. 调用 `_save_subnet`
 
 
+### `def save_allocation_pools(self, context, subnet, allocation_pools)`
+
+创建 `IPAllocationPool` 的数据库记录
 
 
 
-### ``
 
 
 ### `def _ipam_update_allocation_pools(self, context, ipam_driver, subnet)`

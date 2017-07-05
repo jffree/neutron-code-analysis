@@ -1,5 +1,18 @@
 Ipam：Ip 地址管理
 
+## 总结
+
+* ipam 实现的是 IP 地址的管理：
+ 1. 如何从子网池中分配和回收子网
+ 2. 如何从子网中分配和回收单个的 Ip 地址
+
+* ipam 不负责子网的其他属性的管理：
+ 1. 不负责管理 service_types 属性
+ 2. 不负责管理 segment_id 属性
+ 3. 不负责管理 host_routes 属性
+ 4. 不负责管理 service_types 属性
+
+
 ## ipam 之数据库描述：
 
 *类似于 Neutron object 用一个类来实现对一条数据库记录的描述。*
