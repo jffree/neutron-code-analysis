@@ -232,6 +232,17 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 2. 调用 `update_port_with_ips` （在子类中实现的）更新 port 的 ip 地址，获取该 port 上新增、不变、删除的 Ip 地址列表
 
 
+
+
+
+
+
+
+
+
+
+
+
 ### `def _get_changed_ips_for_port(self, context, original_ips, new_ips, device_owner)`
 
 若 ip 有 `delete_subnet` 这条属性，则表明这个 IP 是 Ipv6 版本且是自动分配的，加上这个标识用于标识该 ip 被强制更新（请参考 `Ml2Plugin.delete_subnet`中的说明）。
