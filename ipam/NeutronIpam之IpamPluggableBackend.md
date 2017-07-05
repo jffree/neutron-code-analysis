@@ -229,7 +229,7 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 ### `def update_port(self, context, old_port_db, old_port, new_port)`
 
 1. 获取新 port 所在的主机名称
-2. 调用 `update_port_with_ips` （在子类中实现的）
+2. 调用 `update_port_with_ips` （在子类中实现的）更新 port 的 ip 地址，获取该 port 上新增、不变、删除的 Ip 地址列表
 
 
 ### `def _get_changed_ips_for_port(self, context, original_ips, new_ips, device_owner)`
@@ -239,21 +239,67 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 1. 统计含有 `delete_subnet` 属性的 ip
 2. 统计不含有 `delete_subnet` 属性的 ip
 3. 调用 `_validate_max_ips_per_port` 验证该网卡是否可以分配这些 ip 地址
-4. `add_ips`：新增的 ip 地址；`prev_ips`：之前存在但还继续使用的 IP 地址；`remove_candidates`：
-
-
-
+4. 对于要更新的 ip 地址的 port 资源来说，有这么三种情况：`add_ips`：新增的 ip 地址；`prev_ips`：之前存在但还继续使用的 IP 地址；`remove_ips`：需要被删除的 ip 地址
+5. 返回上面获取的 Ip 地址的三种情况。
 
 ### `def _validate_max_ips_per_port(self, fixed_ip_list, device_owner)`
 
 1. 调用 `common_utils.is_port_trusted` 验证该网卡是否可以访问该网络
 2. `max_fixed_ips_per_port` 在 */etc/neutron/neutron.conf* 中，用于设定每个网卡可以有几个 Ip 地址
 
+### `def _is_ip_required_by_subnet(self, context, subnet_id, device_owner)`
 
+判断一个子网的 ip 是否需要手动设置：
 
+1. `device_owner` 为 `const.ROUTER_INTERFACE_OWNERS_SNAT`
+2. 非 ipv6 自动分配地址和地址池不为 `IPV6_PD_POOL_ID` 的子网
 
+### `def _ipam_get_subnets(self, context, network_id, host, service_type=None)`
 
+1. 调用 `_find_candidate_subnets`，根据网络的 id，host，service_type 获取合适的 subnet，
+2. 若有合适的子网，则调用 `_make_subnet_dict`， 返回该子网字典形式的数据
+3. 若没有合适的子网，则判断因为什么原因没找到合适的 subnet，并根据原因引发不同的异常
 
+### `def _find_candidate_subnets(self, context, network_id, host, service_type)`
+
+根据网络的 id，host，service_type 获取合适的 subnet
+
+1. 调用 `_query_subnets_on_network` 获取一个网络下的所有子网的数据库记录
+2. 调用 `_query_filter_service_subnets` 获取满足 `service_type` 的子网记录
+3. 如果 `host` 参数为被设置，则调用 `_query_exclude_subnets_on_segments` 返回没有设置 `segment_id` 的子网
+4. 如果设置了 `host` 参数，则调用 `_query_filter_by_segment_host_mapping` 获取可到达该 Host 的子网数据库记录，返回这个子网数据库记录
+
+### `def _query_subnets_on_network(self, context, network_id)`
+
+获取一个网络下的所有子网的数据库记录
+
+### `def _query_filter_service_subnets(self, query, service_type)`
+
+从子网的数据库记录 `query` 中获取满足 `service_type` 的子网记录
+
+### `def _query_exclude_subnets_on_segments(query)`
+
+从子网的数据库记录 `query` 中获取未设置 `segment_id` 的子网记录
+
+### `def _query_filter_by_segment_host_mapping(query, host)`
+
+根据子网的 segment_id 查询该子网可以到达的是否可以到达该 Host
+
+### `def _get_subnet_for_fixed_ip(self, context, fixed, subnets)`
+
+从一些候选的子网中，选择出可以分配 `fixed` ip 的子网
+
+### `def _update_ips_for_pd_subnet(self, context, subnets, fixed_ips, mac_address=None)`
+
+处理特殊的 ipv6 版本的地址
+
+### `def _delete_ip_allocation(context, network_id, subnet_id, ip_address)`
+
+对于那些从 port 上删除的 ip 地址，删除其在 `IPAllocation` 数据库上的记录
+
+### `def _store_ip_allocation(context, ip_address, network_id, subnet_id, port_id)`
+
+对于那些从 port 上新增的 ip 地址，增加其在 `IPAllocation` 数据库上的记录
 
 
 
@@ -364,15 +410,44 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 * `new_port`：port 的新数据
 * `new_mac`：port 的新的 mac 地址
 
-1. 调用 `_update_ips_for_port`
+1. 调用 `_update_ips_for_port` 进行 ip 地址的更新（IPAM），并获取新增、不变、删除的 Ip 地址列表
+2. 调用 `_delete_ip_allocation` 对那些删除的 ip 地址删除 `IPAllocation` 的数据库记录
+3. 调用 `_store_ip_allocation` 对那些新增的 ip 地址增加 `IPAllocation` 的数据库记录
+4. 最后调用 `_update_db_port` 更新 `Port` 数据库的记录
+5. 若在以上过程中发生异常，则调用 `_ipam_deallocate_ips` 将新分配的地址回收，调用 `_ipam_allocate_ips` 将删除的地址重新分配回去
+6. 返回新增、不变、删除的 Ip 地址列表
 
 
 ### `def _update_ips_for_port(self, context, port, host, original_ips, new_ips, mac)`
 
-1. 调用 `_get_changed_ips_for_port`
+1. 调用 `_get_changed_ips_for_port` 获取该 port 上 ip 地址的变动情况
+2. 调用 `_ipam_get_subnets` 获取合适的用来分配 Ip 地址的子网
+3. 调用 `_test_fixed_ips_for_port` 获取每个ip以及其对应的子网的列表
+4. 调用 `_update_ips_for_pd_subnet` 处理特殊的 ipv6 版本的地址
+5. 调用 `_ipam_deallocate_ips` 回收那些不用的 ip 地址
+6. 调用 `_ipam_allocate_ips` 分配那些更新（新增）的 ip 地址
+7. 返回新增、不变、删除的 Ip 地址列表
 
 
-### ``
+### `def _test_fixed_ips_for_port(self, context, network_id, fixed_ips, device_owner, subnets)`
+
+1. 调用 `_get_subnet_for_fixed_ip` 为每个 ip 选择可分配的子网
+2. 调用 `_validate_max_ips_per_port` 验证该 port 的 ip 地址没有超出限制
+3. 返回 ip 与其对应的子网的列表
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
