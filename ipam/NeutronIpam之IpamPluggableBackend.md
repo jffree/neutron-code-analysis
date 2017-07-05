@@ -222,19 +222,32 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 2. **同一网络下的所有子网要么都有 `segment_id`，要么都没有 `segment_id`**
 3. **每个 `segment_id` 只能属于一个网络**
 
+### `def delete_port(self, context, id)`
+
+根据 id 获取 `Port` 的数据库记录，然后删除该记录
+
+### `def update_port(self, context, old_port_db, old_port, new_port)`
+
+1. 获取新 port 所在的主机名称
+2. 调用 `update_port_with_ips` （在子类中实现的）
+
+
+### `def _get_changed_ips_for_port(self, context, original_ips, new_ips, device_owner)`
+
+若 ip 有 `delete_subnet` 这条属性，则表明这个 IP 是 Ipv6 版本且是自动分配的，加上这个标识用于标识该 ip 被强制更新（请参考 `Ml2Plugin.delete_subnet`中的说明）。
+
+1. 统计含有 `delete_subnet` 属性的 ip
+2. 统计不含有 `delete_subnet` 属性的 ip
+3. 调用 `_validate_max_ips_per_port` 验证该网卡是否可以分配这些 ip 地址
+4. `add_ips`：新增的 ip 地址；`prev_ips`：之前存在但还继续使用的 IP 地址；`remove_candidates`：
 
 
 
 
+### `def _validate_max_ips_per_port(self, fixed_ip_list, device_owner)`
 
-
-
-
-
-
-
-
-
+1. 调用 `common_utils.is_port_trusted` 验证该网卡是否可以访问该网络
+2. `max_fixed_ips_per_port` 在 */etc/neutron/neutron.conf* 中，用于设定每个网卡可以有几个 Ip 地址
 
 
 
@@ -262,7 +275,12 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
  * `old_pools`：子网之前的地址池
 
 1. 调用父类的 `update_db_subnet` 完成与 subnet 有关的数据库的升级处理
-2. 调用 `_ipam_update_allocation_pools` 
+2. 调用 `_ipam_update_allocation_pools` 更新 ipam subnet 的 `IpamAllocationPool` 数据库记录
+
+### `def _ipam_update_allocation_pools(self, context, ipam_driver, subnet)`
+
+1. 调用 Ipam 驱动 `ipam_driver` 来构造创建或者更新子网的请求
+2. 调用 Ipam 驱动的 `update_subnet` 来更新 ipamsubnet 
 
 ## `def allocate_subnet(self, context, network, subnet, subnetpool_id)`
 
@@ -282,22 +300,79 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 4. 调用 `get_subnet_request_factory`、`get_request` 来构造创建子网的请求
 5. 调用 `ipam_driver.allocate_subnet` 进行 IpamSubnet（注意，不是 `Subnet`） 子网的分配、创建工作
 6. 调用 `_make_subnet_args` 将创建子网的请求数据 subnet 转化为详细的字典格式
-7. 调用 `_save_subnet`
-
+7. 调用 `_save_subnet` 进行子网参数的验证以及创建 `Subnet` 的数据库记录
 
 ### `def save_allocation_pools(self, context, subnet, allocation_pools)`
 
 创建 `IPAllocationPool` 的数据库记录
 
+### `def add_auto_addrs_on_network_ports(self, context, subnet, ipam_subnet)`
+
+若该子网是 ipv6 版本的，且是自动分配 IP 地址，则会调用此方法自动给该网络的 **内部port（非 `ROUTER_INTERFACE_OWNERS_SNAT` 类型？？）** 分配 Ip
+ 
+1. 获取该网络下的所有非 `ROUTER_INTERFACE_OWNERS_SNAT` 类型的 Port
+2. 获取 Ipam 的驱动实例
+3. 根据每个 port 创建 ipam 中 ip 地址的分配请求，并将这个请求发送给该子网的 ipam 实例（`NeutronDbSubent` ipam_subnet）来分配 ip 地址。
+4. 针对每个分配 IP 的 port 创建 `IPAllocation` 的数据库记录
+5. 返回所有被更新过的 port 的 id 列表
+
+### `def delete_subnet(self, context, subnet_id)`
+
+1. 获取 ipam 的驱动实例 `ipam_driver`
+2. 调用驱动的 `remove_subnet` 方法删除 `IpamSubnet` 的数据库记录
+
+### `def delete_port(self, context, id)`
+
+1. 根据 `id` 获取 `Port` 的数据库记录
+2. 获取 ipam 后台驱动
+3. 调用父类的 `delete_port` 删除 `Port` 数据库记录
+4. 调用 `_ipam_deallocate_ips` 回收 ip 地址
+
+### `def _ipam_deallocate_ips(self, context, ipam_driver, port, ips, revert_on_fail=True)`
+
+删除 port 时应该调用此方法回收 Ip
+
+1. 调用 `ipam_driver.get_subnet` 获取 Ipam subnet 实例
+2. 调用 `ipam_subnet.deallocate` 回收 Ip 地址
+3. 若是回收过程中发生异常且 `ipam_driver.needs_rollback()` 为真，则调用 `_ipam_allocate_ips` 将那些已经回收回来的 Ip 重新分配回去
+
+### `def _safe_rollback(self, func, *args, **kwargs)`
+
+```
+    def _safe_rollback(self, func, *args, **kwargs):
+        """Calls rollback actions and catch all exceptions.                                                                                                            
+    
+        All exceptions are catched and logged here to prevent rewriting
+        original exception that triggered rollback action.
+        """ 
+        try:
+            func(*args, **kwargs)
+        except Exception as e:
+            LOG.warning(_LW("Revert failed with: %s"), e)
+```
+
+### `def _ipam_allocate_ips(self, context, ipam_driver, port, ips, revert_on_fail=True)`
+
+调用 `ipam_driver` 为 port 分配 Ip
+
+### `def update_port_with_ips(self, context, host, db_port, new_port, new_mac)`
+
+参数说明：
+
+* `host`：待更新 port 所在的主机名称
+* `db_port`： port 更新前的数据库记录
+* `new_port`：port 的新数据
+* `new_mac`：port 的新的 mac 地址
+
+1. 调用 `_update_ips_for_port`
 
 
+### `def _update_ips_for_port(self, context, port, host, original_ips, new_ips, mac)`
+
+1. 调用 `_get_changed_ips_for_port`
 
 
-### `def _ipam_update_allocation_pools(self, context, ipam_driver, subnet)`
-
-
-
-
+### ``
 
 
 
