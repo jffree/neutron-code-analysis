@@ -93,4 +93,13 @@
   * [NeutronObjects之AllowedAddressPair](objects/port/NeutronObjects之AllowedAddressPair.md)
   * [NeutronObjects之ExtraDhcpOpt](objects/port/NeutronObjects之ExtraDhcpOpt.md)
   * [NeutronObjects之PortSecurity](objects/port/NeutronObjects之PortSecurity.md)
+* oslo\_versionedobjects
+  * [oslo\_versionedobjects之VersionedObjectRegistry](objects/oslo_versionedobjects/oslo_versionedobjects之VersionedObjectRegistry.md)
+  * [versionedobjects之ComparableVersionedObject](objects/oslo_versionedobjects/versionedobjects之ComparableVersionedObject.md)
+  * [versionedobjects之field](objects/oslo_versionedobjects/versionedobjects之field.md)
+  * [versionedobjects之VersionedObject](objects/oslo_versionedobjects/versionedobjects之VersionedObject.md)
+  * [versionedobjects之VersionedObjectDictCompat](objects/oslo_versionedobjects/versionedobjects之VersionedObjectDictCompat.md)
+* network
+  * [NeutronObjects之NetworkPortSecurity](objects/network/NeutronObjects之NetworkPortSecurity.md)
+  * [NeutronObjects之NetworkSegment](objects/network/NeutronObjects之NetworkSegment.md)
 
