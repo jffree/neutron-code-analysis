@@ -84,4 +84,13 @@
 * [NeutronObjects之db操作API](objects/NeutronObjects之db操作API.md)
 * [NeutronObjects之Common\_types](objects/NeutronObjects之Common_types.md)
 * [NeutronObjects之AddressScope](objects/NeutronObjects之AddressScope.md)
+* qos
+  * [NeutronObjects之QosRuleType](objects/qos/NeutronObjects之QosRuleType.md)
+  * [NeutronObject之QosPolicy](objects/qos/NeutronObject之QosPolicy.md)
+  * [NeutronObject之QosPolicyRule](objects/qos/NeutronObject之QosPolicyRule.md)
+  * [NeutronQosDb访问](objects/qos/NeutronQosDb访问.md)
+* port
+  * [NeutronObjects之AllowedAddressPair](objects/port/NeutronObjects之AllowedAddressPair.md)
+  * [NeutronObjects之ExtraDhcpOpt](objects/port/NeutronObjects之ExtraDhcpOpt.md)
+  * [NeutronObjects之PortSecurity](objects/port/NeutronObjects之PortSecurity.md)
 
