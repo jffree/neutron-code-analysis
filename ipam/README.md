@@ -12,14 +12,16 @@ Ipam：Ip 地址管理
  3. 不负责管理 host_routes 属性
  4. 不负责管理 service_types 属性
 
-
 ## ipam 之数据库描述：
 
 *类似于 Neutron object 用一个类来实现对一条数据库记录的描述。*
 
-1. `NeutronDbSubnet` 来描述一个 subnet 的数据库记录
+1. `NeutronDbSubnet` 来描述一个 subnet 的数据库记录，同时实现了从该子网中分配 Ip 地址
+2. `SubnetPoolReader` 实例用来描述一条 `subnetpool` 的数据库记录
 
-2. `NeutronDbPool` 来描述一个 subnetpool 的数据库记录
+## 子网的分配
+
+`NeutronDbPool` 实现了从子网池中分配子网
 
 ## ipam 之 request
 
