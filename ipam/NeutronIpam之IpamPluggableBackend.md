@@ -230,18 +230,9 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 
 1. 获取新 port 所在的主机名称
 2. 调用 `update_port_with_ips` （在子类中实现的）更新 port 的 ip 地址，获取该 port 上新增、不变、删除的 Ip 地址列表
-
-
-
-
-
-
-
-
-
-
-
-
+3. 判断段是否需要延迟分配 IP（`fixed_ips_requesed`）
+4. 若是不需要延迟分配 ip 且只改变了 port 的 host，而没有改变 fixed_ip，则检查 port 以前的 ip 是否可以在新的 host 上分配，若不能则引发异常，若可以则返回该 port 上新增、不变、删除的 Ip 地址列表
+5. 若是需要延迟分配 Ip，则调用 `allocate_ips_for_port_and_store`（子类中实现）进行 IP 的分配，返回该 port 上新增、不变、删除的 Ip 地址列表
 
 ### `def _get_changed_ips_for_port(self, context, original_ips, new_ips, device_owner)`
 
@@ -312,14 +303,11 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 
 对于那些从 port 上新增的 ip 地址，增加其在 `IPAllocation` 数据库上的记录
 
+### `def _classify_subnets(self, context, subnets)`
 
+将子网 `subnets` 分为三类：`v4`、`v6_stateful`、`v6_stateless`
 
-
-
-
-
-
-
+---
 
 ## `class IpamPluggableBackend(ipam_backend_mixin.IpamBackendMixin)`
 
@@ -446,21 +434,16 @@ MariaDB [neutron]> select * from ipallocationpools where subnet_id='b4634777-a30
 2. 调用 `_validate_max_ips_per_port` 验证该 port 的 ip 地址没有超出限制
 3. 返回 ip 与其对应的子网的列表
 
+### `def allocate_ips_for_port_and_store(self, context, port, port_id)`
+
+1. 调用 `_allocate_ips_for_port` 
 
 
+### `def _allocate_ips_for_port(self, context, port)`
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+1. 调用 `_ipam_get_subnets` 获取合适的用来分配 Ip 地址的子网
+2. 调用 `_classify_subnets` 将刚才获取的子网分为三类：`v4`、`v6_stateful`、`v6_stateless`
+3. 对于含有 `foxed_ips` 属性的 port，调用 `_test_fixed_ips_for_port` 获取可分配 Ip 地址的子网（**手动指定 ip 地址**）
+4. 对于不含有 `foxed_ips` 属性的 port，则将 `v4`、`v6_stateful` 作为可分配 Ip 地址的子网（**自动分配 IP 地址**）
+5. 若 port 的 `device_owner` 属性不是 `ROUTER_INTERFACE_OWNERS_SNAT`，则将 `v6_stateless` 加入到可分配你 Ip 地址的子网中
+6. 调用 `_ipam_allocate_ips` 进行实际的 IP 地址分配
