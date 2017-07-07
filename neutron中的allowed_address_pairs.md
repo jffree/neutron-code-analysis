@@ -178,17 +178,37 @@ neutron port-show 08ccf4de-f6e2-4d4d-bcdf-55532e93f32f
 
 ### `def _has_address_pairs(self, port)`
 
-
+检查 port 数据中是否含有 `allowed_address_pairs` 属性
 
 ### `def _check_update_has_allowed_address_pairs(self, port)`
 
+检查是否需要更新 port 的 `allowed_address_pairs` 属性
+
+```
+    def _check_update_deletes_allowed_address_pairs(self, port):
+        """Determine if request deletes address pair.
+
+        Return True if port has an allowed address pair and its value
+        is either [] or not is_attr_set, otherwise return False
+        """
+        return (addr_pair.ADDRESS_PAIRS in port['port'] and
+                not self._has_address_pairs(port))
+```
 
 ### `def _check_update_deletes_allowed_address_pairs(self, port)`
 
+检查是否需要删除原 port 数据库中的的 `allowed_address_pairs` 属性
 
+```
+    def _check_update_has_allowed_address_pairs(self, port):
+        """Determine if request has an allowed address pair.
 
-
-
+        Return True if the port parameter has a non-empty
+        'allowed_address_pairs' attribute. Otherwise returns False.
+        """
+        return (addr_pair.ADDRESS_PAIRS in port['port'] and
+                self._has_address_pairs(port))
+```
 
 ## 数据库
 
