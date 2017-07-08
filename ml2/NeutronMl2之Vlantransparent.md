@@ -1,8 +1,11 @@
 # Neutron Ml2 之 Vlantransparent
 
+我们创建网络的时候会有一个 `--vlan-transparent {True,False}` 的选项，这里的 extension 就是实现这个目的的。
+
 *关于 vlan transparent 的概念请看后面的参考文章*
 
 ## extensions
+
 
 *neutron/extensions/vlantransparent.py*
 
