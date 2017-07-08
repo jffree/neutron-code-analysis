@@ -2,8 +2,6 @@
 
 我们创建 network 的时候，有一个 `--router:external` 的选项。若在创建 network 的时候指定了该选项，那么就可以从该 network 分配 floating ip。
 
-一份
-
 ## extension
 
 *neutron/extensions/externl_net.py*
