@@ -62,6 +62,8 @@ WSGI 实现
 
 ### `def _network_result_filter_hook(self, query, filters)`
 
+做进一步有的过滤工作
+
 ```
     def _network_result_filter_hook(self, query, filters):
         vals = filters and filters.get(external_net.EXTERNAL, [])
