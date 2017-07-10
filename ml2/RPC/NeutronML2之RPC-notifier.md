@@ -74,7 +74,7 @@ class AgentNotifierApi(dvr_rpc.DVRAgentRpcApiMixin,
 * **version** : `"1.1"`
 * **fanout** : `True`
 
-### `def security_groups_provider_updated(self, context,                                         devices_to_update=None)`
+### `def security_groups_provider_updated(self, context, devices_to_update=None)`
 
 * **topic :** `q-agent-notifier-security_group-update`
 * **method :** `security_groups_provider_updated`
