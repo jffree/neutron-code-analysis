@@ -127,9 +127,24 @@
             self.extension_manager.extend_network_dict(session, netdb, result)
 ```
 
+### `def _ml2_md_extend_port_dict(self, result, portdb)`
 
+```
+    def _ml2_md_extend_port_dict(self, result, portdb):                                                                                                                
+        session = db_api.get_session()
+        with session.begin(subtransactions=True):
+            self.extension_manager.extend_port_dict(session, portdb, result)
+```
 
+### `def _ml2_md_extend_subnet_dict(self, result, subnetdb)`
 
+```
+    def _ml2_md_extend_subnet_dict(self, result, subnetdb):                                                                                                            
+        session = db_api.get_session()
+        with session.begin(subtransactions=True):
+            self.extension_manager.extend_subnet_dict(
+                session, subnetdb, result)
+```
 
 
 
