@@ -69,7 +69,7 @@
 <class 'neutron.plugins.ml2.plugin.Ml2Plugin'>, <class 'neutron.db.db_base_plugin_v2.NeutronDbPluginV2'>, <class 'neutron.db.db_base_plugin_common.DbBasePluginCommon'>, <class 'neutron.neutron_plugin_base_v2.NeutronPluginBaseV2'>, <class 'neutron.worker.WorkerSupportServiceMixin'>, <class 'neutron.db.rbac_db_mixin.RbacPluginMixin'>, <class 'neutron.db.common_db_mixin.CommonDbMixin'>, <class 'neutron.db.standardattrdescription_db.StandardAttrDescriptionMixin'>, <class 'neutron.db.dvr_mac_db.DVRDbMixin'>, <class 'neutron.extensions.dvr.DVRMacAddressPluginBase'>, <class 'neutron.db.external_net_db.External_net_db_mixin'>, <class 'neutron.db.securitygroups_rpc_base.SecurityGroupServerRpcMixin'>, <class 'neutron.db.securitygroups_db.SecurityGroupDbMixin'>, <class 'neutron.extensions.securitygroup.SecurityGroupPluginBase'>, <class 'neutron.db.agentschedulers_db.AZDhcpAgentSchedulerDbMixin'>, <class 'neutron.db.agentschedulers_db.DhcpAgentSchedulerDbMixin'>, <class 'neutron.extensions.dhcpagentscheduler.DhcpAgentSchedulerPluginBase'>, <class 'neutron.db.agentschedulers_db.AgentSchedulerDbMixin'>, <class 'neutron.db.agents_db.AgentDbMixin'>, <class 'neutron.extensions.agent.AgentPluginBase'>, <class 'neutron.db.agents_db.AgentAvailabilityZoneMixin'>, <class 'neutron.extensions.availability_zone.AvailabilityZonePluginBase'>, <class 'neutron.db.availability_zone.network.NetworkAvailabilityZoneMixin'>, <class 'neutron.extensions.network_availability_zone.NetworkAvailabilityZonePluginBase'>, <class 'neutron.db.allowedaddresspairs_db.AllowedAddressPairsMixin'>, <class 'neutron.db.vlantransparent_db.Vlantransparent_db_mixin'>, <class 'neutron.db.extradhcpopt_db.ExtraDhcpOptMixin'>, <class 'neutron.db.address_scope_db.AddressScopeDbMixin'>, <class 'neutron.extensions.address_scope.AddressScopePluginBase'>, <class 'neutron.db.subnet_service_type_db_models.SubnetServiceTypeMixin'>, <type 'object'>
 ```
 
-## 注册模型查询的钩子方法
+## 注册数据 Port 查询的钩子方法
 
 ```
     db_base_plugin_v2.NeutronDbPluginV2.register_model_query_hook(
@@ -87,6 +87,55 @@
 ### `def _ml2_port_result_filter_hook(self, query, filters)`
 
 若过滤数据 `filters` 中含有 `binding:host_id` 的数据，则增加对该数据的过滤（前面已经增加了对 `PortBinding` 数据库的绑定）
+
+## 注册 Subnet、Network、Port 的 dict extend func
+
+```
+    db_base_plugin_v2.NeutronDbPluginV2.register_dict_extend_funcs(
+        attributes.PORTS, ['_ml2_extend_port_dict_binding'])
+
+    # Register extend dict methods for network and port resources.
+    # Each mechanism driver that supports extend attribute for the resources
+    # can add those attribute to the result.
+    db_base_plugin_v2.NeutronDbPluginV2.register_dict_extend_funcs(                                                                                                    
+               attributes.NETWORKS, ['_ml2_md_extend_network_dict'])
+    db_base_plugin_v2.NeutronDbPluginV2.register_dict_extend_funcs(
+               attributes.PORTS, ['_ml2_md_extend_port_dict'])
+    db_base_plugin_v2.NeutronDbPluginV2.register_dict_extend_funcs(
+               attributes.SUBNETS, ['_ml2_md_extend_subnet_dict'])
+```
+
+### `def _ml2_extend_port_dict_binding(self, port_res, port_db)`
+
+```
+    def _ml2_extend_port_dict_binding(self, port_res, port_db):
+        # None when called during unit tests for other plugins.
+        if port_db.port_binding:
+            self._update_port_dict_binding(port_res, port_db.port_binding)
+```
+
+### `def _update_port_dict_binding(self, port, binding)`
+
+在 Port 的数据中增加 binding 相关的属性
+
+### `def _ml2_md_extend_network_dict(self, result, netdb)`
+
+```
+    def _ml2_md_extend_network_dict(self, result, netdb):
+        session = db_api.get_session()
+        with session.begin(subtransactions=True):                                                                                                                      
+            self.extension_manager.extend_network_dict(session, netdb, result)
+```
+
+
+
+
+
+
+
+
+
+
 
 
 
