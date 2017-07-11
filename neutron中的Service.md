@@ -62,6 +62,12 @@ neutron 中的 neutron-server 与 agent 的启动都是在这里孵化出来的�
         self.manager.after_start()
 ```
 
+1. 调用 `manager.init_host`
+2. 调用 `super(Service, self).start` 来启动 RPC server 端。
+2. 设定两个周期执行的任务 `report_interval` 和 `periodic_interval`
+3. 调用 `manager.after_start`
+
+
 ### `def __getattr__(self, key)`
 
 ```
