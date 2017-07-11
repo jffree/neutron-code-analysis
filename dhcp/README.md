@@ -6,7 +6,7 @@
 /usr/bin/neutron-dhcp-agent --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/dhcp_agent.ini & echo $! >/opt/stack/status/stack/q-dhcp.pid; fg || echo "q-dhcp failed to start" | tee "/opt/stack/status/stack/q-dhcp.failure"
 ```
 
-## neutron-dhcp-agent 
+## neutron-dhcp-agent
 
 这个 neutron-dhcp-agent 是如何来的呢？我们看 neutron 的 setup.cfg 文件：
 
@@ -16,19 +16,19 @@
     neutron-dhcp-agent = neutron.cmd.eventlet.agents.dhcp:main
 ```
 
-根据上面的信息，我们在 *neutron/cmd/eventlet/agents/dhcp.py* 中看到：
+根据上面的信息，我们在 _neutron/cmd/eventlet/agents/dhcp.py_ 中看到：
 
 ```
 from neutron.agent import dhcp_agent
- 
- 
+
+
 def main():                                                                                                                                                            
     dhcp_agent.main()
 ```
 
 ## dhcp agent 的启动
 
-*neutron/agent/dhcp_agent.py*
+_neutron/agent/dhcp\_agent.py_
 
 ```
 def main():
@@ -40,7 +40,7 @@ def main():
         topic=topics.DHCP_AGENT,
         report_interval=cfg.CONF.AGENT.report_interval,
         manager='neutron.agent.dhcp.agent.DhcpAgentWithStateReport')
-    service.launch(cfg.CONF, server).wait() 
+    service.launch(cfg.CONF, server).wait()
 ```
 
 1. 调用 `register_options` 注册 dhcp agent 的相关配置选项
@@ -48,3 +48,6 @@ def main():
 3. 调用 `config.setup_logging` 设置 log 
 4. 调用 `neutron_service.Service.create` 创建服务
 5. 调用 `service.launch` 启动服务
+
+
+
