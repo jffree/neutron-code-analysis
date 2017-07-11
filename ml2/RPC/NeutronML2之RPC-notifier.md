@@ -32,6 +32,20 @@ class AgentNotifierApi(dvr_rpc.DVRAgentRpcApiMixin,
 
 * 位置：*neutron/db/agentschedulers_db.py*
 
+*这一个我们在 NeutronMl2之RPC-agent_notifier*
+
+```
+class AgentSchedulerDbMixin(agents_db.AgentDbMixin):
+    """Common class for agent scheduler mixins."""
+
+    # agent notifiers to handle agent update operations;
+    # should be updated by plugins;
+    agent_notifiers = {
+        constants.AGENT_TYPE_DHCP: None,
+        constants.AGENT_TYPE_L3: None,
+        constants.AGENT_TYPE_LOADBALANCER: None,
+    }
+```
 
 ## `class AgentNotifierApi`
 
