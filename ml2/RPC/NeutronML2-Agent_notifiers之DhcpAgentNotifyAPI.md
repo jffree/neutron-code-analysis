@@ -6,18 +6,34 @@
 
 plugin 用这些接口来通知 dhcp agent
 
+```
+    VALID_RESOURCES = ['network', 'subnet', 'port']
+    VALID_METHOD_NAMES = ['network.create.end',
+                          'network.update.end',
+                          'network.delete.end',
+                          'subnet.create.end',
+                          'subnet.update.end',
+                          'subnet.delete.end',
+                          'port.create.end',
+                          'port.update.end',                                                                                                                           
+                          'port.delete.end']
+```
+
 ### `def __init__(self, topic=topics.DHCP_AGENT, plugin=None)`
 
 1. 创建一个 rpc client（topic : `dhcp_agent`; version : `1.0`）
 2. 调用 Neutron 回调系统注册监听事件：
- 1. `resources.ROUTER_INTERFACE, events.AFTER_CREATE`
- 2. `resources.ROUTER_INTERFACE, events.AFTER_DELETE`
- 3. `resources.NETWORK, events.BEFORE_RESPONSE, events.AFTER_CREATE, events.AFTER_UPDATE, events.AFTER_DELETE`
- 4. `resources.NETWORKS, events.BEFORE_RESPONSE`
- 5. `resources.PORT, events.BEFORE_RESPONSE, events.AFTER_CREATE, events.AFTER_UPDATE, events.AFTER_DELETE`
- 6. `resources.PORTS, events.BEFORE_RESPONSE`
- 7. `resources.SUBNET, events.BEFORE_RESPONSE, events.AFTER_CREATE, events.AFTER_UPDATE, events.AFTER_DELETE`
- 8. `resources.SUBNETS, events.BEFORE_RESPONSE`
+ 1. `resources.ROUTER_INTERFACE, events.AFTER_CREATE, _after_router_interface_created`
+ 2. `resources.ROUTER_INTERFACE, events.AFTER_DELETE, _after_router_interface_deleted`
+ 3. `resources.NETWORK, events.BEFORE_RESPONSE, _send_dhcp_notification`
+ 4. `resources.NETWORKS, events.BEFORE_RESPONSE, _send_dhcp_notification`
+ 5. `resources.PORT, events.BEFORE_RESPONSE, _send_dhcp_notification`
+ 6. `resources.PORTS, events.BEFORE_RESPONSE, _send_dhcp_notification`
+ 7. `resources.SUBNET, events.BEFORE_RESPONSE, _send_dhcp_notification`
+ 8. `resources.SUBNETS, events.BEFORE_RESPONSE, _send_dhcp_notification`
+ 9. `resources.NETWORK, [events.AFTER_CREATE, events.AFTER_UPDATE, events.AFTER_DELETE], _native_event_send_dhcp_notification`
+ 10. `resources.PORT, [events.AFTER_CREATE, events.AFTER_UPDATE, events.AFTER_DELETE], _native_event_send_dhcp_notification`
+ 11. `resources.SUBNET, [events.AFTER_CREATE, events.AFTER_UPDATE, events.AFTER_DELETE], _native_event_send_dhcp_notification`
 
 ### `def plugin(self)`
 
@@ -55,11 +71,23 @@ plugin 用这些接口来通知 dhcp agent
 
 ### `def _notify_agents(self, context, method, payload, network_id)`
 
-1. 判断该 rpc 动作是 fanout 模式还是 cast 模式
-2. 若是 fanout 模式，则直接调用 `_fanout_message` 来做调用
-3. 若是 cast 模式，对于新创建的资源（port、network）调用 `_schedule_network` 来绑定新的 agent
-4. 调用 `_get_enabled_agents` 过滤出所有与 network 绑定的 agent 中可以提供服务的 agent
-5. 调用 `_cast_message` 在这些 agent 上调用相应的方法
+* 参数说明：
+ 1. `context`：
+ 2. `method`：准备通过 RPC 调用的 agent 的方法
+ 3. `playload`：传递给 RPC 方法的参数
+ 4. `network_id`：与此次操作相关的网络资源的 id
+
+* 作用：
+ 1. 根据调用的 RPC 的方法判断是 fanout 还是 cast 模式；
+ 2. fanout 模式是调用 `_fanout_message` 做进一步的处理；
+ 3. 若是采用 cast 模式，判断该模式下的 topic，再调用 `_cast_message` 做进一步的处理 
+
+1. 调用 `utils.is_extension_supported` 判断 core plugin 是否支持 `dhcp_agent_scheduler`
+2. 判断该 rpc 动作是 fanout 模式还是 cast 模式
+3. 若是 fanout 模式，则直接调用 `_fanout_message` 来做调用
+4. 若是 cast 模式，对于新创建的资源（port、network）调用 `_schedule_network` 来绑定新的 agent
+5. 调用 `_get_enabled_agents` 过滤出所有与 network 绑定的 agent 中可以提供服务的 agent
+6. 调用 `_cast_message` 在这些 agent 上调用相应的方法
 
 ### `def _after_router_interface_created(self, resource, event, trigger, **kwargs)`
 
