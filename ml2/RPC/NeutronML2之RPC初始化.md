@@ -4,6 +4,8 @@
 
 ### notifier 的初始化
 
+**关于 notifier 请看 NeutronMl2之RPC-notifier 这篇文章**
+
 * `Ml2Plugin` 在初始化时会调用 `_start_rpc_notifiers` 创建一个 RPC 的通知对象
 
 ```
@@ -15,7 +17,7 @@
          ) 
 ```
 
-### listener 的初始化
+### server（consumer） 的初始化
 
 * neutron-server 在引导完 WSGI 服务后会为各种的 worker 创建绿色线程：
 

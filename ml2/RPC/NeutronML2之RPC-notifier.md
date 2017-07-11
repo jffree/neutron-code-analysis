@@ -9,7 +9,10 @@
         )
 ```
 
-根据代码，我们定位到 `AgentNotifierApi` 类中
+看代码，有两个部分：分别是 `self.notifier` 和 `self.agent_notifiers`。
+
+
+## `self.notifier` 是由 `AgentNotifierApi` 来实现：
 
 * 位置：*neutron/plugins/ml2/rpc.py*
 
@@ -24,6 +27,11 @@ class AgentNotifierApi(dvr_rpc.DVRAgentRpcApiMixin,
 从 mixin 我们就可以看出来，这些类都是相互独立的，提供不同的功能，在这里集合在一起是为了统一的使用。
 
 从类的名称我们可以看出，这个类是专门为了 agent 设置的 rpc 消息通知类。
+
+## `self.agent_notifiers` 是由 `AgentSchedulerDbMixin` 来定义
+
+* 位置：*neutron/db/agentschedulers_db.py*
+
 
 ## `class AgentNotifierApi`
 
