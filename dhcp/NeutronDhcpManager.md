@@ -24,10 +24,36 @@ def main():
 
 ### `def __init__(self, host=None, conf=None)`
 
+```
+    def __init__(self, host=None, conf=None):
+        super(DhcpAgentWithStateReport, self).__init__(host=host, conf=conf)
+        self.state_rpc = agent_rpc.PluginReportStateAPI(topics.REPORTS)
+        self.agent_state = {
+            'binary': 'neutron-dhcp-agent',
+            'host': host,
+            'availability_zone': self.conf.AGENT.availability_zone,
+            'topic': topics.DHCP_AGENT,
+            'configurations': {
+                'notifies_port_ready': True,
+                'dhcp_driver': self.conf.dhcp_driver,
+                'dhcp_lease_duration': self.conf.dhcp_lease_duration,
+                'log_agent_heartbeats': self.conf.AGENT.log_agent_heartbeats},
+            'start_flag': True,
+            'agent_type': constants.AGENT_TYPE_DHCP}
+        report_interval = self.conf.AGENT.report_interval
+        if report_interval:
+            self.heartbeat = loopingcall.FixedIntervalLoopingCall(
+                self._report_state)
+            self.heartbeat.start(interval=report_interval)
+```
+
 1. dhcp agent service 创建的时候，没有声明 host，所以采用配置文件中声明的 host：`cfg.CONF.host`
 2. `dhcp_driver_cls` 在配置文件 */etc/neutron/dhcp_agent.ini* 中为：`dhcp_driver = neutron.agent.linux.dhcp.Dnsmasq`
 3. `state_path` 在配置文件 */etc/neuron/neutron.conf* 中：`state_path = /opt/stack/data/neutron` （用于声明存放 neutron 状态文件的目录）
 4. `report_interval` agent 向 server 报告状态的时间间隔。在 */etc/neuron/neutron.conf* 中：`report_interval = 30`
+5. 以循环执行的方法（参考 oslo_service之loopingcall 文章）启动 agent 状态的报告方法。
+
+### ``
 
 
 
@@ -36,6 +62,35 @@ def main():
 
 `target = oslo_messaging.Target(version='1.0')`
 
+### `def __init__(self, host=None, conf=None)`
+
+```
+    def __init__(self, host=None, conf=None):
+        super(DhcpAgent, self).__init__(host=host)
+        self.needs_resync_reasons = collections.defaultdict(list)
+        self.dhcp_ready_ports = set()
+        self.conf = conf or cfg.CONF
+        self.cache = NetworkCache()
+        self.dhcp_driver_cls = importutils.import_class(self.conf.dhcp_driver)
+        self.plugin_rpc = DhcpPluginApi(topics.PLUGIN, self.conf.host)
+        # create dhcp dir to store dhcp info
+        dhcp_dir = os.path.dirname("/%s/dhcp/" % self.conf.state_path)
+        utils.ensure_dir(dhcp_dir)
+        self.dhcp_version = self.dhcp_driver_cls.check_version()
+        self._populate_networks_cache()
+        # keep track of mappings between networks and routers for
+        # metadata processing
+        self._metadata_routers = {}  # {network_id: router_id}
+        self._process_monitor = external_process.ProcessMonitor(
+            config=self.conf,
+            resource_type='dhcp')
+```
+
+1. 初始化各种属性
+2. 调用 `_populate_networks_cache`
+
+
+### `def _populate_networks_cache(self)`
 
 
 ## `class NetworkCache(object)`
