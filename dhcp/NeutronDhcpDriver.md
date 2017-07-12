@@ -13,7 +13,6 @@
 
 1. 调用 `get_confs_dir` 获取配置中 dhcp agent server 的配置文件的目录（这个目录下是一堆子目录，这些子目录都是以 network id 来命名的）
 2. 读取下面的所有子目录名称（即所有使用该 dhcp agent 的网络 id）
-3. 以 `NetModel` 来描述上一步获取网络资源（`id`） `net = dhcp.NetModel({"id": net_id, "subnets": [], "ports": []})`并保存在 cache 中
 
 ### ``
 

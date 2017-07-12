@@ -87,11 +87,13 @@ def main():
 ```
 
 1. 初始化各种属性
-2. 调用 `_populate_networks_cache`
+2. 调用 `_populate_networks_cache` 将之前已经处理过的 network 资源保存在 cache 中
 
 
 ### `def _populate_networks_cache(self)`
 
+1. 调用 `dhcp_driver_cls.existing_dhcp_networks` 来读取该 dhcp agent 之前已经处理过的 network 资源
+2. 以 `NetModel` 来描述上一步获取网络资源（`id`） `net = dhcp.NetModel({"id": net_id, "subnets": [], "ports": []})`并保存在 cache 中
 
 ## `class NetworkCache(object)`
 
