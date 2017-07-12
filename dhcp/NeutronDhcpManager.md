@@ -27,7 +27,7 @@ def main():
 1. dhcp agent service 创建的时候，没有声明 host，所以采用配置文件中声明的 host：`cfg.CONF.host`
 2. `dhcp_driver_cls` 在配置文件 */etc/neutron/dhcp_agent.ini* 中为：`dhcp_driver = neutron.agent.linux.dhcp.Dnsmasq`
 3. `state_path` 在配置文件 */etc/neuron/neutron.conf* 中：`state_path = /opt/stack/data/neutron` （用于声明存放 neutron 状态文件的目录）
-`
+4. `report_interval` agent 向 server 报告状态的时间间隔。在 */etc/neuron/neutron.conf* 中：`report_interval = 30`
 
 
 
