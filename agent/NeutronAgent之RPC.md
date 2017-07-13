@@ -28,5 +28,5 @@
 
 `rpc_response_timeout` 等待 RPC 响应的超时时间，该选项在 *neutron.conf* 中设定：`rpc_response_timeout = 60`
 
-1. 进一步晚上 agent state 的信息
+1. 进一步完善 agent state 的信息
 2. 调用 Server 端的 `report_state` 方法

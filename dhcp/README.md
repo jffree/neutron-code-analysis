@@ -67,8 +67,10 @@ def main():
  * endpoint 为： `neutron.db.agents_db.AgentExtRpcCallback`，在 `ml2._setup_rpc` 方法中被初始化
  * topic 为：`q-reports-plugin`
  * host 为：`cfg.CONF.host`
+ * namespace 为：`n_const.RPC_NAMESPACE_STATE`
 * Client 端：`PluginReportStateAPI`，在 `DhcpAgentWithStateReport.__init__` 方法中被初始化
  * topic 为：`q-reports-plugin`
+ * namespace 为：`n_const.RPC_NAMESPACE_STATE`
 
 
 
