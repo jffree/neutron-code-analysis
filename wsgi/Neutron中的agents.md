@@ -96,7 +96,6 @@ curl -s -X GET http://172.16.100.106:9696//v2.0/agents -H 'Content-Type: applica
 
 ### `def _get_dict(self, agent_db, dict_name, ignore_missing=False)`
 
-
 从 Agents 数据库查询结果中提取 `dict_name` 的相关数据（get_configuration_dict就是调用的这个方法）
 
 ### `def create_or_update_agent(self, context, agent_state)`

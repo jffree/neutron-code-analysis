@@ -70,6 +70,10 @@ class DhcpAgentSchedulerDbMixin(dhcpagentscheduler
 
 继承于 `DhcpAgentSchedulerPluginBase`， WSGI 的具体实现
 
+### `def list_active_networks_on_active_dhcp_agent(self, context, host)`
+
+获取与 host 主机上的 dhcp agent 绑定的所有 network
+
 ### `def list_networks_on_dhcp_agent(self, context, id)`
 
 1. 查询 `NetworkDhcpAgentBinding`，获取与指定 dhcp agent (`id`) 绑定的 network 的 `id`
@@ -172,6 +176,12 @@ network_scheduler_driver = neutron.scheduler.dhcp_agent_scheduler.WeightSchedule
 ### `def agent_starting_up(self, context, agent)`
 
 判断 agent 是否处于启动时期
+
+### `def auto_schedule_networks(self, context, host)`
+
+调用 `self.network_scheduler.auto_schedule_networks` 方法实现
+
+
 
 ## `class AgentStatusCheckWorker(neutron_worker.NeutronWorker)`
 

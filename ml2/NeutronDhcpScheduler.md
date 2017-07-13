@@ -122,6 +122,25 @@ class BaseWeightScheduler(BaseScheduler):
 1. 根据 `agents` 和 `network_id` 创建 `NetworkDhcpAgentBinding` 的数据库记录（绑定记录）
 2. 调用 `super(DhcpFilter, self).bind(context, bound_agents, network_id)` 更新这些 agents 的负载 `load+1`。
 
+## `class AutoScheduler(object)`
+
+这个类只实现了一个方法：
+
+### `def auto_schedule_networks(self, plugin, context, host)`
+
+**作用：**为网络绑定合适的 dhcp agent
+
+`dhcp_agents_per_network`：每个网络可以有几个 dhcp agent 负责。在 *neutron.conf* 中定义：`dhcp_agents_per_network = 1`
+
+* 为网络绑定 dhcp agent 需要考虑一下几点：
+ 1. 该网络下必须有子网允许绑定 dhcp （`enable_dhcp`）
+ 2. dhcp agent 必须是活动的
+ 3. 若该子网中有 `segment_id` 属性，则该子网必须绑定在与该 `segment_id` 绑定的 `host` 上的 dhcp agent 上
+ 4. 若该子网中没有 `segment_id` 属性，则该子网绑定的 dhcp agent 的数量需要小于等于 `dhcp_agents_per_network` 的设定值
+ 5. dhcp agent 与该网络的 `availability_zones` 必须相同
+
+最后调用 `resource_filter.bind` 实现 dhcp agent 与 network 的绑定
+
 # 参考
 
 [OpenStack Neutron Availability Zone 简介](https://www.ibm.com/developerworks/cn/cloud/library/1607-openstack-neutron-availability-zone/)
