@@ -51,11 +51,35 @@ def main():
 2. `dhcp_driver_cls` 在配置文件 */etc/neutron/dhcp_agent.ini* 中为：`dhcp_driver = neutron.agent.linux.dhcp.Dnsmasq`
 3. `state_path` 在配置文件 */etc/neuron/neutron.conf* 中：`state_path = /opt/stack/data/neutron` （用于声明存放 neutron 状态文件的目录）
 4. `report_interval` agent 向 server 报告状态的时间间隔。在 */etc/neuron/neutron.conf* 中：`report_interval = 30`
-5. 以循环执行的方法（参考 oslo_service之loopingcall 文章）启动 agent 状态的报告方法。
+5. 以循环执行的方法（参考 oslo_service之loopingcall 文章）启动 agent 状态的报告方法 `_report_state`。
 
-### ``
+### `def _report_state(self)`
 
+关于 `agent_state` 变量：
 
+在 `__init__` 方法中被初始化为：
+
+```
+        self.agent_state = {
+            'binary': 'neutron-dhcp-agent',
+            'host': host,
+            'availability_zone': self.conf.AGENT.availability_zone,
+            'topic': topics.DHCP_AGENT,
+            'configurations': {
+                'notifies_port_ready': True,
+                'dhcp_driver': self.conf.dhcp_driver,
+                'dhcp_lease_duration': self.conf.dhcp_lease_duration,
+                'log_agent_heartbeats': self.conf.AGENT.log_agent_heartbeats},
+            'start_flag': True,
+            'agent_type': constants.AGENT_TYPE_DHCP}
+```
+
+* 配置选项讲解：
+ 1. `dhcp_lease_duration` 配置用来设定 dhcp ip 租赁的过期时间。在 */etc/neutron/neutron.conf* 中被设置：`dhcp_lease_duration = 86400`。
+ 2. `log_agent_heartbeats`：**作用：**   。在 */etc/neutron/neutron.conf* 中被设置：`log_agent_heartbeats = false`。
+
+1. 调用 `cache.get_state()` 获取当前 dhcp 管理的 network、subnet、port 的数量
+2. 
 
 
 ## `class DhcpAgent(manager.Manager)`
@@ -87,7 +111,8 @@ def main():
 ```
 
 1. 初始化各种属性
-2. 调用 `_populate_networks_cache` 将之前已经处理过的 network 资源保存在 cache 中
+2. 调用 `_populate_networks_cache` 将之前已经处理过的 network 资源保存在 cache 
+3. 
 
 
 ### `def _populate_networks_cache(self)`
@@ -95,19 +120,17 @@ def main():
 1. 调用 `dhcp_driver_cls.existing_dhcp_networks` 来读取该 dhcp agent 之前已经处理过的 network 资源
 2. 以 `NetModel` 来描述上一步获取网络资源（`id`） `net = dhcp.NetModel({"id": net_id, "subnets": [], "ports": []})`并保存在 cache 中
 
-## `class NetworkCache(object)`
 
-用于在 dhcp agent 端存储网络的相关信息
 
-### `def __init__(self)`
 
-```
-    def __init__(self):
-        self.cache = {}
-        self.subnet_lookup = {}
-        self.port_lookup = {}
-        self.deleted_ports = set()
-```
+
+
+
+
+
+
+
+
 
 
 ## `class DhcpPluginApi(object)`
