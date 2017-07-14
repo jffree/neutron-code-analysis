@@ -171,6 +171,29 @@ def main():
 
 `num_sync_threads`：执行同步操作时的绿色线程池的大小。在 `dhcp_agent.ini` 中定义：`num_sync_threads = 4`。
 
+1. 创建一个绿色线程池，线程池的大小与 `num_sync_threads` 一致。
+2. 获取该 dhcp agent 缓存的网络资源信息
+3. 通过 RPC 调用 Server 端的 `get_active_networks_info` 方法，获取与当前 dhcp agent 绑定的网络信息
+4. 若是缓存的网络信息与通过RPC调用获取的网络信息不一致，调用 `disable_dhcp_helper` 方法
+
+### `def disable_dhcp_helper(self, network_id)`
+
+在 dhcp agent 中去除 network_id 声明的网络
+
+1. 调用 `disable_isolated_metadata_proxy` 杀死为这个网络提供 metadata 服务的进程
+2. 调用 dhcp driver 的 `disable` 方法
+
+
+
+### `def disable_isolated_metadata_proxy(self, network)`
+
+调用 `MetadataDriver.destroy_monitored_metadata_proxy` 杀死为这个网络提供 metadata 服务的进程
+
+### `def call_driver(self, action, network, **action_kwargs)`
+
+1. 初始化 dhcp driver 实例（**从这里我们看出，dhcp agent 的 driver 实例不是一直存在的，而是用到的时候就被初始化，然后使用。并且每个 driver 实例只负责一个网络**）
+2. 调用 dhcp driver 的 action 方法
+
 
 
 
@@ -197,6 +220,8 @@ def main():
 ### `def get_active_networks_info(self)`
 
 调用 `Server` 端的 `get_active_networks_info` 方法。
+
+获取与该 dhcp agent 绑定的 network、subnet、port 的详细信息
 
 
 
