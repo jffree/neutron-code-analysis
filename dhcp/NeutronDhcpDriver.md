@@ -95,6 +95,42 @@
 
 通过 `ProcessManager.active` 方法判断该子进程是否运行。
 
+### `def interface_name(self)`
+
+属性读方法
+
+```
+    @property
+    def interface_name(self):
+        return self._get_value_from_conf_file('interface')
+```
+
+### `def interface_name(self, value)`
+
+属性写方法
+
+```
+    @interface_name.setter
+    def interface_name(self, value):
+        interface_file_path = self.get_conf_file_name('interface')
+        common_utils.replace_file(interface_file_path, value)
+```
+
+### `def disable(self, retain_port=False)`
+
+1. 删除对负责该网络调度的子进程的监测
+2. 调用 `_get_process_manager` 获取该子进程的包装实例后，杀死该子进程
+3. 调用 `_destroy_namespace_and_port` 删除 dhcp 的接口以及命名空间
+4. 调用 `_remove_config_files` 删除与该网络相关的数据文件
+
+### `def _destroy_namespace_and_port(self)`
+
+1. 调用 `DeviceManager.destroy` 删除该 dhcp 使用的该网络的 port
+2. 调用 `IPWrapper` 删除与该网络相关的命名空间
+
+### `def _get_process_manager(self, cmd_callback=None)`
+
+构造一个子进程的包装实例
 
 ### `def enable(self)`
 
@@ -123,6 +159,20 @@
         self.device_manager = DeviceManager(self.conf, plugin)
         self.version = version
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## `class DeviceManager(object)`
 
@@ -155,13 +205,20 @@
 ### `def _setup_existing_dhcp_port(self, network, device_id, dhcp_subnets)`
 
 1. 查找当前网络下的 port 是否有 device_id 与该网络的 dhcp port 的 device id 一致的 port
+2. 若是有该 port 则：
+ 1. 获取与该 Port 绑定的 ip，并判断这些 ip 是否属于 `dhcp_subnets` 。
+ 2. 若是有的 ip 部署于改 dhcp 所掌控的子网，则需要重新对该 Port 进行 ip 分配（保留之前在子网范围内的，去除不在子网范围内的，并且新增的子网也要在改 port 上分配ip）。调用 `plugin.update_dhcp_port` 实现。这里的 `plugin` 为 dhcp agent 的 RPC Client （`DhcpPluginApi`）。
 
+### `def destroy(self, network, device_name)`
 
+1. 调用 `unplug` 方法删除名为 device_name 的设备
+2. 通过 RPC 调用 Server 端的 `release_dhcp_port` 方法删除该 port 在 neutron-server 数据库中的记录
+ 
+### `def unplug(self, device_name, network)`
 
+调用 dhcp interface driver 的 `unplug` 方法实现
 
-
-
-
+### ``
 
 
 

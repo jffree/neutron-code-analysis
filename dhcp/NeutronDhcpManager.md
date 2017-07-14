@@ -224,11 +224,17 @@ def main():
 获取与该 dhcp agent 绑定的 network、subnet、port 的详细信息
 
 
+### `def update_dhcp_port(self, port_id, port)`
 
+调用 Server 端的 `update_dhcp_port` 方法。
 
+### `def create_dhcp_port(self, port)`
 
+调用 Server 端的 `create_dhcp_port` 方法。
 
+### `def release_dhcp_port(self, network_id, device_id)`
 
+调用 Server 端的 `release_dhcp_port` 方法。
 
 
 

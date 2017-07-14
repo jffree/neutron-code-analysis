@@ -41,11 +41,24 @@ linux 系统下的接口驱动，共有四种，分别是：`BridgeInterfaceDriv
             self.DEV_NAME_PREFIX = 'ns-'
 ```
 
+### `def unplug(self, device_name, bridge=None, namespace=None, prefix=None)`
+
+* 参数说明：
+ * `device_name`：接口名称（例如：`tape2976960-b0`）
+ * `bridge`：网桥名称（没有声明的话则从配置文件中读取。在 `dhcp_agent.ini` 和 `l3_agent.ini` 中都有定义：`ovs_integration_bridge = br-int`）
+ * `namespace`：网络命名空间。这个在 `NetModel` 中被定义（例如 `qdhcp-53a0f128-ab6a-4f3f-b29f-c1afe0697586`）
+ * `prefix`：接口名称的前缀
+
+1. 调用 `_get_tap_name` 获取真正的接口名称
 
 
+### `def _get_tap_name(self, dev_name, prefix=None)`
 
+获取真正的接口名称。（`ovs_use_veth`是否支持 ovs 使用 veth 设备，在`dhcp_agent.ini` 和 `l3_agent.ini` 中都有定义：`ovs_use_veth = False`）
 
+### `def unplug(self, device_name, bridge=None, namespace=None, prefix=None)`
 
+在 bridge 上删除名为 `device_name` 的接口
 
 
 

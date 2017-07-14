@@ -39,3 +39,33 @@
  1. 若是允许自动为 DHCP 服务自动调度网络资源，则调用 `plugin.auto_schedule_networks` （在 `DhcpAgentSchedulerDbMixin` 中定义）将网络与 dhcp agent 自动绑定；
  2. 调用 `plugin.list_active_networks_on_active_dhcp_agent` （同样是在 `DhcpAgentSchedulerDbMixin` 中实现）获取所有与该 dhcp agent 绑定的 network 的数据，并返回
 3. 若是 plugin 不支持 `dhcp_agent_scheduler` 则直接获取所有活动的网络来返回
+
+### `def update_dhcp_port(self, context, **kwargs)`
+
+1. 根据 port 的 `device_id` 判断该 port 是否可被升级
+2. 对于可升级的 port，则调用 `_port_action` 方法实现
+
+### `def create_dhcp_port(self, context, **kwargs)`
+
+1. 填充 port 数据的一些属性
+2. 调用 `_port_action` 实现
+
+### `def _port_action(self, plugin, context, port, action)`
+
+1. 对于更新 port 调用 `plugin.update_port` 实现
+2. 对于新建 port 调用 `p_utils.create_port` 实现（最后也是由 `core_plugin.create_network` 来实现）
+
+这里的 plugin 和 core_plugin 都是 core plugin 的实例
+
+### `def release_dhcp_port(self, context, **kwargs)`
+
+调用 core plugin 的 `delete_ports_by_device_id` 方法实现。
+
+
+
+
+
+
+
+
+
