@@ -7,6 +7,11 @@
 * 这个模块主要构造了两种类：
  1. 以 `IpCommandBase` 为基类的子类。这些类用来构造具体的想要执行的命令（比如 `ip netns`），但是不执行。
  2. 以 `SubProcessBase` 为基类的子类。这些类用来将上面构造的具体的命令以一个单独的子进程来启动。
+ 3. `IpCommandBase` 的子类有三种：`IPWrapper` `IPDevice` `IPRule` `IPRoute`
+  1. `IPWrapper` 负责 `IpNetnsCommand` 的执行
+  2. `IPDevice` 负责 `IpLinkCommand` `IpAddrCommand` `IpRouteCommand` `IpNeighCommand` 的执行
+  3. `IPRule` 负责 `IpRuleCommand` 的执行
+  4. `IPRoute` 负责 `IpRouteCommand` 的执行
 
 ## `class SubProcessBase(object)`
 
@@ -106,6 +111,14 @@
         super(IPWrapper, self).__init__(namespace=namespace)
         self.netns = IpNetnsCommand(self)
 ```
+
+
+## `class IpNetnsCommand(IpCommandBase)`
+
+`COMMAND = 'netns'`
+
+
+
 
 
 
@@ -333,6 +346,8 @@ ip netns exec net0 ip -o link show veth0
 
 ### `def get_devices_with_ip(self, name=None, scope=None, to=None, filters=None, ip_version=None)`
 
+返回网卡的参数。
+
 * 参数说明：
  1. `name`：网卡名称
  2. `scope`：地址范围
@@ -342,9 +357,25 @@ ip netns exec net0 ip -o link show veth0
 
 `ip -4 addr show veth0 scope global to 192.168.100.10`
 
-## `class IpNetnsCommand(IpCommandBase)`
+结果为：
 
-`COMMAND = 'netns'`
+```
+3: veth0@veth1: <BROADCAST,MULTICAST,M-DOWN> mtu 1400 qdisc noqueue state DOWN qlen 1000
+    inet 192.168.100.11/24 brd 192.168.100.255 scope global veth0
+       valid_lft forever preferred_lft forever
+```
+
+则该方法的返回值为：`{'name':'veth0','cidr':'192.168.100.11/24', 'scope':'global', 'dynamic':False, 'tentative':False, 'dadfailed':False}`
+
+### `def list(self, scope=None, to=None, filters=None, ip_version=None)`
+
+调用 `get_devices_with_ip` 返回本网卡的参数
+
+### `def wait_until_address_ready(self, address, wait_time=30)`
+
+在 wait_time 的时间内，一直等待 ip 地址 address 在本网卡上准备好。若是没有准备好，则引发异常
+
+
 
 
 
