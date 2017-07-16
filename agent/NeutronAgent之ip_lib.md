@@ -225,6 +225,10 @@
 
 执行如下命令：`ip link add vxlan0 type vxlan id 42 group 239.1.1.1 dev eth0 port 4750 4790 proxy`
 
+### `def get_namespaces(cls)`
+
+获取所有的 namespace。执行命令：`ip netns list`
+
 ## `class IpNetnsCommand(IpCommandBase)`
 
 `COMMAND = 'netns'`
@@ -235,8 +239,30 @@
 
 执行 `ip -o netns list` 命令，然后查询名字为 name 的 namespace 是否存在
 
+### `def delete(self, name)`
 
+删除名字为 name 的 namespace。执行命令：`ip netns delete net0`
 
+### `def add(self, name)`
+
+增加一个名称为 name 的 namespace。
+
+执行命令：
+
+```
+ip netns add net0
+ip netns exec net0 sysctl -w net.ipv4.conf.all.promote_secondaries=1
+```
+
+关于 sysctl 调整内核参数，请参考：[内核参数说明](http://www.cnblogs.com/tolimit/p/5065761.html)
+
+返回一个以 `IPWrapper` 包装的 namespace
+
+### `def execute(self, cmds, addl_env=None, check_exit_code=True, log_fail_as_error=True, extra_ok_codes=None, run_as_root=False)`
+
+参数同 `utils.execute` 方法里面的参数。
+
+在当前的命名空间下执行 cmd 命令。
 
 ## `class IPDevice(SubProcessBase)`
 
@@ -490,6 +516,67 @@ ip netns exec net0 ip -o link show veth0
 ### `def wait_until_address_ready(self, address, wait_time=30)`
 
 在 wait_time 的时间内，一直等待 ip 地址 address 在本网卡上准备好。若是没有准备好，则引发异常
+
+## `class IpNeighCommand(IpDeviceCommandBase)`
+
+`COMMAND = 'neigh'`
+
+构建相邻表（ARP 表）
+
+### `def add(self, ip_address, mac_address)`
+
+增加（替换）一个相邻表项。
+
+执行命令：`ip -4 neigh replace 10.0.0.3 lladdr fe:ee:ff:ff:ff:ff nud permanent dev eth0`
+
+其中，`permanent` 指邻接条目永远有效并且只能由管理员删除。
+
+### `def delete(self, ip_address, mac_address)`
+
+删除一个相邻表项
+
+执行命令：`ip -4 del 10.0.0.3 lladdr fe:ee:ff:ff:ff:ff dev eth0`
+
+### `def show(self, ip_version)`
+
+显示一个网络设备上的相邻表。
+
+执行命令：`ip -4 show dev eth0`
+
+### `def flush(self, ip_version, ip_address)`
+
+清除当前设备的相邻表项。
+
+执行命令：`ip -4 flush to 10.0.0.3`
+
+## `class IPRoute(SubProcessBase)`
+
+```
+class IPRoute(SubProcessBase):
+    def __init__(self, namespace=None, table=None):
+        super(IPRoute, self).__init__(namespace=namespace)
+        self.name = None
+        self.route = IpRouteCommand(self, table=table)
+```
+
+## `class IpRouteCommand(IpDeviceCommandBase)`
+
+```
+    COMMAND = 'route'
+
+    def __init__(self, parent, table=None):
+        super(IpRouteCommand, self).__init__(parent)
+        self._table = table
+```
+
+### ``
+
+
+
+
+
+
+
 
 
 
