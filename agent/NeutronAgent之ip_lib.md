@@ -112,12 +112,128 @@
         self.netns = IpNetnsCommand(self)
 ```
 
+### `def get_devices(self, exclude_loopback=False, exclude_gre_devices=False)`
+
+获取该 namespace 下的网络设备名称，并以 `IPDevice` 包装后返回。
+
+* `exclude_loopback`：是否排除本地回环设备（`lo`）
+* `exclude_gre_devices`：是否排除 gre 设备（`gre0` `gretap0`）
+
+相当于执行如下命令：`ip netns exec net0 find /sys/class/net -maxdepth 1 -type l -printf '%f '`
+
+将命令执行的结果以 `IPDevice` 包装后返回。
+
+### `def device(self, name)`
+
+用 `IPDevice` 表示一个在该 namespace 下的一个设备
+
+### `def get_device_by_ip(self, ip)`
+
+根据 ip 地址获取网络设备。
+
+调用 `IpAddrCommand.get_devices_with_ip` 实现，但是只会取第一个设备（不同的网卡能拥有完全相同的 ip 地址）。
+
+返回以 `IPDevice` 包装的网络设备
+
+### `def ensure_namespace(self, name)`
+
+确保名称为 name 的 namespace 存在。若是不存在，则新建一个，并启动其中的回环设备。
+
+### `def add_veth(self, name1, name2, namespace2=None)`
+
+增加一堆 veth 设备，名称为 name1 的在本 namespace 下，名称为 name2 的在 namespace2 下面
+
+执行如下命令：`ip netns exec net0 ip link add tap0 type veth peer name tap1 netns net1`
+
+返回以 `IPDevice` 描述的两格 veth 设备。
+
+### `def add_tuntap(self, name, mode='tap')`
+
+增加一个名称为 name 的 tun/tap 设备
+
+执行如下命令：`ip netns exec net0 ip tuntap add tap-simple mode tap`
+
+返回以 `IPDevice` 描述的 tun/tap 设备
+
+* 参考
+
+[Linux下Tun/Tap设备通信原理](http://www.cnblogs.com/woshiweige/p/4532207.html)
+[虚拟网卡 TUN/TAP 驱动程序设计原理](https://www.ibm.com/developerworks/cn/linux/l-tuntap/)
+[关于 TCP 并发连接的几个思考题与试验 ](http://blog.csdn.net/solstice/article/details/6579232)
+
+### `def add_macvtap(self, name, src_dev, mode='bridge')`
+
+增加一个名称为 name 的 macvtap 设备，默认的模式为 bridge
+
+执行如下命令：`ip link add link eth0 name macv1 type macvtap mode bridge`
+
+返回以 `IPDevice` 描述的 macvtap 设备
+
+* 参考
+
+[图解几个与Linux网络虚拟化相关的虚拟网卡-VETH/MACVLAN/MACVTAP/IPVLAN ](http://blog.csdn.net/dog250/article/details/45788279)
+[Linux 上虚拟网络与真实网络的映射](https://www.ibm.com/developerworks/cn/linux/1312_xiawc_linuxvirtnet/)
+
+### `def del_veth(self, name)`
+
+删除名为 name 的 veth 设备
+
+执行如下命令：`ip link delete tap0`
+
+### `def add_dummy(self, name)`
+
+添加一个名称为 name 的 dummy 类型的网卡（哑网卡只会简单的直接丢弃所有发送给它的数据包）。
+
+执行如下命令：`ip link add dum type dummy`
+
+返回以 `IPDevice` 描述的 dummy 设备
+
+### `def namespace_is_empty(self)`
+
+判断是否当前的 namespace 除了回环设备和 gre 设备外，再无其它设备
+
+### `def garbage_collect_namespace(self)`
+
+如果当前的 namespace 是空的话，则删除此命名空间。
+
+### `def add_device_to_namespace(self, device)`
+
+将一个以 `IPDevice` 描述的网络设备增加到当前的命名空间中。
+
+### `def add_vlan(self, name, physical_interface, vlan_id)`
+
+增加一个 vlan 设备。
+
+执行如下命令：`ip link add link eth0 name v1 type vlan id 34`
+
+返回以 `IPDevice` 描述的 vlan 设备
+
+### `def add_vxlan(self, name, vni, group=None, dev=None, ttl=None, tos=None, local=None, port=None, proxy=False)`
+
+增加一个 vxlan 设备。
+
+* 参数说明：
+ * `name`：网卡名称
+ * `vni`：vxlan id
+ * `group`：多播地址
+ * `dev`：物理网卡的名称
+ * `ttl`：生存期限
+ * `tos`：服务类型（请参考：[IP首部中的服务类型（TOS）](http://www.mamicode.com/info-detail-542445.html)）
+ * `local`：设定发出包的 VETP（Vxlan Tunnel End Point） 源 ip 地址 [Vxlan基础理解](http://blog.csdn.net/freezgw1985/article/details/16354897/)
+ * `port`：用于声明本地监听 UDP 端口的范围。（在新版的 ip-link 的命令中，这个发生了变化：1. 用 `dstport` 来声明对端的 UDP 端口；2. 使用 `srcport` 来声明本端监听的 UDP 端口的范围）
+ * `proxy`：arp proxy 功能（请参考：[配置 L2 Population - 每天5分钟玩转 OpenStack（114）](http://www.cnblogs.com/CloudMan6/p/6072315.html)）
+
+执行如下命令：`ip link add vxlan0 type vxlan id 42 group 239.1.1.1 dev eth0 port 4750 4790 proxy`
 
 ## `class IpNetnsCommand(IpCommandBase)`
 
 `COMMAND = 'netns'`
 
+### `def exists(self, name)`
 
+`use_helper_for_ns_read`：指明读取 ip namespace 时是否使用 root 权限（默认为 True）。 
+
+执行 `ip -o netns list` 命令，然后查询名字为 name 的 namespace 是否存在
 
 
 
@@ -346,7 +462,7 @@ ip netns exec net0 ip -o link show veth0
 
 ### `def get_devices_with_ip(self, name=None, scope=None, to=None, filters=None, ip_version=None)`
 
-返回网卡的参数。
+返回网卡的参数（不同的网卡可能拥有完全相同的 ip 地址）。
 
 * 参数说明：
  1. `name`：网卡名称
