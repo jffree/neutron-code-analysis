@@ -717,17 +717,6 @@ class IPRule(SubProcessBase):
 
 `{'fwmark': '0x1/0xffffffff', 'table': 'main', 'priority': '220', 'type': 'unicast', 'from': '192.203.80.0/24'}`
 
-## `def add_namespace_to_cmd(cmd, namespace=None)`
-
-```
-def add_namespace_to_cmd(cmd, namespace=None):
-    """Add an optional namespace to the command."""
-
-    return ['ip', 'netns', 'exec', namespace] + cmd if namespace else cmd
-```
-
-当 namespace 不为空时，构造类似于下面的命令：`ip netns exec namespce cmd`
-
 ### `def _exists(self, ip_version, **kwargs)`
 
 kwargs：包含某个 rule 的属性。判断该 rule 是否存在。
@@ -744,13 +733,79 @@ kwargs：包含某个 rule 的属性。判断该 rule 是否存在。
 
 执行命令如下：`ip ru del prio 32767`
 
+## `def add_namespace_to_cmd(cmd, namespace=None)`
+
+```
+def add_namespace_to_cmd(cmd, namespace=None):
+    """Add an optional namespace to the command."""
+
+    return ['ip', 'netns', 'exec', namespace] + cmd if namespace else cmd
+```
+
+当 namespace 不为空时，构造类似于下面的命令：`ip netns exec namespce cmd`
 
 
+## `def vlan_in_use(segmentation_id, namespace=None)`
 
+查询在名称为 namespace 的命名空间内是够已经存在了 vlan id 为 segmentation_id 的接口。
 
+## `def vxlan_in_use(segmentation_id, namespace=None)`
 
+查询在名称为 namespace 的命名空间内是够已经存在了 vxlan id 为 segmentation_id 的接口。
 
+## `def device_exists(device_name, namespace=None)`
 
+查询在名称为 namespace 的命名空间内是够已经存在了名称为 device_name 的接口。
 
+## `def device_exists_with_ips_and_mac(device_name, ip_cidrs, mac, namespace=None)`
 
+查询名称为 `device_name`、ip 地址为 `ip_cidrs`、网卡地址为 `mac` 的网络设备是否存在。
 
+## `def get_routing_table(ip_version, namespace=None)`
+
+执行命令：`ip netns exec qdhcp-5898859a-6a58-4aa1-baf8-743414f3c99c ip -4 route`
+
+获取命名空间 namespace 下的 main 路由表项
+
+## `def ensure_device_is_ready(device_name, namespace=None)`
+
+确认名为 device_name 的设备已经启动
+
+## `def iproute_arg_supported(command, arg)`
+
+执行命令 `ip command help` 命令，确认该 command 命令是否支持后面的参数。
+
+## `def get_ipv6_lladdr(mac_addr)`
+
+根据 mac 地址获取该网卡的 ipv6 的 link-local address 。参考：[华为和思科IPV6初探，IPV6中的link-local address ](http://blog.csdn.net/asd1986_n/article/details/7947080)
+
+## `def send_ip_addr_adv_notif(ns_name, iface_name, address, config, log_exception=True)`
+
+arping：*Ping destination on device interface by ARP packets, using source address source.*
+
+告诉 address 发送 ARP 回复命令。
+
+`send_arp_for_ha` 在 *l3_agent.ini* 配置：`send_arp_for_ha = 3` 发送 arp 数据包的个数
+
+执行如下命令：`arping -A -I eth0 -c 3 -w 4.5 172.16.100.168`
+
+-A 以 ARP 相应包的形式发送
+-I 指定发送端口
+-c 发送书包的个数
+-w 超时时间
+
+**什么作用？**
+
+## `def get_ip_nonlocal_bind(namespace=None)`
+
+使用命令：`sysctl -bn net.ipv4.ip_nonlocal_bind`
+
+读取 `net.ipv4.ip_nonlocal_bind` 内核参数，是否允许进程绑定到非本地地址
+
+## `def set_ip_nonlocal_bind(value, namespace=None, log_fail_as_error=True)`
+
+使用命令：`sysctl -w net.ipv4.ip_nonlocal_bind value`
+
+## `def set_ip_nonlocal_bind_for_namespace(namespace)`
+
+试用命令：`sysctl -w net.ipv4.ip_nonlocal_bind 0`
