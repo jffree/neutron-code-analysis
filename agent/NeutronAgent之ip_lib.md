@@ -561,6 +561,17 @@ class IPRoute(SubProcessBase):
 
 ## `class IpRouteCommand(IpDeviceCommandBase)`
 
+**系统中的路由记录是在一个一个的路由表中存在的（路由表在 /etc/iproute2/rt_tables 文件中记录）。最多可以定义 256 个路由表，启动 0、253、254、255 是由 kernel 维护的。**
+
+* linux 系统中，可以自定义从 1－252个路由表，其中，linux系统维护了4个路由表：
+ 1. 0#表： 系统保留表
+ 2. 253#表： defulte table 没特别指定的默认路由都放在该表
+ 3. 254#表： main table 没指明路由表的所有路由放在该表
+ 4. 255#表： locale table 保存本地接口地址，广播地址、NAT地址 由系统维护，用户不得更改
+
+
+`IpRouteCommand` 也是以路由表为单位来进行维护的。在没有指明路由表的情况下，默认是对 main 表进行操作的。
+
 ```
     COMMAND = 'route'
 
@@ -569,19 +580,142 @@ class IPRoute(SubProcessBase):
         self._table = table
 ```
 
-### ``
+### `def table(self, table)`
 
+返回一个 `IpRouteCommand` 描述的路由表。
 
+### `def _table_args(self, override=None)`
 
+构造 `ip route` 命令的 `table` 选项。
 
+```
+    def _table_args(self, override=None):
+        if override:
+            return ['table', override]
+        return ['table', self._table] if self._table else []
+```
 
+例如：`ip route show table local` 就是查询 local 表中记录的路由项。
 
+### `def _dev_args(self)`
 
+构造 `ip route` 命令的 `dev` 选项。
 
+```
+    def _dev_args(self):
+        return ['dev', self.name] if self.name else []
+```
 
+例如：`ip route show dev eth0` 就是查询经过 eth0 网卡的路由。
 
+### `def _run_as_root_detect_device_not_found(self, *args, **kwargs)`
 
+处理运行命令时，无法找到 device 的异常
 
+### `def get_gateway(self, scope=None, filters=None, ip_version=None)`
+
+`filters`：之其他的过滤选项
+
+获取本表中，经过本设备转发的网关地址及其 `metric` 属性。
+
+执行命令如下：`ip -4 route show table main dev eno1 scope globle `
+
+命令返回为： `default via 192.168.40.254 proto static metric 100`
+
+方法返回为：`{'gateway':'192.168.40.254','metric':100}`
+
+### `def _parse_routes(self, ip_version, output, **kwargs)`
+
+生成器方法，将 ip route 输出的结果转化为易读的格式。
+
+### `def list_routes(self, ip_version, **kwargs)`
+
+查询路由。
+
+执行命令：`ip -4 router list table main dev eno1 `
+
+调用 `_parse_routes` 对命令结果的数据进行转化。
+
+### `def list_onlink_routes(self, ip_version)`
+
+列出 scope 为 link 的路由。
+
+执行命令：`ip -4 router list table main dev eno1 scope link`
+
+*不过这里面的不带 `src` 是什么鬼？  `list_onlink_routes` 与 `add_onlink_routes` 方法是对应的，因为 `add_onlink_routes` 添加路由表项时，也没有添加 src 属性。*
+
+### `def add_route(self, cidr, via=None, table=None, **kwargs)`
+
+在路由表中增加一个记录。
+
+执行命令如下：`ip -4 route replace 192.168.40.237 via 192.168.40.254 dev eno1 table main src 192.168.40.247 scope global`
+
+### `def add_onlink_route(self, cidr)`
+
+增加一个 scope 为 link 的路由表
+
+执行命令如下：`ip -4 route replace 192.168.40.237 dev eno1 table main scope link`
+
+### `def delete_route(self, cidr, via=None, table=None, **kwargs)`
+
+删除一个路由表项
+
+执行命令如下：`ip -4 route del 192.168.40.237 dev eno1 table main`
+
+### `def delete_onlink_route(self, cidr)`
+
+删除一个 scope 为 link 的路由表项
+
+执行命令如下：`ip -4 route del 192.168.40.237 dev eno1 table main scope link`
+
+### `def add_gateway(self, gateway, metric=None, table=None)`
+
+增加一个网关记录。
+
+执行命令如下：`ip -4 route default via 192.168.40.254 dev eno1 table main matric 100`
+
+### `def delete_gateway(self, gateway, table=None)`
+
+删除默认网关的记录。
+
+执行命令如下：`ip -4 route del default via 192.168.40.254 dev eno1 table main`
+
+### `def flush(self, ip_version, table=None, **kwargs)`
+
+清空某一个路由表的记录。
+
+执行命令如下：`ip -4 flush table main`
+
+## `class IPRule(SubProcessBase)`
+
+```
+class IPRule(SubProcessBase):
+    def __init__(self, namespace=None):
+        super(IPRule, self).__init__(namespace=namespace)
+        self.rule = IpRuleCommand(self)
+```
+
+## `class IpRuleCommand(IpCommandBase)`
+
+`COMMAND = 'rule'`
+
+### `def list_rules(self, ip_version)`
+
+例如当前策略路由的所有规则。
+
+执行命令：`ip -4 rule show`
+
+命令返回值为：
+
+```
+220:	from 192.203.80.0/24 fwmark 0x1 lookup main
+```
+
+调用 `_parse_line` 来解析命令的返回值。
+
+解析完成后：
+
+`{'fwmark': '0x1/0xffffffff', 'table': 'main', 'priority': '220', 'type': 'unicast', 'from': '192.203.80.0/24'}`
 
 ## `def add_namespace_to_cmd(cmd, namespace=None)`
 
@@ -594,17 +728,21 @@ def add_namespace_to_cmd(cmd, namespace=None):
 
 当 namespace 不为空时，构造类似于下面的命令：`ip netns exec namespce cmd`
 
+### `def _exists(self, ip_version, **kwargs)`
 
+kwargs：包含某个 rule 的属性。判断该 rule 是否存在。
 
+### `def add(self, ip, **kwargs)`
 
+增加一个 rule 记录。
 
+执行命令如下：`ip ru add from 193.233.7.83 nat 192.203.80.144 table 1 pref 320`
 
+### `def delete(self, ip, **kwargs)`
 
+删除一个 rule 记录
 
-
-
-
-
+执行命令如下：`ip ru del prio 32767`
 
 
 
