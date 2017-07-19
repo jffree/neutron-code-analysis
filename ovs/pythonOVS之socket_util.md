@@ -42,7 +42,9 @@
 
 ## `def check_connection_completion(sock)`
 
+检查 socket 是否建立连接，并可以发送消息。
 
+参考：[Python自动化之select解析](http://www.cnblogs.com/wspblog/p/5960879.html)
 
 
 

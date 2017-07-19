@@ -50,9 +50,63 @@ Stream.register_method("tcp", TCPStream)
 静态方法。
 
 `name`：连接方法。（例如：`tcp:127.0.0.1:6640`）
-`dscp`：TOS 值。
+`dscp`：TOS 值。默认为 48
 
 1. 调用子类的 `_open` 方法实现 socket 的建立。
+2. 调用 `check_connection_completion` 检查 socket 建立连接的状态
+3. 创建 `Stream` 实例
+
+### `def __init__(self, socket, name, status)`
+
+```
+    def __init__(self, socket, name, status):
+        self.socket = socket
+        self.name = name
+        if status == errno.EAGAIN:
+            self.state = Stream.__S_CONNECTING
+        elif status == 0:
+            self.state = Stream.__S_CONNECTED
+        else:
+            self.state = Stream.__S_DISCONNECTED
+
+        self.error = 0
+```
+
+* 参数说明：
+ 1. `socket`：与 ovsdb 建立的 socket 连接
+ 2. `name`：连接的名称（例如：`tcp:127.0.0.1:6640`）
+ 3. `status`：socket 连接的状态（正在连接、已连接、未连接）
+
+### `def open_block(error_stream)`
+
+静态方法。这个方法接受的参数是 `open` 方法的返回值。
+
+尝试完成 socket 的链接，若是链接成功，则返回（0，stream）；连接失败则关闭 socket 连接，并返回（负数，stream）
+
+### `def connect(self)`
+
+尝试完成 socket 的链接。
+
+* 返回值：
+ 1. `EAGAIN`：正在链接
+ 2. `0`：链接成功
+ 3. 负数：连接失败
+
+### `def __scs_connecting(self)`
+
+该方法调用 `ovs.socket_util.check_connection_completion` 再次检查连接的状态
+
+### `def close(self)`
+
+关闭 socket 连接
+
+### `def send(self, buf)`
+
+调用 socket 发送 buf 内存储的消息
+
+
+
+
 
 
 
