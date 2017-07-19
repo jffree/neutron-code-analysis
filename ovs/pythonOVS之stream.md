@@ -105,11 +105,18 @@ Stream.register_method("tcp", TCPStream)
 调用 socket 发送 buf 内存储的消息
 
 
+## `class Session(object)`
 
+```
+    def __init__(self, reconnect, rpc):
+        self.reconnect = reconnect
+        self.rpc = rpc
+        self.stream = None
+        self.pstream = None
+        self.seqno = 0
+```
 
-
-
-
+### `def open(name)`
 
 
 
