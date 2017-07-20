@@ -65,10 +65,6 @@ class Connection(object):
 
 将从 ovsdb 接受到的 json 数据解析完成后转化为 `Message` 封装的格式。
 
-
-
-
-
 ## `class Message(object)`
 
 与 OVSDB 通讯的消息封装（JSON-RPC）。
@@ -154,5 +150,55 @@ id：代表了本次请求的 id
 ### `def is_valid(self)`
 
 验证 Message 封装的消息是否合法
+
+
+
+## `class Session(object)`
+
+```
+    def __init__(self, reconnect, rpc):
+        self.reconnect = reconnect
+        self.rpc = rpc
+        self.stream = None
+        self.pstream = None
+        self.seqno = 0
+```
+
+### `def open(name)`
+
+静态方法。创建一个 Session 实例
+
+### `def is_connected(self)`
+
+是否建立连接
+
+### `def run(self)`
+
+根据 FSM 的反馈，判断下一步要进行的动作。
+
+1. 若需要进行连接，则调用 `__connect` 方法
+2. 若需要断开连接，则调用 `__disconnect` 方法
+3. 若需要 PROBE ，则调用 `self.rpc` 调用 server 端的 echo 方法
+
+### `def __disconnect(self)`
+
+关闭 rpc 或者 stream 的连接
+
+### `def __connect(self)`
+
+1. 若 FSM 为非 passive 模式，则创建一个 `Stream` 对象
+2. 若 FSM 为 passive 模式，则创建一个 `PassiveStream` 对象
+
+
+
+
+
+
+
+
+
+
+
+
 
 

@@ -85,9 +85,11 @@
             table.cond_changed = False
 ```
 
+初始化一系列的属性，同时为感兴趣的表建立存储。
 
+* `change_seqno`
 
-
+### `def run(self)`
 
 
 
