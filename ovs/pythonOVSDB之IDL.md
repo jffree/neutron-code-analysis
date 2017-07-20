@@ -87,11 +87,22 @@
 
 初始化一系列的属性，同时为感兴趣的表建立存储。
 
-* `change_seqno`
+* `tables`：该 IDL 维护（感兴趣的）的数据库表格。
+* `change_seqno` 表示该 IDL 状态的数字。该值在两种状态下会发生改变：第一种是 IDL 更新时（运行 idl.run 方法）；第二种是与 server 的连接丢失并且重新进行连接时会更改，这个更改将会让 IDL 重新加载 server 数据库。
+* `lock_name` 该 IDL 占有的锁的名称（可能会有多个客户端访问 ovsdb，此时需要锁机制）
+* `has_lock` 该 IDL 是否拥有锁
+* `is_lock_contended`：该锁是否被别的客户端锁占有
+* `_lock_request_id`：
+* `txn`
+* `_outstanding_txns`：`ovs.db.idl.Transaction` 的对象，负责与数据库进行交易。
+* `_monitor_request_id`
+* `_last_seqno`：与 session.seqno 相同
+* `uuid`
+* `state`：该 IDL 的状态
 
 ### `def run(self)`
 
-
+更新 IDL
 
 
 

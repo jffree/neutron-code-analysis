@@ -164,15 +164,42 @@ id：代表了本次请求的 id
         self.seqno = 0
 ```
 
+* 参数说明：
+ 1. `reconnect`：FSM 实例
+ 2. `rpc`：通过监听连接来创建（与 pstream 配合使用）
+ 3. `stream`：建立并维持与 ovsdb server 的连接，然后用 rpc 进行封装。
+ 4. `pstream`：建立在本机的监听，当有连接请求进来时，在连接的基础上创建 rpc 实例。
+
+* 解析
+ 1. FSM 用来维持 session 中连接的状态
+ 2. session 中的连接有两种状态：一种是主动去连接 server 端，通过 stream 实现；一种是在本机建立监听（pstream），当有请求进来时，与之建立连接
+ 3. session 中的两种连接都要用 rpc 进行封装，方便与 server 进行通讯
+
+`seqno`：序号，建立连接时序号增加，取消连接时序号增加
+
 ### `def open(name)`
 
-静态方法。创建一个 Session 实例
+静态方法。根据 name 创建一个 FSM，在此 FSM 的基础上创建一个 Session 实例。
+
+### `def open_unreliably(jsonrpc)`
+
+在已有的 rpc 基础上创建 Session 实例。
 
 ### `def is_connected(self)`
 
-是否建立连接
+是否建立连接（是否有 rpc 的存在）
+
+### `def close(self)`
+
+关闭所有存在的连接和监听
 
 ### `def run(self)`
+
+业务处理方法。
+
+* 对于 `pstream` 来说，接受连接申请，创建 rpc
+* 对于 `stream` 来说，主动去连接 server 创建 rpc
+* 对于 `rpc` 来说，执行与 server 通讯的任务。
 
 根据 FSM 的反馈，判断下一步要进行的动作。
 
@@ -182,23 +209,39 @@ id：代表了本次请求的 id
 
 ### `def __disconnect(self)`
 
-关闭 rpc 或者 stream 的连接
+断开与 server 端的连接
 
 ### `def __connect(self)`
+
+建立与 server 端的连接
 
 1. 若 FSM 为非 passive 模式，则创建一个 `Stream` 对象
 2. 若 FSM 为 passive 模式，则创建一个 `PassiveStream` 对象
 
+### `def wait(self, poller)`
 
+阻塞等待，直到有消息发送或者接收。
 
+### `def get_backlog(self)`
 
+准备向 server 端发送消息的大小
 
+### `def send(self, msg)`
 
+调用 rpc 发送 msg 消息
 
+### `def recv(self)`
 
+接受从 server 端回复的消息
 
+### `def recv_wait(self, poller)`
 
+等待有可接收的消息
 
+### `def is_alive(self)`
 
+检查是否有与 server 端的连接存在。
 
+### `def force_reconnect(self)`
 
+强制 FSM 改变到 `Reconnect` 状态，从而引发与 server 端连接的重置。
