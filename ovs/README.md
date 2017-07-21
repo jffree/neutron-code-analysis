@@ -1,5 +1,7 @@
 # OVS REDAME
 
+版本 2.5.0
+
 ## OVSDB
 
 1. ovsdb-sever 是一个 ovs 数据库的守护进程，我们可以通过 JSON-RPC 来与之进行通信（ovs-vswitchd 也是通过这种方式来与 ovsdb-sever 进行通信的）。
@@ -58,3 +60,25 @@
 * `Session` 
  1. 一个集合了 RPC、Stream、PassiveStream、Reconnect 的回话管理类
 
+## Schema and Types
+
+这两个模块描述了整个 ovsdb 的数据库结构
+
+1. `DbSchema` 描述数据库，其 `tables` 属性代表着数据库内的表结构
+2. `TableSchema` 用来描述数据库中的表，每一个表都有多个 column
+3. `ColumnSchema` 用来描述数据库中的 column，每个 column 都有一个 type 属性
+4. `Type` 用来描述 column 中的 type，每个 type 都会有一个 key 属性
+5. `BaseType` 用来描述 type 中的 key 属性
+
+## IDL 
+
+*Open vSwitch Database Interface Definition Language (OVSDB IDL)*
+
+与 ovsdb server 进行通信的最高层次的封装，集合了上面几个模块的所有功能。
+
+将 ovsdb server 中保存的数据库映射到内存中来，并且对 ovsdb server 的数据库进行实时的检测，随时更新内存中的数据库
+
+1. 维护了一个 session 负责与 ovsdb server 进行通信
+2. 封装了监听 ovsdb table 的方法，封装了获取 ovsdb lock 的方法。
+3. 维护了一个 tables 变量，里面存放着与 ovsdb 中相同的表结构以及数据记录
+4. table 中用 `Raw` 来封装每一条的记录

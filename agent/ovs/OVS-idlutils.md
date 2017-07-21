@@ -8,7 +8,8 @@
 
 然后用 `SchemaHelper` 封装命令的结果。
 
+## `def wait_for_change(_idl, timeout, seqno=None)`
 
-
+ovs idl 在刚创建时，里面的 tables 是没有存储数据的，这个方法就是调用 `_idl.run` 方法来获取 ovsdb server 数据库中的数据。
 
 

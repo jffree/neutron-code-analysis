@@ -197,3 +197,89 @@
 ### `def __row_update(self, table, row, row_json)`
 
 用 `Datum` 的实例来更新 Raw 记录
+
+## `class Transaction(object)`
+
+在 idl 中，我们看到了只有数据库的同步操作，但是没有数据库的修改操作。
+
+这个 `Transaction` 就是用来完成修改操作的。
+
+```
+    # Status values that Transaction.commit() can return.
+    UNCOMMITTED = "uncommitted"  # Not yet committed or aborted.
+    UNCHANGED = "unchanged"      # Transaction didn't include any changes.
+    INCOMPLETE = "incomplete"    # Commit in progress, please wait.
+    ABORTED = "aborted"          # ovsdb_idl_txn_abort() called.
+    SUCCESS = "success"          # Commit successful.
+    TRY_AGAIN = "try again"      # Commit failed because a "verify" operation
+                                 # reported an inconsistency, due to a network
+                                 # problem, or other transient failure.  Wait
+                                 # for a change, then try again.
+    NOT_LOCKED = "not locked"    # Server hasn't given us the lock yet.
+    ERROR = "error"              # Commit failed due to a hard error.****
+```
+
+### `def __init__(self, idl)`
+
+```
+    def __init__(self, idl):
+        """Starts a new transaction on 'idl' (an instance of ovs.db.idl.Idl).
+        A given Idl may only have a single active transaction at a time.
+
+        A Transaction may modify the contents of a database by assigning new
+        values to columns (attributes of Row), deleting rows (with
+        Row.delete()), or inserting rows (with Transaction.insert()).  It may
+        also check that columns in the database have not changed with
+        Row.verify().
+
+        When a transaction is complete (which must be before the next call to
+        Idl.run()), call Transaction.commit() or Transaction.abort()."""
+        assert idl.txn is None
+
+        idl.txn = self
+        self._request_id = None
+        self.idl = idl
+        self.dry_run = False
+        self._txn_rows = {}
+        self._status = Transaction.UNCOMMITTED
+        self._error = None
+        self._comments = []
+
+        self._inc_row = None
+        self._inc_column = None
+
+        self._fetch_requests = []
+
+        self._inserted_rows = {}  # Map from UUID to _InsertedRow
+```
+
+* `_status`：该 transaction 的状态
+* `_comments`：发送给 ovsdb server 的日志
+
+### `def insert(self, table, new_uuid=None)`
+
+在 table 中插入一个新的记录。
+
+调用示例：`txn.insert(self.api._tables['Manager'])`
+
+### `def add_comment(self, comment)`
+
+增加日志
+
+### `def wait(self, poller)`
+
+等待与 ovsdb 的交易完成
+
+### ``
+
+
+
+
+
+
+
+
+
+
+
+
