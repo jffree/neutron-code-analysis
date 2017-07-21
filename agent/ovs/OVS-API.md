@@ -26,7 +26,7 @@ class API(object):
         return iface(context)
 ```
 
-`ovsdb_interface` 就在本模块重定义，默认为 `native`，对应的类为：`neutron.agent.ovsdb.impl_idl.OvsdbIdl`，这个类正好是 `API` 的子类。
+`ovsdb_interface` 就在本模块中定义，默认为 `native`，对应的类为：`neutron.agent.ovsdb.impl_idl.OvsdbIdl`，这个类正好是 `API` 的子类。
 
 我们就直接分析这个类就可以了。
 
@@ -49,11 +49,19 @@ class API(object):
 
 `ovs_vsctl_timeout` ovs-vsctl 命令的超时时间，默认为 10
 
+启动与 ovsdb server 的数据、命令交流
 
+### `def _tables(self)`
 
+获取 ovsdb 的所有 table
 
+### `def _ovs(self)`
 
+获取数据库中 `Open_vSwitch` 表的数据
 
+### `def transaction(self, check_error=False, log_errors=True, **kwargs)`
+
+构造一个交易对象
 
 
 

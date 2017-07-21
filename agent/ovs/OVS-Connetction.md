@@ -47,6 +47,15 @@
 * `timeout`：执行 ovs-vsctl 命令的超时时间
 * `schema_name`：OVSDB 中数据库的名称
 * `idl_class`：默认为：`ovs.db.idl.Idl`
+
+### `def queue_txn(self, txn)`
+
+```
+    def queue_txn(self, txn):
+        self.txns.put(txn)
+```
+
+将一个 txn 放入队列中
  
 ### `def start(self, table_name_list=None)`
 
@@ -56,3 +65,7 @@
 
 ### `def run(self)`
 
+这个方法很重要。
+
+1. 调用了 `idl.run` 方法，同步了 ovsdb server 的数据
+2. 调用 `txn.do_commit` 和 `txn.results.put` 方法，实现了与 ovsdb server 的交易（创建、删除数据）操作。

@@ -255,6 +255,7 @@
 
 * `_status`：该 transaction 的状态
 * `_comments`：发送给 ovsdb server 的日志
+* `_error`：当前的错误信息
 
 ### `def insert(self, table, new_uuid=None)`
 
@@ -270,7 +271,13 @@
 
 等待与 ovsdb 的交易完成
 
-### ``
+### `def get_error(self)`
+
+获取当前的状态信息，若是当前状态为 `ERROR`，则通过 `self._error` 获取错误信息。
+
+### `def __set_error_json(self, json)`
+
+设置错误信息
 
 
 
