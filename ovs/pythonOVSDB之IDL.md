@@ -200,6 +200,23 @@
 
 ## `class Transaction(object)`
 
+## 测试
+
+* 执行命令：`ovs-vsctl -v add-br test`
+* 提取输出中的关于 **transact** 的消息如下：
+
+```
+2017-07-21T16:33:33Z|00013|jsonrpc|DBG|unix:/var/run/openvswitch/db.sock: send request, method="transact", params=["Open_vSwitch",{"rows":[{"interfaces":["uuid","a5824cf3-9725-4bf4-85fe-9a08cb9991bd"]}],"until":"==","where":[["_uuid","==",["uuid","02882f40-abdd-4839-8169-2c21ebccf0ba"]]],"columns":["interfaces"],"timeout":0,"op":"wait","table":"Port"},{"rows":[{"ports":["set",[["uuid","5a648cbb-9db2-467a-af70-0ae1ab963f24"],["uuid","ba649eb8-4b73-4b23-a098-1248af76b17c"]]]}],"until":"==","where":[["_uuid","==",["uuid","f779e141-0ac0-4b38-8b61-50e199ea1da8"]]],"columns":["ports"],"timeout":0,"op":"wait","table":"Bridge"},{"rows":[{"bridges":["set",[["uuid","407f3645-862e-4ac0-98ae-7a46cfdaa4ec"],["uuid","d40ac0ea-e7d9-4ab1-83c5-168bdc45c6ba"],["uuid","f779e141-0ac0-4b38-8b61-50e199ea1da8"]]]}],"until":"==","where":[["_uuid","==",["uuid","d3d393e2-d5b9-4b7e-bb91-071a53ccc6ab"]]],"columns":["bridges"],"timeout":0,"op":"wait","table":"Open_vSwitch"},{"rows":[{"interfaces":["uuid","32ec4baf-e96a-4fd9-bebf-be51b14513d7"]}],"until":"==","where":[["_uuid","==",["uuid","cc656684-a310-49df-a7a1-aa12106560db"]]],"columns":["interfaces"],"timeout":0,"op":"wait","table":"Port"},{"rows":[{"interfaces":["uuid","38f6ba3a-efb7-45a1-80d9-d3a13b496247"]}],"until":"==","where":[["_uuid","==",["uuid","4da79a34-40d7-4719-be95-81d1b3f4bc64"]]],"columns":["interfaces"],"timeout":0,"op":"wait","table":"Port"},{"rows":[{"ports":["set",[["uuid","f1d2699f-da02-4b03-a291-b9c053c8ac36"],["uuid","f7044107-8cf9-4b79-855d-adde64a69a64"]]]}],"until":"==","where":[["_uuid","==",["uuid","407f3645-862e-4ac0-98ae-7a46cfdaa4ec"]]],"columns":["ports"],"timeout":0,"op":"wait","table":"Bridge"},{"rows":[{"interfaces":["uuid","4dc8987f-da12-4e40-ab63-f044cfe55468"]}],"until":"==","where":[["_uuid","==",["uuid","aee9c6b6-24c9-4a4d-9f93-bc6e48c87528"]]],"columns":["interfaces"],"timeout":0,"op":"wait","table":"Port"},{"rows":[{"interfaces":["uuid","7e38e71e-acea-456c-a45b-133fe418c2c1"]}],"until":"==","where":[["_uuid","==",["uuid","f7044107-8cf9-4b79-855d-adde64a69a64"]]],"columns":["interfaces"],"timeout":0,"op":"wait","table":"Port"},{"rows":[{"interfaces":["uuid","c1a14b55-ff31-432d-a0ce-b2223489a273"]}],"until":"==","where":[["_uuid","==",["uuid","6deb3707-6768-4766-a540-dfd8c78bb8ac"]]],"columns":["interfaces"],"timeout":0,"op":"wait","table":"Port"},{"rows":[{"interfaces":["uuid","608e31db-07dc-47ed-80a7-cb2f4d6bed63"]}],"until":"==","where":[["_uuid","==",["uuid","ba649eb8-4b73-4b23-a098-1248af76b17c"]]],"columns":["interfaces"],"timeout":0,"op":"wait","table":"Port"},{"rows":[{"interfaces":["uuid","806361e3-cf54-49c5-8601-759ca8513b24"]}],"until":"==","where":[["_uuid","==",["uuid","8ae3d5ba-d33b-4dd1-ac9b-9a4e0b1848ab"]]],"columns":["interfaces"],"timeout":0,"op":"wait","table":"Port"},{"rows":[{"interfaces":["uuid","3a351c15-31d2-497d-abe9-ae06b5ad542d"]}],"until":"==","where":[["_uuid","==",["uuid","32dc6e6a-8259-495a-b9fe-da10678984e0"]]],"columns":["interfaces"],"timeout":0,"op":"wait","table":"Port"},{"rows":[{"ports":["set",[["uuid","02882f40-abdd-4839-8169-2c21ebccf0ba"],["uuid","32dc6e6a-8259-495a-b9fe-da10678984e0"],["uuid","4da79a34-40d7-4719-be95-81d1b3f4bc64"],["uuid","6deb3707-6768-4766-a540-dfd8c78bb8ac"],["uuid","8ae3d5ba-d33b-4dd1-ac9b-9a4e0b1848ab"],["uuid","967fd5ed-17c4-4149-ac4c-81b77cb3b8ba"],["uuid","a90c5a2b-688b-46cd-9902-a6c93c66a514"],["uuid","aee9c6b6-24c9-4a4d-9f93-bc6e48c87528"],["uuid","cc656684-a310-49df-a7a1-aa12106560db"]]]}],"until":"==","where":[["_uuid","==",["uuid","d40ac0ea-e7d9-4ab1-83c5-168bdc45c6ba"]]],"columns":["ports"],"timeout":0,"op":"wait","table":"Bridge"},{"rows":[{"interfaces":["uuid","d2df8751-ab37-4689-9510-b7a2b12ac58a"]}],"until":"==","where":[["_uuid","==",["uuid","5a648cbb-9db2-467a-af70-0ae1ab963f24"]]],"columns":["interfaces"],"timeout":0,"op":"wait","table":"Port"},{"rows":[{"interfaces":["uuid","808a3b33-cd49-4239-9e9c-4c12f021cc01"]}],"until":"==","where":[["_uuid","==",["uuid","a90c5a2b-688b-46cd-9902-a6c93c66a514"]]],"columns":["interfaces"],"timeout":0,"op":"wait","table":"Port"},{"rows":[{"interfaces":["uuid","37ebda85-861b-469f-9d20-2d3d89c20c73"]}],"until":"==","where":[["_uuid","==",["uuid","967fd5ed-17c4-4149-ac4c-81b77cb3b8ba"]]],"columns":["interfaces"],"timeout":0,"op":"wait","table":"Port"},{"rows":[{"interfaces":["uuid","e3be6f03-c335-4477-9b9e-8406bdce124e"]}],"until":"==","where":[["_uuid","==",["uuid","f1d2699f-da02-4b03-a291-b9c053c8ac36"]]],"columns":["interfaces"],"timeout":0,"op":"wait","table":"Port"},{"uuid-name":"rowaf607491_b948_40a9_8fa3_52f2ceaf39a9","row":{"name":"test","type":"internal"},"op":"insert","table":"Interface"},{"where":[["_uuid","==",["uuid","d3d393e2-d5b9-4b7e-bb91-071a53ccc6ab"]]],"row":{"bridges":["set",[["named-uuid","row1fac7c5f_0e62_499b_bb92_98fb3412a270"],["uuid","407f3645-862e-4ac0-98ae-7a46cfdaa4ec"],["uuid","d40ac0ea-e7d9-4ab1-83c5-168bdc45c6ba"],["uuid","f779e141-0ac0-4b38-8b61-50e199ea1da8"]]]},"op":"update","table":"Open_vSwitch"},{"uuid-name":"row9a846cad_8684_4c3d_9679_c4a30e1f8f28","row":{"name":"test","interfaces":["named-uuid","rowaf607491_b948_40a9_8fa3_52f2ceaf39a9"]},"op":"insert","table":"Port"},{"uuid-name":"row1fac7c5f_0e62_499b_bb92_98fb3412a270","row":{"name":"test","ports":["named-uuid","row9a846cad_8684_4c3d_9679_c4a30e1f8f28"]},"op":"insert","table":"Bridge"},{"mutations":[["next_cfg","+=",1]],"where":[["_uuid","==",["uuid","d3d393e2-d5b9-4b7e-bb91-071a53ccc6ab"]]],"op":"mutate","table":"Open_vSwitch"},{"where":[["_uuid","==",["uuid","d3d393e2-d5b9-4b7e-bb91-071a53ccc6ab"]]],"columns":["next_cfg"],"op":"select","table":"Open_vSwitch"},{"comment":"ovs-vsctl (invoked by -bash): ovs-vsctl -v add-br test","op":"comment"}], id=2
+``` 
+
+*其中数据部分可以用 json 解释器来看*
+
+根据 `id=2` 我们还可以提起回复信息：
+
+```
+2017-07-21T16:33:33Z|00015|jsonrpc|DBG|unix:/var/run/openvswitch/db.sock: received reply, result=[{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{"uuid":["uuid","c15e7fc8-ab1c-46c8-b8d2-da516b90e7e0"]},{"count":1},{"uuid":["uuid","2d0ab4e5-a596-4214-ad1d-94389a160f16"]},{"uuid":["uuid","f6bf6a3f-a3d4-49e2-b06a-ba43c2431a4c"]},{"count":1},{"rows":[{"next_cfg":128}]},{}], id=2
+```
+
 在 idl 中，我们看到了只有数据库的同步操作，但是没有数据库的修改操作。
 
 这个 `Transaction` 就是用来完成修改操作的。
@@ -256,6 +273,11 @@
 * `_status`：该 transaction 的状态
 * `_comments`：发送给 ovsdb server 的日志
 * `_error`：当前的错误信息
+* `_txn_rows`：每次插入新 raw 时就会在这个属性里面进行记录
+* `_fetch_requests`：相当于 `monitor` 命令，提取数据库中的数据那些行
+* `_inc_row` 增量 raw
+* `_inc_column` 增量 column
+* `dry_run`：所有的命令实际上并不执行，仅仅测试
 
 ### `def insert(self, table, new_uuid=None)`
 
@@ -279,9 +301,28 @@
 
 设置错误信息
 
+### `def commit(self)`
 
+1. 判断是否锁被别的进程占用
+2. 若是设置了锁名称，则建立占有锁的命令
+3. 增加等待命令。（解析：对于 bridge 来说，其依赖于 port，也就是必须要现有 port 的一个记录，才能创建 bridge）
+4. 增加 raw 的删除、新建、更新命令
+5. 增加 `fetch` 命令
+6. 增加 `mutate` 和 `select` 命令
+7. 增加 `commnet` 命令（记录到日志中）
+8. 判断是否为测试命令
+9. 若是 raw 没有任何改变，则不作操作；若是 raw 发生了变动，则将所有的命令发送出去。（所以，你只发送一个 comment 命令是不会被执行的）
+10. 调用 `__disassemble` 意味着此次 idl 与 ovsdb server 的交易结束
 
+### `def __disassemble(self)`
 
+交易结束（调用了 commit 方法）则会调用此方法。
+
+在 idl 中取消与交易的关联，将交易中的 raw 置空。
+
+### `def commit_block(self)`
+
+只要交易的状态一直是 `INCOMPLETE`，则一直阻塞执行 commit 和 idl.run 方法
 
 
 
