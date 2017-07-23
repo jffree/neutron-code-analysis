@@ -15,7 +15,7 @@ def main():
     service.launch(cfg.CONF, server).wait()
 ```
 
-* dhcp agent 是以一个 service 的方式启动。
+* dhcp agent 是以一个 service 的方式启动，会运行 `service.start` 方法。
  1. 其实就是以 dhcp manger 实例为 endpoint，以 `dhcp_agent` 为 topic 启动一个 rpc server，topic。（请见文章：neutron中的Service）
  2. client 端为 `neutron.api.rpc.agentnotifiers.dhcp_rpc_agent_api.DhcpAgentNotifyApi`，这一个在 ml2 中被实例化。
  3. dhcp agent 的 manager 为：`neutron.agent.dhcp.agent.DhcpAgentWithStateReport`
@@ -81,7 +81,7 @@ def main():
 1. 调用 `cache.get_state()` 获取当前 dhcp 管理的 network、subnet、port 的数量
 2. 通过 RPC 调用 Server 端（`AgentExtRpcCallback`）的 `report_state` 方法，上报当前 dhcp agent 的数据，并获取 dhcp agent 的状态（`new`、`alive`、`revived`）。
 3. 若是 RPC 返回的 agent 的状态为 `revived`，则调用 `schedule_resync` 方法标记所有的网络都需要进行同步
-4. 调用 `run` 方法
+4. 若是 `start_flag` 为 `True` 则调用 `run` 方法
 
 
 ### ``
@@ -163,9 +163,30 @@ def main():
 
 ### `def _periodic_resync_helper(self)`
 
+这是个死循环的方法，会一直执行。
+
 `resync_interval`：当 `needs_resync_reasons` 标记有需要重新同步的网络资源时，需要与 neutron 进行重新同步的操作。这个数据就是检查需要重新同步操作的时间间隔。在 `dhcp_agent.ini` 中定义：`resync_interval = 5`。
 
-若有需要进行同步操作的 network，则调用 `sync_state` 方法
+作用：若有需要进行同步操作的 network，则调用 `sync_state` 方法
+
+### `def start_ready_ports_loop(self)`
+
+启动一个绿色线程池去调用 `_dhcp_ready_ports_loop` 方法
+
+### `def _dhcp_ready_ports_loop(self)`
+
+这是个死循环的方法，会一直执行。
+
+作用：针对 `dhcp_ready_ports` 调用 rpc server 的 `dhcp_ready_on_ports` 方法。
+
+### `def init_host(self)`
+
+```
+    def init_host(self):
+        self.sync_state()
+```
+
+在 dhcp agent 刚启动的时候，会调用这个方法。这个方法用来同步 dhcp agent 这次启动之前已经处理过的 network 的信息
 
 ### `def sync_state(self, networks=None)`
 
@@ -184,7 +205,6 @@ def main():
 2. 调用 dhcp driver 的 `disable` 方法
 
 
-
 ### `def disable_isolated_metadata_proxy(self, network)`
 
 调用 `MetadataDriver.destroy_monitored_metadata_proxy` 杀死为这个网络提供 metadata 服务的进程
@@ -193,6 +213,21 @@ def main():
 
 1. 初始化 dhcp driver 实例（**从这里我们看出，dhcp agent 的 driver 实例不是一直存在的，而是用到的时候就被初始化，然后使用。并且每个 driver 实例只负责一个网络**）
 2. 调用 dhcp driver 的 action 方法
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

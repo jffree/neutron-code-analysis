@@ -30,3 +30,5 @@
 
 1. 进一步完善 agent state 的信息
 2. 调用 Server 端的 `report_state` 方法
+
+可以使用如下命令： `neutron agent show 4a3020c8-68e7-449c-9060-898fb150242c` 查看 agent 状态

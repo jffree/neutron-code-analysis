@@ -197,6 +197,10 @@ class Service(service.Service):
         super(Service, self).stop()
 ```
 
+* 这个类其实是启动了一个 RPC Server 端。
+ 1. `topic`：self.topic
+ 2. `endpoint`：self.manager
+
 ## `class Service(ServiceBase)`
 
 *oslo_service/service.py*
