@@ -82,3 +82,11 @@
 2. 封装了监听 ovsdb table 的方法，封装了获取 ovsdb lock 的方法。
 3. 维护了一个 tables 变量，里面存放着与 ovsdb 中相同的表结构以及数据记录
 4. table 中用 `Raw` 来封装每一条的记录
+
+## Transaction
+
+IDL 负责读取 ovsdb 的数据，而 Transact 负责写入数据
+
+## 参考
+
+[Openvswitch手册(1): 架构，SSL, Manager, Bridge](http://www.cnblogs.com/popsuper1982/p/3800574.html)

@@ -57,31 +57,119 @@ class API(object):
 
 ### `def _ovs(self)`
 
-获取数据库中 `Open_vSwitch` 表的数据
+获取数据库中 `Open_vSwitch` 表的第一行记录
 
 ### `def transaction(self, check_error=False, log_errors=True, **kwargs)`
 
-构造一个交易对象
+构造一个 `NeutronOVSDBTransaction` 对象
 
+```
+    def transaction(self, check_error=False, log_errors=True, **kwargs):
+        return NeutronOVSDBTransaction(self, OvsdbIdl.ovsdb_connection,
+                                       self.context.vsctl_timeout,
+                                       check_error, log_errors)
+```
 
+### `def add_manager(self, connection_uri)`
 
+创建一个 `AddManagerCommand` 对象
 
+### `def get_manager(self)`
 
+创建一个 `GetManagerCommand` 对象
 
+### `def remove_manager(self, connection_uri)`
 
+创建一个 `RemoveManagerCommand` 对象
 
+### `def add_br(self, name, may_exist=True, datapath_type=None)`
 
+创建一个 `AddBridgeCommand` 对象
 
+### `def del_br(self, name, if_exists=True)`
 
+创建一个 `DelBridgeCommand` 对象
 
+### `def br_exists(self, name)`
 
+创建一个 `BridgeExistsCommand` 对象
 
+### `def port_to_br(self, name)`
 
+创建一个 `PortToBridgeCommand` 对象
 
+### `def iface_to_br(self, name)`
 
+创建一个 `InterfaceToBridgeCommand` 对象
 
+### `def list_br(self)`
 
+创建一个 `ListBridgesCommand` 对象
 
+### `def br_get_external_id(self, name, field)`
 
+创建一个 `BrGetExternalIdCommand` 对象
 
+### `def br_set_external_id(self, name, field, value)`
 
+创建一个 `BrSetExternalIdCommand` 对象
+
+### `def db_create(self, table, **col_values)`
+
+创建一个 `DbCreateCommand` 对象
+
+### `def db_destroy(self, table, record)`
+
+创建一个 `DbDestroyCommand` 对象
+
+### `def db_set(self, table, record, *col_values)`
+
+创建一个 `DbSetCommand` 对象
+
+### `def db_clear(self, table, record, column)`
+
+创建一个 `DbClearCommand` 对象
+
+### `def db_get(self, table, record, column)`
+
+创建一个 `DbGetCommand` 对象
+
+### `def db_list(self, table, records=None, columns=None, if_exists=False)`
+
+创建一个 `DbListCommand` 对象
+
+### `def db_find(self, table, *conditions, **kwargs)`
+
+创建一个 `DbFindCommand` 对象
+
+### `def set_controller(self, bridge, controllers)`
+
+创建一个 `SetControllerCommand` 对象
+
+### `def del_controller(self, bridge)`
+
+创建一个 `DelControllerCommand` 对象
+
+### `def get_controller(self, bridge)`
+
+创建一个 `GetControllerCommand` 对象
+
+### `def set_fail_mode(self, bridge, mode)`
+
+创建一个 `SetFailModeCommand` 对象
+
+### `def add_port(self, bridge, port, may_exist=True)`
+
+创建一个 `AddPortCommand` 对象
+
+### `def del_port(self, port, bridge=None, if_exists=True)`
+
+创建一个 `DelPortCommand` 对象
+
+### `def list_ports(self, bridge)`
+
+创建一个 `ListPortsCommand` 对象
+
+### `def list_ifaces(self, bridge)`
+
+创建一个 `ListIfacesCommand` 对象

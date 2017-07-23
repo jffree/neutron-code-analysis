@@ -4,7 +4,7 @@
 
 ## `class TransactionQueue(Queue.Queue, object)`
 
-在队列的基础上封装了管道
+在队列的基础上封装了管道（为了可以监听管道描述符的状态，发现有数据的写入和读取，这样子就可以知道队列中数据的写入和读取）。
 
 ```
     def __init__(self, *args, **kwargs):
@@ -67,5 +67,7 @@
 
 这个方法很重要。
 
-1. 调用了 `idl.run` 方法，同步了 ovsdb server 的数据
-2. 调用 `txn.do_commit` 和 `txn.results.put` 方法，实现了与 ovsdb server 的交易（创建、删除数据）操作。
+1. `run` 方法是以一个单独的线程来运行的。 `run` 方法中会阻塞监听 `self.txns.alert_fileno` 管道是否有数据写入（当调用 `queue_txn` 就会向里面写入数据）。
+2. 若发现有数据写入，则会先执行 `idl.run` 与 ovsdb 的数据库进行一次同步操作。然后读取在队列中写入的数据（实际上这里写入的数据会是一个 `NeutronOVSDBTransaction` 的实例，在 `NeutronOVSDBTransaction.commit` 方法中）。
+3. 读取到 `NeutronOVSDBTransaction` 的实例后，会执行 `NeutronOVSDBTransaction` 中的命令（`do_commit`），并且将结果保存起来
+4. 最后再调用 `NeutronOVSDBTransaction.task_done` 方法

@@ -278,10 +278,7 @@
 * `_inc_row` 增量 raw
 * `_inc_column` 增量 column
 * `dry_run`：所有的命令实际上并不执行，仅仅测试
-
-### `def insert(self, table, new_uuid=None)`
-
-在 table 中插入一个新的记录。
+* `_inserted_rows`：当有新的 raw 被插入时，记录该 raw 与执行 insert 命令的对应关系
 
 调用示例：`txn.insert(self.api._tables['Manager'])`
 
@@ -324,10 +321,95 @@
 
 只要交易的状态一直是 `INCOMPLETE`，则一直阻塞执行 commit 和 idl.run 方法
 
+### `def insert(self, table, new_uuid=None)`
 
+在 table 中插入一个新的记录( raw )。
 
+### `def _write(self, row, column, datum)`
 
+改变 raw 的数据（删除、变更）。
 
+### `def _fetch(self, row, column_name)`
 
+在 `_fetch_requests` 中增加需要执行 fetch 命令的 raw 及其 column
 
+```
+    def _fetch(self, row, column_name):
+        self._fetch_requests.append({"row":row, "column_name":column_name})
+```
 
+### `def _increment(self, row, column)`
+
+```
+    def _increment(self, row, column):
+        assert not self._inc_row
+        self._inc_row = row
+        self._inc_column = column
+```
+
+增加需要执行 `mutate` 和 `select` 命令的 raw
+
+### `def get_insert_uuid(self, uuid)`
+
+raw 中的 uuid 是实际数据库中的 uuid 是不同的。本方法就是通过 raw 的 uuid 获取 实际数据库中的 uuid
+
+### `def abort(self)`
+
+终止当前的交易
+
+### `def _process_reply(self, msg)`
+
+处理 ovsdb server 给的回复
+
+1. 检查所有的回复中是否含有 error 信息
+2. 若存在 `_inc_row`，则调用 `__process_inc_reply` 检查与 inc 相关的回复是否符合规定
+3. 若存在 `_fetch_requests`，则调用 `__process_fetch_reply` 检查与 fetch 相关的回复是否合法
+4. 若存在 `_inserted_rows`，则调用 `__process_insert_reply` 检查与 insert 相关的回复是否合法
+5. 在所有的检查完成后，设定这次交易完成的 state 
+
+## `class Row(object)`
+
+代表着 ovsdb 数据库中的一条记录
+
+```
+    def __init__(self, idl, table, uuid, data):
+        # All of the explicit references to self.__dict__ below are required
+        # to set real attributes with invoking self.__getattr__().
+        self.__dict__["uuid"] = uuid
+
+        self.__dict__["_idl"] = idl
+        self.__dict__["_table"] = table
+
+        # _data is the committed data.  It takes the following values:
+        #
+        #   - A dictionary that maps every column name to a Datum, if the row
+        #     exists in the committed form of the database.
+        #
+        #   - None, if this row is newly inserted within the active transaction
+        #     and thus has no committed form.
+        self.__dict__["_data"] = data
+
+        # _changes describes changes to this row within the active transaction.
+        # It takes the following values:
+        #
+        #   - {}, the empty dictionary, if no transaction is active or if the
+        #     row has yet not been changed within this transaction.
+        #
+        #   - A dictionary that maps a column name to its new Datum, if an
+        #     active transaction changes those columns' values.
+        #
+        #   - A dictionary that maps every column name to a Datum, if the row
+        #     is newly inserted within the active transaction.
+        #
+        #   - None, if this transaction deletes this row.
+        self.__dict__["_changes"] = {}
+
+        # A dictionary whose keys are the names of columns that must be
+        # verified as prerequisites when the transaction commits.  The values
+        # in the dictionary are all None.
+        self.__dict__["_prereqs"] = {}
+```
+
+* `data` 存放着该记录当前的数据
+* `_changes` 存放着更改的数据，这些数据还未写入到 server 数据库中
+* `_prereqs` 存放着需要验证的数据，若是该条记录发生改变时，需要先验证这个属性存不存在。
