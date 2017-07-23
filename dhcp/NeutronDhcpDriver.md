@@ -13,14 +13,18 @@
 1. 调用 `get_confs_dir` 获取配置中 dhcp agent server 的配置文件的目录（这个目录下是一堆子目录，这些子目录都是以 network id 来命名的）
 2. 读取下面的所有子目录名称（即所有使用该 dhcp agent 的网络 id）
 
-### ``
+### `def get_isolated_subnets(cls, network)`
 
+获取 network 中孤立的 subnet（即该 subnet 没有连接到 router 上）。
 
+### `def should_enable_metadata(cls, conf, network)`
 
+判断是否应该为改 network 建立一个 metadata proxy
 
-
-
-
+* network 可以建立 metadata proxy 条件可以使下面的任何一个：
+ 1. `force_metadata` 为 True，且包含 ipv4 版本、允许 dhcp 的 subnet
+ 2. `enable_metadata_network` 为 True、`enable_isolated_metadata` 为 True，且包含 `169.254.169.254/16` 的子网
+ 3. `enable_isolated_metadata` 为 True，且包含 ipv4 版本、允许 dhcp 的 isolated subnet
 
 
 

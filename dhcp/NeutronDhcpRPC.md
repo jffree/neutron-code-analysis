@@ -50,10 +50,4 @@
 
 ## `class DhcpRpcCallback(object)`
 
-```
-    target = oslo_messaging.Target(
-        namespace=n_const.RPC_NAMESPACE_DHCP_PLUGIN,
-        version='1.6')
-```
-### `def dhcp_ready_on_ports(self, context, port_ids)`
-
+请参考 *NeutronMl2-RPC-Endpoints之DhcpRpcCallback* 文章

@@ -87,13 +87,15 @@ def main():
 ### ``
 
 
+### `def update_isolated_metadata_proxy(self, network)`
 
+* 调用 `dhcp_driver_cls.should_enable_metadata` 来判断应该为 network 孵化或者杀死 metadata proxy process。
+ 1. 若是应该孵化，则调用 `enable_isolated_metadata_proxy` 方法
+ 2. 若是应该杀死，则调用 `disable_isolated_metadata_proxy` 方法
 
+### `def disable_isolated_metadata_proxy(self, network)`
 
-
-
-
-
+调用 `MetadataDriver.destroy_monitored_metadata_proxy` 来实现
 
 
 
@@ -194,8 +196,10 @@ def main():
 
 1. 创建一个绿色线程池，线程池的大小与 `num_sync_threads` 一致。
 2. 获取该 dhcp agent 缓存的网络资源信息
-3. 通过 RPC 调用 Server 端的 `get_active_networks_info` 方法，获取与当前 dhcp agent 绑定的网络信息
-4. 若是缓存的网络信息与通过RPC调用获取的网络信息不一致，调用 `disable_dhcp_helper` 方法
+3. 通过 RPC 调用 Server 端的 `get_active_networks_info` 方法，获取与当前 dhcp agent 绑定的网络信息（包括子网和端口）
+4. 若是缓存的网络信息与通过RPC调用获取的网络信息不一致，调用 `disable_dhcp_helper` 方法处理那些不在 neutron server 端数据库中记录网络
+5. 调用 `safe_configure_dhcp_for_network` 处理那些需要同步的网络（若 networks 为空，则意味着对所有的网络都执行一遍配置操作）
+6. 将重新配置完成的网络的端口放入 `dhcp_ready_ports` 中，在 `_dhcp_ready_ports_loop` 中进行处理
 
 ### `def disable_dhcp_helper(self, network_id)`
 
@@ -223,53 +227,6 @@ def main():
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-## `class DhcpPluginApi(object)`
-
-在 dhcp agent 这边用作 RPC Client
-
-### `def __init__(self, topic, host)`
-
-```
-    def __init__(self, topic, host):
-        self.host = host
-        target = oslo_messaging.Target(
-                topic=topic,
-                namespace=n_const.RPC_NAMESPACE_DHCP_PLUGIN,
-                version='1.0')
-        self.client = n_rpc.get_client(target)
-```
-
-### `def get_active_networks_info(self)`
-
-调用 `Server` 端的 `get_active_networks_info` 方法。
-
-获取与该 dhcp agent 绑定的 network、subnet、port 的详细信息
-
-
-### `def update_dhcp_port(self, port_id, port)`
-
-调用 Server 端的 `update_dhcp_port` 方法。
-
-### `def create_dhcp_port(self, port)`
-
-调用 Server 端的 `create_dhcp_port` 方法。
-
-### `def release_dhcp_port(self, network_id, device_id)`
-
-调用 Server 端的 `release_dhcp_port` 方法。
 
 
 
