@@ -36,3 +36,22 @@
 1. 在需要 root 权限时：
  1. 若是 `root_helper_daemon` 为 True，则调用 `execute_rootwrap_daemon` 来启动子进程
  2. 若是 `root_helper_daemon` 为 False，则调用 `create_process`  来启动子进程
+
+## `def load_interface_driver(conf)`
+
+根据配置信息加载接口驱动。在 `setup.cfg` 中，我们可以看到接口驱动有一下几种类型：
+
+```
+neutron.interface_drivers =
+    ivs = neutron.agent.linux.interface:IVSInterfaceDriver
+    linuxbridge = neutron.agent.linux.interface:BridgeInterfaceDriver
+    null = neutron.agent.linux.interface:NullDriver
+    openvswitch = neutron.agent.linux.interface:OVSInterfaceDriver
+```
+
+
+
+
+
+
+

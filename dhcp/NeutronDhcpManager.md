@@ -269,4 +269,4 @@ dhcp agent 会为每个 network 建立一个 namespace，在这个 namespace 中
 
 ### `def port_delete_end(self, context, payload)`
 
-某一网络的 port 发生了删除操作，若该 port 是为该 dhcp agent 提供监听的端口，则会调用 dhcp driver 的 `disable` 方法；否则的话会调用 dhcp driver 的 `reload_allocations` 方法
+某一网络的 port 发生了删除操作，若该 port 是为该 dhcp agent 提供监听的端口，则会调用 dhcp driver 的 `disabl` 方法；否则的话会调用 dhcp driver 的 `reload_allocations` 方法

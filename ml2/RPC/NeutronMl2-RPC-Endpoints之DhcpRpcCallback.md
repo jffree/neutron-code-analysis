@@ -61,11 +61,6 @@
 
 调用 core plugin 的 `delete_ports_by_device_id` 方法实现。
 
+### `def dhcp_ready_on_ports(self, context, port_ids)`
 
-
-
-
-
-
-
-
+dhcp agent 用来此方法来通知 neutron-server，dhcp agent 已经对 `port_ids` 代表的 port 资源处理完毕，可以解除这些 port 的 dhcp provisioning block。
