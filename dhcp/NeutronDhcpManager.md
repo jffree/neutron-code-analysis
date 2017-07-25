@@ -77,25 +77,14 @@ def main():
 * 配置选项讲解：
  1. `dhcp_lease_duration` 配置用来设定 dhcp ip 租赁的过期时间。在 */etc/neutron/neutron.conf* 中被设置：`dhcp_lease_duration = 86400`。
  2. `log_agent_heartbeats`：**作用：**   。在 */etc/neutron/neutron.conf* 中被设置：`log_agent_heartbeats = false`。
+ 3. `start_flag`：这个属性只会在第一次发送 agent state 的时候出现，表示这个时候，agent 刚刚启动
 
 1. 调用 `cache.get_state()` 获取当前 dhcp 管理的 network、subnet、port 的数量
 2. 通过 RPC 调用 Server 端（`AgentExtRpcCallback`）的 `report_state` 方法，上报当前 dhcp agent 的数据，并获取 dhcp agent 的状态（`new`、`alive`、`revived`）。
 3. 若是 RPC 返回的 agent 的状态为 `revived`，则调用 `schedule_resync` 方法标记所有的网络都需要进行同步
-4. 若是 `start_flag` 为 `True` 则调用 `run` 方法
-
+4. dhcp agent 刚启动时 `start_flag` 为 `True`，这时会 `run` 方法。同时取消 `start_flag` 的标志。
 
 ### ``
-
-
-### `def update_isolated_metadata_proxy(self, network)`
-
-* 调用 `dhcp_driver_cls.should_enable_metadata` 来判断应该为 network 孵化或者杀死 metadata proxy process。
- 1. 若是应该孵化，则调用 `enable_isolated_metadata_proxy` 方法
- 2. 若是应该杀死，则调用 `disable_isolated_metadata_proxy` 方法
-
-### `def disable_isolated_metadata_proxy(self, network)`
-
-调用 `MetadataDriver.destroy_monitored_metadata_proxy` 来实现
 
 
 
@@ -208,7 +197,6 @@ def main():
 1. 调用 `disable_isolated_metadata_proxy` 杀死为这个网络提供 metadata 服务的进程
 2. 调用 dhcp driver 的 `disable` 方法
 
-
 ### `def disable_isolated_metadata_proxy(self, network)`
 
 调用 `MetadataDriver.destroy_monitored_metadata_proxy` 杀死为这个网络提供 metadata 服务的进程
@@ -218,16 +206,67 @@ def main():
 1. 初始化 dhcp driver 实例（**从这里我们看出，dhcp agent 的 driver 实例不是一直存在的，而是用到的时候就被初始化，然后使用。并且每个 driver 实例只负责一个网络**）
 2. 调用 dhcp driver 的 action 方法
 
+### `def update_isolated_metadata_proxy(self, network)`
 
+* 调用 `dhcp_driver_cls.should_enable_metadata` 来判断应该为 network 孵化或者杀死 metadata proxy process。
+ 1. 若是应该孵化，则调用 `enable_isolated_metadata_proxy` 方法
+ 2. 若是应该杀死，则调用 `disable_isolated_metadata_proxy` 方法
 
+### `def enable_isolated_metadata_proxy(self, network)`
 
+调用 `MetadataDriver.spawn_monitored_metadata_proxy` 启动一个 neutron-ns-metadata-porxy 进程，并对其进行监测。
 
+### `def safe_configure_dhcp_for_network(self, network)`
 
+调用 `configure_dhcp_for_network` 实现，并处理了可能发生的异常
 
+### `def configure_dhcp_for_network(self, network)`
 
+1. 调用 dhcp driver 的 `enable` 方法
+2. 调用 `update_isolated_metadata_proxy` 处理与该网络相关的 neutron-ns-metadata-porxy 进程
+3. 在 `dhcp_ready_ports` 记录被 dhcp agent 完成处理的 port 资源
 
+### `def refresh_dhcp_helper(self, network_id)`
 
+该 network 中的 subnet 可能发生了变化（删除、新建），该方法就是处理这些更新的情况
 
+### `def _is_port_on_this_agent(self, port)`
 
+判断该 port 是否是为该 dhcp agent 提供监听服务的 port。
 
+dhcp agent 会为每个 network 建立一个 namespace，在这个 namespace 中建立一个网卡监听 dhcp 请求。
 
+**下面介绍的几个方法是 RPC 方法，也就是 neutron-server 将会调用这些方法。**
+
+### `def network_create_end(self, context, payload)`
+
+调用 `enable_dhcp_helper` 方法来处理该 network
+
+### `def network_update_end(self, context, payload)`
+
+1. 若该网络由禁用到激活，则调用 `enable_dhcp_helper` 方法处理
+2. 若该网络由激活到禁用，则调用 `disable_dhcp_helper` 方法处理
+
+### `def network_delete_end(self, context, payload)`
+
+调用 `disable_dhcp_helper` 处理该网络
+
+### `def subnet_update_end(self, context, payload)`
+
+调用 `refresh_dhcp_helper` 来处理该网络
+
+### `subnet_create_end = subnet_update_end`
+
+### `def subnet_delete_end(self, context, payload)`
+
+调用 `refresh_dhcp_helper` 进行处理
+
+### `def port_update_end(self, context, payload)`
+
+某一网络的 port 发生了更新操作，若该 port 是为该 dhcp agent 提供监听的端口，则会调用 dhcp driver 的 `restart` 方法；否则的话会调用 dhcp driver 的 `reload_allocations` 方法
+
+### `port_create_end = port_update_end`
+
+### `def port_delete_end(self, context, payload)`
+
+某一网络的 port 发生了删除操作，若该 port 是为该 dhcp agent 提供监听的端口，则会调用 dhcp driver 的 `disable` 方法；否则的话会调用 dhcp driver 的 `reload_allocations` 方法
