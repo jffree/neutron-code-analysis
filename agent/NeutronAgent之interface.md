@@ -46,9 +46,43 @@ linux 系统下的接口驱动，共有四种，分别是：`BridgeInterfaceDriv
 
 为名称为 device_name 的网络设备确定 ip 地址，并删除之前的 ip 地址
 
+### `def bridged(self)`
 
+True。是否为将提供 dhcp 服务的 port 绑定到 bridge 上。
 
+### `def init_router_port(self, device_name, ip_cidrs, namespace, preserve_ips=None, extra_subnets=None, clean_connections=False)`
 
+1. 调用 `init_l3` 方法为该 port 配置 ip
+2. 调用 `ip_lib` 来为该端口去除无效路由和增加新的路由
+
+### `def add_ipv6_addr(self, device_name, v6addr, namespace, scope='global')`
+
+为该 port 增加 ipv6 的地址
+
+### `def delete_ipv6_addr(self, device_name, v6addr, namespace)`
+
+为该 port 删除 ipv6 的地址
+
+### `def delete_ipv6_addr_with_prefix(self, device_name, prefix, namespace)`
+
+根据 prefix 删除所有在此范围内的 Ipv6 地址
+
+### `def get_ipv6_llas(self, device_name, namespace)`
+
+获取该 port 上的所有 ipv6 的地址
+
+### `def configure_ipv6_ra(namespace, dev_name)`
+
+```
+    @staticmethod
+    def configure_ipv6_ra(namespace, dev_name):
+        """Configure acceptance of IPv6 route advertisements on an intf."""
+        # Learn the default router's IP address via RAs
+        ip_lib.IPWrapper(namespace=namespace).netns.execute(
+            ['sysctl', '-w', 'net.ipv6.conf.%s.accept_ra=2' % dev_name])
+```
+
+**通过设置内核参数来设定该接口接受 ipv6 的路由广播**
 
 ## `class OVSInterfaceDriver(LinuxInterfaceDriver)`
 
@@ -108,20 +142,4 @@ linux 系统下的接口驱动，共有四种，分别是：`BridgeInterfaceDriv
  * `namespace`：网络命名空间。这个在 `NetModel` 中被定义（例如 `qdhcp-53a0f128-ab6a-4f3f-b29f-c1afe0697586`）
  * `prefix`：接口名称的前缀
 
-### `def unplug(self, device_name, bridge=None, namespace=None, prefix=None)`
-
-在 bridge 上删除名为 `device_name` 的接口
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+删除 device_name 对应的设备。

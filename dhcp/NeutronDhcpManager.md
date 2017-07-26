@@ -84,9 +84,9 @@ def main():
 3. 若是 RPC 返回的 agent 的状态为 `revived`，则调用 `schedule_resync` 方法标记所有的网络都需要进行同步
 4. dhcp agent 刚启动时 `start_flag` 为 `True`，这时会 `run` 方法。同时取消 `start_flag` 的标志。
 
-### ``
+### `def agent_updated(self, context, payload)`
 
-
+调用 `schedule_resync` 同步该 dhcp agent 负责的所有网络
 
 ## `class DhcpAgent(manager.Manager)`
 
@@ -118,8 +118,7 @@ def main():
 
 1. 初始化各种属性
 2. 调用 `_populate_networks_cache` 将之前已经处理过的 network 资源保存在 cache 
-3. 
-
+3. 创建一个程序监测 `_process_monitor`，监测 dhcp agent 下运行的 dnsmasq 进程
 
 ### `def _populate_networks_cache(self)`
 
