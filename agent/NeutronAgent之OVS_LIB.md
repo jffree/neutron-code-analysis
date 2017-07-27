@@ -247,22 +247,147 @@ ovs-vsctl get Interface br-ex ofport
 
 ### `def do_action_flows(self, action, kwargs_list)`
 
+调用 ovs-ofctl 执行添加、删除、修改流表的动作。
 
+例如：
 
+```
+ovs-ofctl add-flow ovs-switch "table=0, dl_src=01:00:00:00:00:00/01:00:00:00:00:00, actions=drop"
+ovs-ofctl add-flow ovs-switch "table=0, dl_dst=01:80:c2:00:00:00/ff:ff:ff:ff:ff:f0, actions=drop"
+```
 
+### `def add_flow(self, **kwargs)`
 
+调用 ovs-ofctl add-flow 来增加流表
 
+### `def mod_flow(self, **kwargs)`
 
+调用 ovs-ofctl mod-flow 来修改流表
 
+### `def delete_flows(self, **kwargs)`
 
+调用 ovs-ofctl  del-flow 来删除该 bridge 的流表记录
 
+### `def dump_flows_for(self, **kwargs)`
 
+根据参数调用 ovs-ofctl dump-flows 命令查询该 bridge 上的流表。
 
+### `def dump_flows_for_table(self, table)`
 
+查询该 bridge 上某个流表内的记录
 
+### `def dump_all_flows(self)`
 
+查询改 bridge 上的所有流表记录
 
+### `def deferred(self, **kwargs)`
 
+构造一个 `DeferredOVSBridge` 实例
+
+### `def add_tunnel_port(self, port_name, remote_ip, local_ip, tunnel_type=p_const.TYPE_GRE, vxlan_udp_port=p_const.VXLAN_UDP_PORT, dont_fragment=True, tunnel_csum=False)`
+
+增加一个 tunnel 类型的接口。
+
+如同执行如下命令：
+
+```
+# ovs-vsctl add-port br1 vx1 -- set interface vx1 type=vxlan options:remote_ip=192.168.146.136
+```
+
+参考：[搭建基于Open vSwitch的VxLAN隧道实验 ](http://www.sdnlab.com/5365.html)
+
+### `def add_patch_port(self, local_name, remote_name)`
+
+为当前的 bridge 增加一个 patch port
+
+```
+ovs-vsctl \
+           -- add-port br0 patch-ovs-1 \
+           -- set interface patch0 type=patch options:peer=patch-ovs-2 \
+           -- add-port br1 patch-ovs-2 \
+           -- set interface patch1 type=patch options:peer=patch-ovs-1
+```
+
+### `def get_iface_name_list(self)`
+
+获取该 bridge 上所有的 interface 名称
+
+### `def get_port_name_list(self)`
+
+获取该 bridge 上所有的 port 名称
+
+### `def get_port_stats(self, port_name)`
+
+通过获取 interface 的 `statistics` 属性来用作 Port 的状态
+
+### `def get_xapi_iface_id(self, xs_vif_uuid)`
+
+调用 xe 命令
+
+### `def get_ports_attributes(self, table, columns=None, ports=None, check_error=True, log_errors=True, if_exists=False)`
+
+通过读取数据库中的 table，获取指定 ports 的属性（column）。
+
+### `def get_vif_ports(self, ofport_filter=None)`
+
+获取 VIF port，并用 `VifPort` 封装，并且过滤掉在 ofport_filter 中声明的 port。
+
+### `def portid_from_external_ids(self, external_ids)`
+
+在 interface 的 external_ids 的属性中获取 iface_id 或者 xs-vif-uuid
+
+### `def get_vif_port_to_ofport_map(self)`
+
+构造一个映射。`{iface_id:ofport}`
+
+### `def get_vif_port_set(self)`
+
+获取有效的 vif port 集合（以 `iface_id` 标识 vif port）。
+
+### `def get_port_tag_dict(self)`
+
+构造一个 port 的名称与 vlan tag 的集合
+
+### `def _check_ofport(port_id, port_info)`
+
+通过检查 Interface 的 ofport 判断该 port 是够正常
+
+### `def get_vifs_by_ids(self, port_ids)`
+
+通过 port_id 构造该 port 封装 `VifPort`（批量获取）
+
+### `def get_vif_port_by_id(self, port_id)`
+
+通过 port_id 构造该 port 封装 `VifPort`（单个获取）
+
+### `def delete_ports(self, all_ports=False)`
+
+若 all_ports 为真则删除所有 port
+若为假则删除 vif port
+
+### `def get_local_port_mac(self)`
+
+获取该 bridge 的 local port 的 mac 地址（br-ex 的 local port 为 br-ex）
+
+### `def set_controllers_connection_mode(self, connection_mode)`
+
+设定该 bridge controller 的 connection_mode
+
+### `def _set_egress_bw_limit_for_port(self, port_name, max_kbps, max_burst_kbps)`
+
+设定该 interface 的 `ingress_policing_rate` 和 `ingress_policing_burst`
+
+### `def create_egress_bw_limit_for_port(self, port_name, max_kbps, max_burst_kbps)`
+
+直接调用 `_set_egress_bw_limit_for_port`
+
+### `def get_egress_bw_limit_for_port(self, port_name)`
+
+获取该 interface 的 `ingress_policing_rate` 和 `ingress_policing_burst`
+
+### `def delete_egress_bw_limit_for_port(self, port_name)`
+
+设定该 interface 的 `ingress_policing_rate` 和 `ingress_policing_burst` 为0
 
 ## `def generate_random_cookie()`
 
@@ -273,7 +398,7 @@ def generate_random_cookie():
 
 ## `def _build_flow_expr_str(flow_dict, cmd)`
 
-
+构建 ovs-ofctl 命令中的流表。
 
 
 
