@@ -128,6 +128,8 @@ class BaseOVS(object):
         self._default_cookie = generate_random_cookie()
 ```
 
+**_default_cookie 代表了对当前 bridge flow 操作的 cookie 值**
+
 ### `def default_cookie(self)`
 
 属性方法，返回 `self._default_cookie`
@@ -388,6 +390,81 @@ ovs-vsctl \
 ### `def delete_egress_bw_limit_for_port(self, port_name)`
 
 设定该 interface 的 `ingress_policing_rate` 和 `ingress_policing_burst` 为0
+
+
+## `class DeferredOVSBridge(object)`
+
+```
+class DeferredOVSBridge(object):
+    '''Deferred OVSBridge.
+
+    This class wraps add_flow, mod_flow and delete_flows calls to an OVSBridge
+    and defers their application until apply_flows call in order to perform
+    bulk calls. It wraps also ALLOWED_PASSTHROUGHS calls to avoid mixing
+    OVSBridge and DeferredOVSBridge uses.
+    This class can be used as a context, in such case apply_flows is called on
+    __exit__ except if an exception is raised.
+    This class is not thread-safe, that's why for every use a new instance
+    must be implemented.
+    '''
+    ALLOWED_PASSTHROUGHS = 'add_port', 'add_tunnel_port', 'delete_port'
+
+    def __init__(self, br, full_ordered=False,
+                 order=('add', 'mod', 'del')):
+        '''Constructor.
+
+        :param br: wrapped bridge
+        :param full_ordered: Optional, disable flow reordering (slower)
+        :param order: Optional, define in which order flow are applied
+        '''
+
+        self.br = br
+        self.full_ordered = full_ordered
+        self.order = order
+        if not self.full_ordered:
+            self.weights = dict((y, x) for x, y in enumerate(self.order))
+        self.action_flow_tuples = []
+
+    def __getattr__(self, name):
+        if name in self.ALLOWED_PASSTHROUGHS:
+            return getattr(self.br, name)
+        raise AttributeError(name)
+
+    def add_flow(self, **kwargs):
+        self.action_flow_tuples.append(('add', kwargs))
+
+    def mod_flow(self, **kwargs):
+        self.action_flow_tuples.append(('mod', kwargs))
+
+    def delete_flows(self, **kwargs):
+        self.action_flow_tuples.append(('del', kwargs))
+
+    def apply_flows(self):
+        action_flow_tuples = self.action_flow_tuples
+        self.action_flow_tuples = []
+        if not action_flow_tuples:
+            return
+
+        if not self.full_ordered:
+            action_flow_tuples.sort(key=lambda af: self.weights[af[0]])
+
+        grouped = itertools.groupby(action_flow_tuples,
+                                    key=operator.itemgetter(0))
+        itemgetter_1 = operator.itemgetter(1)
+        for action, action_flow_list in grouped:
+            flows = list(map(itemgetter_1, action_flow_list))
+            self.br.do_action_flows(action, flows)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is None:
+            self.apply_flows()
+        else:
+            LOG.exception(_LE("OVS flows could not be applied on bridge %s"),
+                          self.br.br_name)
+```
 
 ## `def generate_random_cookie()`
 
