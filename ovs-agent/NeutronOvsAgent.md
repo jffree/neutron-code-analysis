@@ -230,7 +230,11 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
 13. 调用 `_check_agent_configurations` 检查配置参数是否合法
 14. `int_br_device_count` br_int bridge 上的网络设备的数量
 15. 初始化 `OVSIntegrationBridge` 为 `int_br`
-16. 初始化 ``
+16. 调用 `setup_integration_br` 创建 br-int bridge，并且初始化流表配置
+17. 调用 `setup_rpc` 初始化 RPC 的相关设置
+18. 调用 `_parse_bridge_mappings` 解析 `bridge_mappings`（<physical_network>:<physical_bridge>）（配置文件中为：`bridge_mappings = public:br-ex`）
+19. 调用 `setup_physical_bridges` 确保 `physical_bridge`（`br-ex`）存在，并且将 br-ex 与 br-int 相连接
+20. 构造 `LocalVlanManager` 的实例 `vlan_manager`
 
 
 
@@ -258,6 +262,55 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
                                "underlays require L2-pop to be enabled, "
                                "in both the Agent and Server side."))
 ```
+
+### `def setup_integration_br(self)`
+
+1. 调用 `int_br.create` 方法（在 `OVSBridge` 中实现）创建 br-int bridge
+2. 调用 `int_br.set_secure_mode` 方法（在 `OVSBridge` 中实现）设置 bridge fail mode 为 security
+3. 调用 `int_br.setup_controllers` 方法（在 `OVSAgentBridge` 中实现）为 bridge 设置 controller （`tcp:127.0.0.1:6633`）
+4. `drop_flows_on_start` 在 ovs agent 启动时是否重设 flow table，默认为 False。
+5. 若是 `drop_flows_on_start` 为 True，则会删除 `int_peer_patch_port`（`patch-tun`）并删除 br-int 上的所有流表
+6. 调用 `int_br.setup_default_table` 为 br-int 设置一些默认的流表项
+
+### `def setup_rpc(self)`
+
+1. 实例化 `OVSPluginApi` 作为 RPC Client 和 Neutron Server 进行通信
+2. 实例化 `SecurityGroupServerRpcApi` 作为 RPC Client 和 Neutron Server 进行通信
+3. 实例化 `DVRServerRpcApi` 作为 RPC Client 和 Neutron Server 进行通信
+4. 实例化 `PluginReportStateAPI` 做为 RPC Client 来想 Neutron Server 汇报自身状态
+5. 调用 `agent_rpc.create_consumers` 创建 RPC Client，自身作为 endpoint
+
+### `def _parse_bridge_mappings(self, bridge_mappings)`
+
+解析 `bridge_mappings` 配置（`bridge_mappings = public:br-ex`）返回值为：`{'public':'br-ex'}`
+
+### `def setup_physical_bridges(self, bridge_mappings)`
+
+1. 判断 `bridge_mappings` 里面的 bridge 是否存在，若是不存在则会直接退出（**所以，若是要手动创建 physical network 时，需要首先建立对应的 bridge**）。
+2. 初始化 `OVSPhysicalBridge` 实例为 br
+3. 调用 `br.create` 方法创建 br-ex bridge（**已经手动创建，该命令可以用来设置 datapath**）
+4. 调用 `br.set_secure_mode` 设定 br-ex 的 fail mode 为 security
+5. 调用 `br.setup_controllers` 设定 br-ex 的 controller 为 `tcp:127.0.0.1:6633`
+6. 若 `drop_flows_on_start` 为 True，则情况 br-ex 上的所有流表
+7. 构造用来连接 br-int 和 br-ex 的 patch port 的名称，分别为 `'int-br-ex'` 和 `'phy-br-ex'`
+8. `use_veth_interconnection` 用来设定采用 veth 类型还是 ovs patch 类型来连接 br-int 和 br-ex，这里我们采用 ovs patch
+9. 检查 patch port 是否存在，不存在则创建 patch port，并获取这一对 port 的 ofport 属性
+10. 在这一对 patch port 上增加一条 openflow entity
+ 1. br-int : `cookie=0x921ddac04233086b, duration=9949.994s, table=0, n_packets=9, n_bytes=1427, idle_age=65534, priority=2,in_port=1 actions=drop`
+ 2. br-ex：`cookie=0x87b735a9a2c26a55, duration=10052.354s, table=0, n_packets=14039, n_bytes=1654098, idle_age=57, priority=2,in_port=1 actions=drop`
+ 3. **作用：block all untranslated traffic between bridges**
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

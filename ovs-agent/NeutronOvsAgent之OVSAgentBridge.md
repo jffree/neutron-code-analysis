@@ -28,6 +28,12 @@
 
 **这个类完成了对 RYU 调用（流表的操作）的封装**
 
+openflow 中的 instruction 和 action 的区别：
+
+![](http://tchen.me/assets/files/charts/openflow-pipeline.jpg)
+
+[Openflow简介](http://tchen.me/posts/2013-02-21-openflow-introduction.html)
+
 ```
     def __init__(self, *args, **kwargs):
         self._app = kwargs.pop('ryu_app')
