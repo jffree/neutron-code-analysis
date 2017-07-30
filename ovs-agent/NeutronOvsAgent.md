@@ -234,7 +234,18 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
 17. 调用 `setup_rpc` 初始化 RPC 的相关设置
 18. 调用 `_parse_bridge_mappings` 解析 `bridge_mappings`（<physical_network>:<physical_bridge>）（配置文件中为：`bridge_mappings = public:br-ex`）
 19. 调用 `setup_physical_bridges` 确保 `physical_bridge`（`br-ex`）存在，并且将 br-ex 与 br-int 相连接
-20. 构造 `LocalVlanManager` 的实例 `vlan_manager`
+20. 构造 `LocalVlanManager` 的实例 `vlan_manager` 用来管理网络与 vlan 的映射关系
+21. 调用 `_reset_tunnel_ofports` 设置 `tun_br_ofports` 为空
+22. `polling_interval` agent 会轮询本地设备的变动，这个设置就是轮询的间隔时间，默认为 2s。
+23. `minimize_polling` 通过检测 ovsdb 中 interface 的变动来减少轮询的耗费，默认为 True。
+24. `ovsdb_monitor_respawn_interval` 当于 ovsdb 失去连接后，重启 ovsdb monitor 的间隔时间，默认为 30s。
+25. `local_ip` tunnel network 的 endpoint ip 地址（ip 版本 需要与 `overlay_ip_version` 中设定的一致）。
+26. `vxlan_udp_port` 默认为 4789
+27. `dont_fragment` 是否允许 GRE/VXLAN 数据包分片，默认为 True
+28. `tunnel_csum` 是都设置 GRE/VXLAN 的 checksum 默认为 false
+29. `tunnel_bridge` 用作隧道的 bridge，默认为 br-tun
+29. 若是允许了隧道网络，则调用 `setup_tunnel_br` 初始化 br-tun bridge 的设定
+30. 调用 `init_extension_manager` 
 
 
 
@@ -299,6 +310,36 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
  1. br-int : `cookie=0x921ddac04233086b, duration=9949.994s, table=0, n_packets=9, n_bytes=1427, idle_age=65534, priority=2,in_port=1 actions=drop`
  2. br-ex：`cookie=0x87b735a9a2c26a55, duration=10052.354s, table=0, n_packets=14039, n_bytes=1654098, idle_age=57, priority=2,in_port=1 actions=drop`
  3. **作用：block all untranslated traffic between bridges**
+
+### `def _reset_tunnel_ofports(self)`
+
+```
+    def _reset_tunnel_ofports(self):
+        self.tun_br_ofports = {p_const.TYPE_GENEVE: {},
+                               p_const.TYPE_GRE: {},
+                               p_const.TYPE_VXLAN: {}}
+```
+
+### `def setup_tunnel_br(self, tun_br_name=None)`
+
+作用：初始化用于 tunnel 的 bridge，创建与 br-int 相连接的 patch port
+
+1. 创建 br-tun 网桥
+2. 为 br-tun 设定控制器
+3. 在 br-tun 和 br-int 增加一对 patch port（分别为：patch-int、patch-tun）。
+4. 若是 `drop_flows_on_start` 为真，则删除 br-tun 上的所有流表
+
+### `def init_extension_manager(self, connection)`
+
+1. 实例化 `L2AgentExtensionsManager` 为 `ext_manager`
+2. 实例化 `OVSAgentExtensionAPI` 为 `agent_api`
+3. 调用 `ext_manager.initialize` 完成 l2 extension 的初始化操作
+
+
+
+
+
+
 
 
 
