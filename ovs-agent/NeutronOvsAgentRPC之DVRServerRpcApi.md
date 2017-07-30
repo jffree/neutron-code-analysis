@@ -51,6 +51,8 @@
 
 ### `def get_dvr_mac_address_by_host(self, context, **kwargs)`
 
+调用 core plugin 的 `get_dvr_mac_address_by_host` 方法（获取该 host 上的 dvr mac 地址）
+
 
 ### `def get_ports_on_host_by_subnet(self, context, **kwargs)`
 

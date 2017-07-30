@@ -245,7 +245,17 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
 28. `tunnel_csum` 是都设置 GRE/VXLAN 的 checksum 默认为 false
 29. `tunnel_bridge` 用作隧道的 bridge，默认为 br-tun
 29. 若是允许了隧道网络，则调用 `setup_tunnel_br` 初始化 br-tun bridge 的设定
-30. 调用 `init_extension_manager` 
+30. 调用 `init_extension_manager` 完成 l2 extension 的初始化工作
+31. 实例化 `OVSDVRNeutronAgent` 为 dvr_agent
+32. 若 l2 支持 tunnel network，则调用 `setup_tunnel_br_flows`初始化 br-tun 的流表
+33. 若 `enable_distributed_routing` 为真，则调用 `dvr_agent.setup_dvr_flows` 初始化 dvr 相关的流表
+34. 调用 `setup_ancillary_bridges` 查找出与 neutron 无关的 bridge
+35. 调用 `_restore_local_vlan_map` 发现当前已经使用的 vlan 号
+36. 实例化 `SecurityGroupAgentRpc` 为 `sg_agent`
+37. `prevent_arp_spoofing` 是否防止 ARP 欺诈，默认为 True（这会禁止与源自其所属端口的IP地址不匹配的ARP响应）。
+38. 同 dhcp agent 一样开始循环运行 `_report_state` 来报告 ovs agent 的状态
+39. 启动 dhcp 的监听
+
 
 
 
@@ -335,19 +345,33 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
 2. 实例化 `OVSAgentExtensionAPI` 为 `agent_api`
 3. 调用 `ext_manager.initialize` 完成 l2 extension 的初始化操作
 
+### `def setup_tunnel_br_flows(self)`
 
+```
+    def setup_tunnel_br_flows(self):
+        '''Setup the tunnel bridge.
 
+        Add all flows to the tunnel bridge.
+        '''
+        self.tun_br.setup_default_table(self.patch_int_ofport,
+                                        self.arp_responder_enabled)
+```
 
+初始化 br-tun 的流表
 
+### `def setup_ancillary_bridges(self, integ_br, tun_br)`
 
+查找出与 neutron 无关的 bridge
 
+### `def _restore_local_vlan_map(self)`
 
+发现当前已经使用的 vlan 号
 
+### `def _report_state(self)`
 
+报告 ovs agent 状态的方法
 
-
-
-
+若是 ovs agent 的状态为 `c_const.AGENT_REVIVED`，则： `self.fullsync = True`
 
 
 
