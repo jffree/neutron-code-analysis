@@ -24,6 +24,18 @@ _setup.cfg_
 
 _关于具体的配置信息，请大家参考手册。_
 
+在 setup.cfg 中可以看到所有的 type driver：
+
+```
+neutron.ml2.type_drivers =
+    flat = neutron.plugins.ml2.drivers.type_flat:FlatTypeDriver
+    local = neutron.plugins.ml2.drivers.type_local:LocalTypeDriver
+    vlan = neutron.plugins.ml2.drivers.type_vlan:VlanTypeDriver
+    geneve = neutron.plugins.ml2.drivers.type_geneve:GeneveTypeDriver
+    gre = neutron.plugins.ml2.drivers.type_gre:GreTypeDriver
+    vxlan = neutron.plugins.ml2.drivers.type_vxlan:VxlanTypeDriver
+```
+
 ## `def _register_types(self)`
 
 ## `def _check_tenant_network_types(self, types)`

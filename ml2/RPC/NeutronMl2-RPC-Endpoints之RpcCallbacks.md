@@ -10,6 +10,9 @@
         self._type_manager = type_manager
 ```
 
+### `def tunnel_sync(self, rpc_context, **kwargs)`
+
+
 
 ## `class RpcCallbacks(type_tunnel.TunnelRpcCallbackMixin)`
 

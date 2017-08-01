@@ -422,7 +422,9 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
   1. 调用 `dvr_agent.reset_ovs_parameters` 重置 dvr_agent 的参数
   2. 调用 `dvr_agent.reset_dvr_parameters` 将 dvr 的记录置空
   3. 调用 `setup_dvr_flows` 初始化相关与 dvr 相关的流表
-
+ 5. 启动对 ovsdb Interface 的监测
+3. 若 ovs 为 `OVS_DEAD` 的状态，此时 ovs agent 不会做其他的处理，仍然后继续进行循环处理
+4. 如果允许 tunnel network，且 `tunnel_sync` 为 True（ovs 的状态为 `OVS_RESTARTED` 时。）则会调用 `tunnel_sync` 进行同步操作
 
 
 ### `def _check_and_handle_signal(self)`
@@ -450,13 +452,12 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
 
 调用 `int_br.check_canary_table` 判断 br-int 中 23 号流表是否存在记录，若是存在则认为 ovs 是 `OVS_NORMAL` 的状态，否则是 `OVS_RESTARTED` 的状态
 
-### ``
+### `def get_port_stats(self, port_info, ancillary_port_info)`
 
+整理 bridge 上 port 变得的信息
 
+### `def tunnel_sync(self)`
 
-
-
-
-
+通过 rpc 调用 server 端（`TunnelRpcCallbackMixin`）的 `tunnel_sync` 方法
 
 
