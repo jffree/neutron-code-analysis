@@ -48,7 +48,11 @@ NXST_FLOW reply (xid=0x4):
 
 
 
+### `def add_dvr_mac_vlan(self, mac, port)`
 
+生成一下 flow entity
+
+`cookie=0xb003214d22e10131, duration=32624.674s, table=0, n_packets=0, n_bytes=0, idle_age=32624, priority=4,in_port=1,dl_src=fa:16:3f:4d:40:29 actions=resubmit(,2)`
 
 
 

@@ -257,21 +257,6 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
 39. 启动 dhcp 的监听
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ### `def _check_agent_configurations(self)`
 
 ```
@@ -373,8 +358,99 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
 
 若是 ovs agent 的状态为 `c_const.AGENT_REVIVED`，则： `self.fullsync = True`
 
+### `def local_vlan_map(self)`
+
+```
+    @debtcollector.removals.removed_property(
+        version='Newton', removal_version='Ocata')
+    def local_vlan_map(self):
+        """Provide backward compatibility with local_vlan_map attribute"""
+        return self.vlan_manager.mapping
+```
+
+### `def daemon_loop(self)`
+
+```
+    def daemon_loop(self):
+        # Start everything.
+        LOG.info(_LI("Agent initialized successfully, now running... "))
+        signal.signal(signal.SIGTERM, self._handle_sigterm)
+        if hasattr(signal, 'SIGHUP'):
+            signal.signal(signal.SIGHUP, self._handle_sighup)
+        with polling.get_polling_manager(
+            self.minimize_polling,
+            self.ovsdb_monitor_respawn_interval) as pm:
+
+            self.rpc_loop(polling_manager=pm)
+```
+
+1. 使用 `_handle_sigterm` 处理 `SIGTERM` 信号
+2. 使用 `_handle_sighup` 处理 `SIGHUB` 信号
+3. 创建一个 `ovsdb-client monitor Interface name,ofport,external_ids --format json` 的包装监测实例 pm
+4. 调用 `rpc_loop`
+
+### `def _handle_sigterm(self, signum, frame)`
+
+```
+    def _handle_sigterm(self, signum, frame):
+        self.catch_sigterm = True
+        if self.quitting_rpc_timeout:
+            self.set_rpc_timeout(self.quitting_rpc_timeout)
+```
+
+### `def _handle_sighup(self, signum, frame)`
+
+```
+    def _handle_sighup(self, signum, frame):
+        self.catch_sighup = True
+```
+
+### `def rpc_loop(self, polling_manager=None)`
+
+1. 调用 `_check_and_handle_signal` 判断接收到的信号（若是接收到 sigterm 信号，则会退出 rpc_loop；若是接收到 sighup 信号则会重新加载配置）
+2. 当 ovs agent 发生重启操作时，`self.fullsync` 会置为 True。
+3. `iter_num` 代表当前执行 rpc 同步操作的次数
+4. 调用 `check_ovs_status` 检查 ovs 的状态
+5. 若 ovs 为 `OVS_RESTARTED` 的状态，则：
+ 1. 调用 `setup_integration_br` 初始化 br-int 
+ 2. 调用 `setup_physical_bridges` 初始化 br-ex 
+ 3. 若是可以使用 tunnel network，则
+  1. 调用 `_reset_tunnel_ofports` 重置 ofport 的记录
+  2. 调用 `setup_tunnel_br` 初始化 br-tun
+  3. 调用 `setup_tunnel_br_flows` 初始化 br-tun 的流表
+ 4. 若是使用 DVR，则：
+  1. 调用 `dvr_agent.reset_ovs_parameters` 重置 dvr_agent 的参数
+  2. 调用 `dvr_agent.reset_dvr_parameters` 将 dvr 的记录置空
+  3. 调用 `setup_dvr_flows` 初始化相关与 dvr 相关的流表
 
 
+
+### `def _check_and_handle_signal(self)`
+
+```
+    def _check_and_handle_signal(self):
+        if self.catch_sigterm:
+            LOG.info(_LI("Agent caught SIGTERM, quitting daemon loop."))
+            self.run_daemon_loop = False
+            self.catch_sigterm = False
+        if self.catch_sighup:
+            LOG.info(_LI("Agent caught SIGHUP, resetting."))
+            self.conf.reload_config_files()
+            config.setup_logging()
+            LOG.debug('Full set of CONF:')
+            self.conf.log_opt_values(LOG, logging.DEBUG)
+            self.catch_sighup = False
+        return self.run_daemon_loop
+```
+
+1. 捕捉到 `sigterm` 信号，则将 `run_daemon_loop` 置为 True，这意味着会退出 rpc_loop
+2. 捕捉到 `sighup` 信号，则会重新加载配置
+
+### `def check_ovs_status(self)`
+
+调用 `int_br.check_canary_table` 判断 br-int 中 23 号流表是否存在记录，若是存在则认为 ovs 是 `OVS_NORMAL` 的状态，否则是 `OVS_RESTARTED` 的状态
+
+### ``
 
 
 
