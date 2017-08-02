@@ -22,3 +22,12 @@
         """Linuxbridge driver vlan transparency support."""
         return True
 ```
+
+### `def get_mappings(self, agent)`
+
+```
+    def get_mappings(self, agent):
+        mappings = dict(agent['configurations'].get('interface_mappings', {}),
+                        **agent['configurations'].get('bridge_mappings', {}))
+        return mappings
+```

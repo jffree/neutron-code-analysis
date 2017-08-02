@@ -115,9 +115,9 @@ class AgentMechanismDriverBase(api.MechanismDriver):
 
 调用 `_insert_provisioning_block` 为该 port 增加一个 `ProvisioningBlock` 的数据库记录
 
+### `def bind_port(self, context)`
 
-
-
+调用 `try_to_bind_segment_for_agent`（openvswitch 在 `OpenvswitchMechanismDriver` 中实现，linuxbridge 在 `SimpleAgentMechanismDriverBase` 中实现） 实现去设定 port 的 binding 属性
 
 
 
@@ -137,18 +137,20 @@ class AgentMechanismDriverBase(api.MechanismDriver):
         self.vif_details = vif_details
 ```
 
+### `def try_to_bind_segment_for_agent(self, context, segment, agent)`
+
+1. 调用 `check_segment_for_agent`
 
 
+### `def check_segment_for_agent(self, segment, agent)`
 
+1. 调用 `get_mappings` 获取 bridge_mapping 的设定值。（各子类实现）
+2. 调用 `get_allowed_network_types` 获取 agent 支持的网络类型（各子类实现）
+3. 检查 segment 的参数与 agent 的设定是否一致
+ 
+### `def filter_hosts_with_segment_access（self, context, segments, candidate_hosts, agent_getter)`
 
-
-
-
-
-
-
-
-
+根据 `check_segment_for_agent` 来确定该 host 是否可以 access。
 
 
 

@@ -191,17 +191,46 @@ l2population 实现了 `update_port_precommit` 检查更新参数是否正确
 
 openvswitch 未实现 `update_port_postcommit`
 linuxbridge 未实现 `update_port_postcommit`
-l2population 实现了 `update_port_postcommit`
+l2population 实现了 `update_port_postcommit` 构造 fdb entity，并将其发送到 l2 agent，l2 agent 创建新的 fdb 记录
 
+## ` def delete_port_precommit(self, context)`
 
+通过调用 `_call_on_drivers` 调用各个 mechanism driver 的 `delete_port_precommit`
 
+openvswitch 未实现 `delete_port_precommit`
+linuxbridge 未实现 `delete_port_precommit`
+l2population 未实现 `delete_port_precommit`
 
+## `def delete_port_postcommit(self, context)`
 
+通过调用 `_call_on_drivers` 调用各个 mechanism driver 的 `delete_port_postcommit`
 
+openvswitch 未实现 `delete_port_postcommit`
+linuxbridge 未实现 `delete_port_postcommit`
+l2population 实现了 `update_port_postcommit` 构造 fdb entity，并将其发送到 l2 agent，l2 agent 会删除关于该 port 的 fdb 记录
 
+## `def bind_port(self, context)`
 
+调用 `_bind_port_level` 实现 port 与 Host 的绑定
 
+## `def _bind_port_level(self, context, level, segments_to_bind)`
 
+1. 调用 `_check_driver_to_bind` 检查是否有重复绑定的操作
+2. 调用各个 mech driver 的 `bind_port` 来设定 port 的绑定属性
+3. 创建 `PortBindingLevel` 数据库记录
+4. 调用 `PortContext._push_binding_level` 记录绑定
+
+## `def _check_driver_to_bind(self, driver, segments_to_bind, binding_levels)`
+
+检查是否有重复绑定的操作
+
+## `def is_host_filtering_supported(self)`
+
+调用各个 mech driver 检查是否支持 host filter（openvswitch 和 linuxbridge 都支持）
+
+## `def filter_hosts_with_segment_access(self, context, segments, candidate_hosts, agent_getter)`
+
+调用各个 mech driver 的 `filter_hosts_with_segment_access` 来检测
 
 
 
