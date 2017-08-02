@@ -12,9 +12,10 @@
 
 
 
-## `class L2populationRpcCallBackTunnelMixin(L2populationRpcCallBackMixin)`
 
-*neutron/plugins/ml2/drivers/l2pop/rpc_manager/l2population_rpc.py*
+
+
+
 
 
 ## `class DVRAgentRpcCallbackMixin(object)`
