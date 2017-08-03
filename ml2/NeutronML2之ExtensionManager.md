@@ -30,9 +30,14 @@ extension_drivers = port_security
 
 ```
 neutron.ml2.extension_drivers =
-...
+    test = neutron.tests.unit.plugins.ml2.drivers.ext_test:TestExtensionDriver
+    testdb = neutron.tests.unit.plugins.ml2.drivers.ext_test:TestDBExtensionDriver
     port_security = neutron.plugins.ml2.extensions.port_security:PortSecurityExtensionDriver
+    qos = neutron.plugins.ml2.extensions.qos:QosExtensionDriver
+    dns = neutron.plugins.ml2.extensions.dns_integration:DNSExtensionDriverML2
 ```
+
+我们以 `port_security` 为例来进行分析
 
 ## `def initialize(self)`
 

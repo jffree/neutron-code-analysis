@@ -423,8 +423,23 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
   2. 调用 `dvr_agent.reset_dvr_parameters` 将 dvr 的记录置空
   3. 调用 `setup_dvr_flows` 初始化相关与 dvr 相关的流表
  5. 启动对 ovsdb Interface 的监测
-3. 若 ovs 为 `OVS_DEAD` 的状态，此时 ovs agent 不会做其他的处理，仍然后继续进行循环处理
-4. 如果允许 tunnel network，且 `tunnel_sync` 为 True（ovs 的状态为 `OVS_RESTARTED` 时。）则会调用 `tunnel_sync` 进行同步操作
+6. 若 ovs 为 `OVS_DEAD` 的状态，此时 ovs agent 不会做其他的处理，仍然后继续进行循环处理
+7. 如果允许 tunnel network，且 `tunnel_sync` 为 True（ovs 的状态为 `OVS_RESTARTED` 时。）则会调用 `tunnel_sync` 进行同步操作
+8. 判断该 l2 agent 是否需要更新和同步操作：
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ### `def _check_and_handle_signal(self)`
@@ -458,6 +473,89 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
 
 ### `def tunnel_sync(self)`
 
-通过 rpc 调用 server 端（`TunnelRpcCallbackMixin`）的 `tunnel_sync` 方法
+1. 通过 rpc 调用 server 端（`TunnelRpcCallbackMixin`）的 `tunnel_sync` 方法（`TunnelRpcCallbackMixin` 中实现）来将该 agent 的 endpoint 信息发送给 neutron-server。neutron-server 会再通过 RPC 消息通知别的 l2 agent。其他的 l2 agent 收到新的 endpoint 消息后会创建对应的 vtep，并增加相应的流表。
+2. 调用 server 端的 `tunnel_sync` 方法还会获取当前所有 endpoint 的信息
+3. 若不支持 `l2_pop`，则调用 `_setup_tunnel_port` 创建与所有 endpint 对应的 vtep，并创建相应的流表
+
+### `def tunnel_delete(self, context, **kwargs)`
+
+接收 neutron server 传递过来的 tunnel endpoint 删除的消息
+
+1. 检查 endpoint 参数的正确性
+2. 获取 `tun_br_ofports` 中记录的被与被删除的 endpoint 对应的 ofport
+3. 调用 `cleanup_tunnel_port` 删改该 port 并清除与之相关的 flow
+
+### `def tunnel_update(self, context, **kwargs)`
+
+接收 neutron server 传递过来的 tunnel endpoint 更新的消息
+
+1. 检查 rpc 数据是否正确
+2. 若 tunnel ip 等于自身的 local ip 则忽略这次通知（无需为自己建立 vtep）
+3. 调用 `get_tunnel_name` 获取对应该 endpoint 的 vtep 的名称
+4. 若是不支持 `l2 population` 的话，则调用 `_setup_tunnel_port` 以创建对应该 endpoint 的 vtep，并创建相应的流表
+
+### `def cleanup_tunnel_port(self, br, tun_ofport, tunnel_type)`
+
+检查该 tunnel port 是否还在使用，若不再使用则删除它。
+
+1. 调用 `get_tunnel_name` 获取该与该 endpoint 对应的 vtep 名称
+2. 调用 br-run 的 `delete_port` （在 `OVSBridge` 中实现）从该网桥上删除该 Port
+3. 调用 br-tun 的 `cleanup_tunnel_port` 删除该 ofport 上的流表记录
+
+### `def get_tunnel_name(cls, network_type, local_ip, remote_ip)`
+
+1. 调用 `get_tunnel_hash` 根据 ip 地址构造一个 hash 值
+2. 构造该机器上 vetp 的名称。**由这里我们知道：neutron中 VTEP 的名称是由两部分构成的：该 tunnel nwtork 的类型，及其对端的地址**
+
+### `def get_tunnel_hash(cls, ip_address, hashlen)`
+
+根据 ip 地址构造一个 hash 值
+
+### `def _setup_tunnel_port(self, br, port_name, remote_ip, tunnel_type)`
+
+1. 调用 br-tun 的 `add_tunnel_port`（`OVSBridge`）中实现创建一个 tunnel port。
+2. 在属性 `tun_br_ofports` 增加一个 endpoint 与 vtep 的对应记录
+3. 调用 br-tun 的 `setup_tunnel_port` 增加一个 flow 记录（对于从此端口进入的数据转发到表 4 中处理）。
+4. 若该 agent 不支持 `l2_pop`，则调用 `install_flood_to_tun` 为该 port 增加处理广播信息的功能
+
+
+```
+        Port "vxlan-ac106433"
+            Interface "vxlan-ac106433"
+                type: vxlan
+                options: {df_default="true", in_key=flow, local_ip="172.16.100.192", out_key=flow, remote_ip="172.16.100.51"}
+```
+
+```
+cookie=0x8d92abaa691e5b6d, duration=177624.860s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1,in_port=3 actions=resubmit(,4)
+```
+```
+ cookie=0x8ca031df7a84a666, duration=1178.439s, table=22, n_packets=0, n_bytes=0, idle_age=65534, priority=1,dl_vlan=1 actions=strip_vlan,load:0x5d->NXM_NX_TUN_ID[],output:2,output:3
+ cookie=0x8ca031df7a84a666, duration=1177.326s, table=22, n_packets=0, n_bytes=0, idle_age=65534, priority=1,dl_vlan=2 actions=strip_vlan,load:0x34->NXM_NX_TUN_ID[],output:2,output:3
+```
+
+### `def _agent_has_updates(self, polling_manager)`
+
+```
+    def _agent_has_updates(self, polling_manager):
+        return (polling_manager.is_polling_required or
+                self.updated_ports or
+                self.deleted_ports or
+                self.sg_agent.firewall_refresh_needed())
+```
+
+判断 agent 是否需要有更新的操作
+
+### `def port_update(self, context, **kwargs)`
+
+接收到来自 neutron-server 的 RPC 调用。
+记录需要更新的 port 的 id
+
+### `def port_delete(self, context, **kwargs)`
+
+接收到来自 neutron-server 的 RPC 调用。
+记录需要删除的 port 的 id
+
+
 
 

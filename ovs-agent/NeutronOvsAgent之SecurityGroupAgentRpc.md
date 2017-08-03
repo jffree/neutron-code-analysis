@@ -19,7 +19,9 @@
 5. 初始化其他设置
 
 
+### `def firewall_refresh_needed(self)`
 
+判断 firewall 是否需要刷新操作
 
 
 
