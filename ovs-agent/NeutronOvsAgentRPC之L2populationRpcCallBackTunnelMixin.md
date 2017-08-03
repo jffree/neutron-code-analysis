@@ -79,11 +79,26 @@
 
 ### `def _get_lvm_getter(self, local_vlan_map)`
 
+返回一个方法（为了向后兼容）：
+
+```
+        def get_lvm_from_manager(net_id, local_vlan_map):
+            vlan_manager = vlanmanager.LocalVlanManager()
+            return vlan_manager.get(net_id)
+```
 
 ### `def get_agent_ports(self, fdb_entries, local_vlan_map=None)`
 
+`local_vlan_map` 是向后兼容使用的，在 O 版本中将被移除。
+
+1. 调用 `_get_lvm_getter` 获取与 fdb entity 中 net id 一致的 lvm（local vlan mapping）
+2. 返回 lvm 及其一致的 ports 数据（待更新的）
 
 ### `def fdb_add_tun(self, context, br, lvm, agent_ports, lookup_port)`
+
+1. 根据 lvm 中的 network type 和 agent ports 中的 remote ip 获取该 endpoint 在本 l2 agent 上的 vtep
+2. 若此 vetp 不存在，则调用 `setup_tunnel_port` （`OVSNeutronAgent` 中实现）创建 vetp
+3. 调用 `add_fdb_flow`（`OVSNeutronAgent` 中实现）
 
 
 ### `def fdb_remove_tun(self, context, br, lvm, agent_ports, lookup_port)`

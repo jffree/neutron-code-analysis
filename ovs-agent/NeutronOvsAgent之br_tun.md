@@ -62,3 +62,53 @@ class DeferredOVSTunnelBridge(ovs_lib.DeferredOVSBridge):
 ### `def _flood_to_tun_match(ofp, ofpp, vlan)`
 
 构造一个 `OFPMatch` 对象
+
+### `def install_arp_responder(self, vlan, ip, mac)`
+
+1. 调用 `_arp_responder_match` 构造一个 `OFMatch` 对象
+2. 调用 `install_apply_actions` 创建一个 flow entity
+
+* 实例如下：
+
+```
+ cookie=0x8ca031df7a84a666, duration=107668.474s, table=21, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1,arp,dl_vlan=1,arp_tpa=192.168.100.2 actions=load:0x2->NXM_OF_ARP_OP[],move:NXM_NX_ARP_SHA[]->NXM_NX_ARP_THA[],move:NXM_OF_ARP_SPA[]->NXM_OF_ARP_TPA[],load:0xfa163e513bf7->NXM_NX_ARP_SHA[],load:0xc0a86402->NXM_OF_ARP_SPA[],move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[],mod_dl_src:fa:16:3e:51:3b:f7,IN_PORT
+```
+
+* 解析：
+ 1. move:NXM_OF_ETH_SRC[]->NXM_OF_ETH_DST[]，表示将ARP Request数据包的源MAC地址作为ARP Reply数据包的目的MAC地址
+ 2. mod_dl_src:%(mac)s，表示将ARP Request请求的目的虚拟机的MAC地址作为ARP Reply数据包的源MAC地址
+ 3. load:0x2->NXM_OF_ARP_OP[]，表示将构造的ARP包的类型设置为ARP Reply
+ 4. move:NXM_NX_ARP_SHA[]->NXM_NX_ARP_THA[]，表示将Request中的源MAC地址作为Reply中的目的MAC地址
+ 5. move:NXM_OF_ARP_SPA[]->NXM_OF_ARP_TPA[]，表示将表示将Request中的源IP地址作为Reply中的目的IP地址
+ 6. load:%(mac)#x->NXM_NX_ARP_SHA[]，表示将Request请求的目的虚拟机的MAC地址作为Reply中的源MAC地址
+ 7. load:%(ip)#x->NXM_OF_ARP_SPA[]，表示将表示将Request请求的目的虚拟机的IP地址作为Reply中的源IP地址
+ 8. inport，表示将封装好ARP Reply从ARP Request的入端口送出，返回给源虚拟机
+
+[OVS流表分析](http://www.sdnlab.com/16414.html)
+
+### `def _arp_responder_match(ofp, ofpp, vlan, ip)`
+
+构造一个 `OFPMatch` 对象（包含 vlan、dl_dst、ip）
+
+### `def delete_arp_responder(self, vlan, ip)`
+
+根据 vlan 和 ip 删除一条 arp response 的流表
+
+### `def install_unicast_to_tun(self, vlan, tun_id, port, mac)`
+
+为目的地址为 mac 指定一条访问 flow entity。
+
+```
+ cookie=0x8ca031df7a84a666, duration=108550.333s, table=20, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,dl_vlan=1,dl_dst=fa:16:3e:51:3b:f7 actions=strip_vlan,load:0x5d->NXM_NX_TUN_ID[],output:3
+```
+
+
+
+
+
+
+
+
+
+
+

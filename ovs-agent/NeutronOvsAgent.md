@@ -556,6 +556,53 @@ cookie=0x8d92abaa691e5b6d, duration=177624.860s, table=0, n_packets=0, n_bytes=0
 接收到来自 neutron-server 的 RPC 调用。
 记录需要删除的 port 的 id
 
+### `def fdb_add(self, context, fdb_entries)`
+
+1. 调用 `get_agent_ports` （在 `L2populationRpcCallBackTunnelMixin` 中实现）根据 fdb entity 获取与之对应的 lvm
+2. 忽略关于本机上的 port 更新，对于非本机的 port 更新：
+3. 调用 `fdb_add_tun`（在 `L2populationRpcCallBackTunnelMixin` 中实现）
+
+### `def _tunnel_port_lookup(self, network_type, remote_ip)`
+
+```
+    def _tunnel_port_lookup(self, network_type, remote_ip):
+        return self.tun_br_ofports[network_type].get(remote_ip)
+```
+
+获取 vtep
+
+### `def setup_tunnel_port(self, br, remote_ip, network_type)`
+
+调用 `_setup_tunnel_port` 创建该 vtep 并且创建与之相关的流表
+
+### `def add_fdb_flow(self, br, port_info, remote_ip, lvm, ofport)`
+
+1. 若 `port_info` 等于 `FLOODING_ENTRY`，则意味该 agent 刚刚启动，其 vtep（ofport）也刚刚创建，我们为其设定初始的 flow entity。
+2. 对于其他的 `port_info`：
+ 1. 调用 `setup_entry_for_arp_reply` 创建 arp response 的流表
+ 2. 调用 br-tun 的 `install_unicast_to_tun` 方法，指定访问该 mac 的单播 flow entity
+
+
+### `def setup_entry_for_arp_reply(self, br, action, local_vid, mac_address, ip_address)`
+
+1. 若该 agent 不支持 `arp_responder_enabled`，则直接返回
+2. 若 action 为 `add`，则调用 br-tun 的 `install_arp_responder` 方法创建 arp 回复的 flow entity
+3. 若 action 为 `remove`，则调用 br-tun 的 `delete_arp_responder` 方法删除 arp 回复的 flow entity
+
+### `def fdb_remove(self, context, fdb_entries)`
+
+删除 fdb 表项
+
+
+
+
+
+
+
+
+
+
+
 
 
 
