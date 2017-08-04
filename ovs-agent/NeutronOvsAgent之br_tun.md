@@ -110,5 +110,18 @@ class DeferredOVSTunnelBridge(ovs_lib.DeferredOVSBridge):
 
 删除 20 表中与 vlan、mac 一致的 unicast flow entity
 
+### `def remove_dvr_mac_tun(self, mac)`
 
+删除 table 20 中该 dvr mac 的记录
 
+```
+ cookie=0x8ca031df7a84a666, duration=190957.223s, table=9, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1,dl_src=fa:16:3f:24:77:e3 actions=output:1
+```
+
+### `def add_dvr_mac_tun(self, mac, port)`
+
+在 br-tun 上利用 dvr mac 增加处理东西向流量的 flow entity
+
+```
+ cookie=0x8ca031df7a84a666, duration=190957.223s, table=9, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1,dl_src=fa:16:3f:24:77:e3 actions=output:1
+```

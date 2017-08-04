@@ -54,9 +54,40 @@ NXST_FLOW reply (xid=0x4):
 
 `cookie=0xb003214d22e10131, duration=32624.674s, table=0, n_packets=0, n_bytes=0, idle_age=32624, priority=4,in_port=1,dl_src=fa:16:3f:4d:40:29 actions=resubmit(,2)`
 
+### `def remove_dvr_mac_vlan(self, mac)`
 
+调用 `delete_flows` 删除关于 table 1 中 dvr mac 的记录
 
+```
+ cookie=0xb637cdfd05911130, duration=189898.048s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=1,dl_src=fa:16:3f:24:77:e3 actions=resubmit(,2)
+ cookie=0xb637cdfd05911130, duration=189898.044s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,in_port=7,dl_src=fa:16:3f:24:77:e3 actions=resubmit(,1)
+```
 
+### `def remove_dvr_mac_tun(self, mac, port)`
+
+调用 `delete_flows` 删除 table 1 中从 patch-tun-pot 以及 dvr mac 的记录
+
+```
+ cookie=0xb637cdfd05911130, duration=189898.044s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,in_port=7,dl_src=fa:16:3f:24:77:e3 actions=resubmit(,1)
+```
+
+**疑问：**是否 `remove_dvr_mac_vlan` 已经全部删除了 table 1 中所有与 dvr mac 相关的 flow entity？
+
+### `def add_dvr_mac_vlan(self, mac, port)`
+
+调用 `install_goto` 为该 dvr mac 在 table 0 创建一个 flow entity
+
+```
+ cookie=0xb637cdfd05911130, duration=194105.131s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=1,dl_src=fa:16:3f:24:77:e3 actions=resubmit(,2)
+```
+
+### `def add_dvr_mac_tun(self, mac, port)`
+
+在 br-int 上利用 dvr mac 增加处理东西向流量的 flow entity
+
+```
+ cookie=0xb637cdfd05911130, duration=194580.738s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,in_port=7,dl_src=fa:16:3f:24:77:e3 actions=resubmit(,1)
+```
 
 
 

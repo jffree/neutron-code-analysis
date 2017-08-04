@@ -65,6 +65,8 @@
         self.registered_dvr_macs = set()
 ```
 
+`registered_dvr_macs` 记录着所有其他 agent 的 dvr记录
+
 ### `def get_dvr_mac_address(self)`
 
 调用 `get_dvr_mac_address_with_retry`
@@ -81,6 +83,9 @@ MariaDB [neutron]> select * from dvr_host_macs;
 | CentOS-7 | fa:16:3f:59:e6:f6 |
 +----------+-------------------+
 ```
+
+neutron-server 收到 RPC 消息后回先查询数据库（`DistributedVirtualRouterMacAddress`） 若是数据库内有关于此 host 的记录，则直接返回。
+若是没有记录则会创建一个记录（自动生成 mac 地址），同时通知所有的 l2 agent，dvr 有更新（通过 `DVRAgentRpcApiMixin.dvr_mac_address_update`）。即会调用 l2 agent 的 `DVRAgentRpcCallbackMixin.dvr_mac_address_update` 方法。
 
 ### `def in_distributed_mode(self)`
 
@@ -166,10 +171,46 @@ MariaDB [neutron]> select * from dvr_host_macs;
 2. 调用 `phys_br.add_dvr_mac_vlan` 增加如下 flow entity
  * `cookie=0xa48e621bd30e85e9, duration=32770.783s, table=3, n_packets=0, n_bytes=0, idle_age=32770, priority=2,dl_src=fa:16:3f:4d:40:29 actions=output:1`
 
+### `def dvr_mac_address_update(self, dvr_macs)`
+
+l2 agent 接收到 dvr 数据库的更新。 dvr_macs 包含数据库中（`dvr_host_macs`）所有的记录
+
+1. 通过与 `registered_dvr_macs` 对比，提取增加和删除的 dvr 记录
+2. 对于被删除的 dvr 记录，调用 `_remove_dvr_mac` 方法删除该 agent 上所有关于该 dvr mac 的 flow entity
+3. 对于增加的 dvr 记录，调用 `_add_dvr_mac` 方法
+
+### `def _remove_dvr_mac(self, mac)`
+
+1. 调用 `_remove_dvr_mac_for_phys_br` 删除 br-int 和 br-ex 上关于此 dvr mac 的记录
+2. 如果启用了 tunnel network 则调用 `_remove_dvr_mac_for_tun_br` 删除该 dvr mac 在与 tunnel network 有关的流表
+3. 删除在 `registered_dvr_macs` 保存的 dvr mac 记录
+
+### `def _remove_dvr_mac_for_phys_br(self, physical_network, mac)`
+
+1. 调用 `int_br.remove_dvr_mac_vlan` 删除 br-int 上 table 中关于此 dvr mac 的记录
+2. 调用 `phys_br.remove_dvr_mac_vlan` 删除 br-ex 上 table 3 中关于此 dvr mac 的记录
+
+### `def _remove_dvr_mac_for_tun_br(self, mac)`
+
+1. 调用 `int_br.remove_dvr_mac_tun` 删除 br-int table 1 中关于 patch-tun 以及 dvr mac 相关的 flow entity
+2. 调用 `tun_br.remove_dvr_mac_tun` 删除 br-tun table 20 中关于 dvr mac 的 flow entity
+
+### `def _add_dvr_mac(self, mac)`
+
+1. 调用 `_add_dvr_mac_for_phys_br` 在 br-ex 和 br-int 上增加该 dvr mac 的记录
+2. 若支持 tunnel network，则调用 `_add_dvr_mac_for_tun_br` 在 br-int 、 br-tun 上增加处理东西向流量的 flow entity
+3. 在 `registered_dvr_macs` 属性中增加该 dvr mac 的记录
 
 
+### `def _add_dvr_mac_for_phys_br(self, physical_network, mac)`
 
+1. 调用 `int_br.add_dvr_mac_vlan` 在 br-int 中增加该 dvr mac 的记录
+2. 调用 `phys_br.add_dvr_mac_vlan` 在 br-ex 上增加该 dvr mac 的记录
 
+### `def _add_dvr_mac_for_tun_br(self, mac)`
+
+1. 调用 `int_br.add_dvr_mac_tun` 在 br-int 上增加利用 dvr mac 处理东西向流量的 flow entity 
+2. 调用 `tun_br.add_dvr_mac_tun` 在 br-tun 上增加利用 dvr mac 处理东西向流量的 flow entity
 
 
 
