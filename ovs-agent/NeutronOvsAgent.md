@@ -560,7 +560,7 @@ cookie=0x8d92abaa691e5b6d, duration=177624.860s, table=0, n_packets=0, n_bytes=0
 
 1. 调用 `get_agent_ports` （在 `L2populationRpcCallBackTunnelMixin` 中实现）根据 fdb entity 获取与之对应的 lvm
 2. 忽略关于本机上的 port 更新，对于非本机的 port 更新：
-3. 调用 `fdb_add_tun`（在 `L2populationRpcCallBackTunnelMixin` 中实现）
+3. 调用 `fdb_add_tun`（在 `L2populationRpcCallBackTunnelMixin` 中实现）创建 tunnel port 以及创建相应的 arp response 流表
 
 ### `def _tunnel_port_lookup(self, network_type, remote_ip)`
 
@@ -593,16 +593,35 @@ cookie=0x8d92abaa691e5b6d, duration=177624.860s, table=0, n_packets=0, n_bytes=0
 
 删除 fdb 表项
 
+1. 调用 `get_agent_ports` 获取 lvm 和待删除的 port 数据
+2. 调用 `fdb_remove_tun` 进行 port 流表的删除工作（arp responser、unicast、flood flow entity）
 
+### `def del_fdb_flow(self, br, port_info, remote_ip, lvm, ofport)`
 
+1. 若 port_info 中包含的是 vtep flooding entry 的消息，则需要去除与此 vetp 有关的 flow entity
+ 1. 若还有别的 vtep ，则调用 `install_flood_to_tun` 重新布置 flood flow entity
+ 2. 若没有别的 vtep了则调用 `delete_flood_to_tun` 删除有关该 vlan 的 flow eneity 
+2. 若 port_info 中包含的是普通 port 的信息，则：
+ 1. 调用 `setup_entry_for_arp_reply` 删除与该 port 有关的 arp responser flow entity
+ 2. 调用 `delete_unicast_to_tun` 删除在 20 号流表中保存的该 port 的单播 flow entity
 
+### `def _fdb_chg_ip(self, context, fdb_entries)`
 
+当收到 neutron-server l2pop mech driver 发来的 mac 地址变成的 fdb 消息时调用 `fdb_chg_ip_tun` 更新与该 port 信息有关的 flow entity。
 
+### `def network_update(self, context, **kwargs)`
 
-
-
-
-
-
-
+```
+    def network_update(self, context, **kwargs):
+        network_id = kwargs['network']['id']
+        for port_id in self.network_ports[network_id]:
+            # notifications could arrive out of order, if the port is deleted
+            # we don't want to update it anymore
+            if port_id not in self.deleted_ports:
+                self.updated_ports.add(port_id)
+        LOG.debug("network_update message processed for network "
+                  "%(network_id)s, with ports: %(ports)s",
+                  {'network_id': network_id,
+                   'ports': self.network_ports[network_id]})
+```
 

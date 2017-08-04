@@ -102,13 +102,13 @@ class DeferredOVSTunnelBridge(ovs_lib.DeferredOVSBridge):
  cookie=0x8ca031df7a84a666, duration=108550.333s, table=20, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,dl_vlan=1,dl_dst=fa:16:3e:51:3b:f7 actions=strip_vlan,load:0x5d->NXM_NX_TUN_ID[],output:3
 ```
 
+### `def delete_flood_to_tun(self, vlan)`
 
+删除 22 表中与 vlan 号一致的 flood flow entity。
 
+### `def delete_unicast_to_tun(self, vlan, mac)`
 
-
-
-
-
+删除 20 表中与 vlan、mac 一致的 unicast flow entity
 
 
 

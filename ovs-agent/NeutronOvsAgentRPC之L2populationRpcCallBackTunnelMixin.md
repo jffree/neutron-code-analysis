@@ -98,17 +98,16 @@
 
 1. 根据 lvm 中的 network type 和 agent ports 中的 remote ip 获取该 endpoint 在本 l2 agent 上的 vtep
 2. 若此 vetp 不存在，则调用 `setup_tunnel_port` （`OVSNeutronAgent` 中实现）创建 vetp
-3. 调用 `add_fdb_flow`（`OVSNeutronAgent` 中实现）
-
+3. 调用 `add_fdb_flow`（`OVSNeutronAgent` 中实现）增加 arp responser 流表
 
 ### `def fdb_remove_tun(self, context, br, lvm, agent_ports, lookup_port)`
 
+1. 根据 lvm 中的 network type 和 agent ports 中的 remote ip 获取该 endpoint 在本 l2 agent 上的 vtep
+2. 若没有 vtep 则忽略此次操作
+3. 调用 `del_fdb_flow` （`OVSNeutronAgent` 中实现）删除与 port 有关的 arp responser 流表以及单播流表
+4. 若此 port 是关于 vtep 的消息，则调用 `cleanup_tunnel_port` （`OVSNeutronAgent` 中实现）删除该 vtep（意味着对端的 endpoint 不复存在了）
+
 ### `def fdb_chg_ip_tun(self, context, br, fdb_entries, local_ip, local_vlan_map=None)`
 
-
-
-
-
-
-
-
+1. 调用 `setup_entry_for_arp_reply` （`OVSNeutronAgent` 中实现）增加新的 arp responser 的 flow entity
+2. 调用 `setup_entry_for_arp_reply` （`OVSNeutronAgent` 中实现）删除旧的 arp responser 的 flow entity
