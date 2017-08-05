@@ -4,15 +4,15 @@
 
 * 网络节点结构图
 
-![]()
+![](../img/controller.png)
 
 * 计算节点一结构图
 
-![]()
+![](../img/compute1.png)
 
 * 计算节点二结构图
 
-![]()
+![](../img/compute2.png)
 
 ## ARP 请求的处理过程
 

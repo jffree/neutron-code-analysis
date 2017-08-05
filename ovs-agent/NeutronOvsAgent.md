@@ -356,7 +356,7 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
 
 报告 ovs agent 状态的方法
 
-若是 ovs agent 的状态为 `c_const.AGENT_REVIVED`，则： `self.fullsync = True`
+若是 ovs agent 的状态为 `c_const.AGENT_REVIVED`，则： `self.fullsync = True`（这个属性会在 `rpc_loop` 方法中用到，该标志意味这需要进行同步操作）。
 
 ### `def local_vlan_map(self)`
 
@@ -411,7 +411,7 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
 2. 当 ovs agent 发生重启操作时，`self.fullsync` 会置为 True。
 3. `iter_num` 代表当前执行 rpc 同步操作的次数
 4. 调用 `check_ovs_status` 检查 ovs 的状态
-5. 若 ovs 为 `OVS_RESTARTED` 的状态，则：
+5. 若 ovs 为 `OVS_RESTARTED` 的状态，则会重新走一遍初始化的流程：
  1. 调用 `setup_integration_br` 初始化 br-int 
  2. 调用 `setup_physical_bridges` 初始化 br-ex 
  3. 若是可以使用 tunnel network，则
@@ -425,7 +425,7 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
  5. 启动对 ovsdb Interface 的监测
 6. 若 ovs 为 `OVS_DEAD` 的状态，此时 ovs agent 不会做其他的处理，仍然后继续进行循环处理
 7. 如果允许 tunnel network，且 `tunnel_sync` 为 True（ovs 的状态为 `OVS_RESTARTED` 时。）则会调用 `tunnel_sync` 进行同步操作
-8. 判断该 l2 agent 是否需要更新和同步操作：
+8. 若该 l2 agent 是否需要更新、同步和重试的操作：
 
 
 
@@ -544,7 +544,10 @@ cookie=0x8d92abaa691e5b6d, duration=177624.860s, table=0, n_packets=0, n_bytes=0
                 self.sg_agent.firewall_refresh_needed())
 ```
 
-判断 agent 是否需要有更新的操作
+* 判断 agent 是否需要有更新的操作
+ 1. ovs 数据库发生变动
+ 2. 有被更新或者删除的 port
+ 3. 安全组发生变动
 
 ### `def port_update(self, context, **kwargs)`
 
