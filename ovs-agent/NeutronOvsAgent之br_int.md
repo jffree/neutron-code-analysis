@@ -46,7 +46,11 @@ NXST_FLOW reply (xid=0x4):
 
 ### `def provision_local_vlan(self, port, lvid, segmentation_id)`
 
+根据 segmentation_id 来限定外部来的网络那些可以转发到 lvid 代表的 Network port 上
 
+```
+cookie=0xb637cdfd05911130, duration=351157.550s, table=0, n_packets=946, n_bytes=90471, idle_age=65534, hard_age=65534, priority=3,in_port=1,vlan_tci=0x0000/0x1fff actions=mod_vlan_vid:3,NORMAL
+```
 
 ### `def add_dvr_mac_vlan(self, mac, port)`
 
@@ -88,6 +92,32 @@ NXST_FLOW reply (xid=0x4):
 ```
  cookie=0xb637cdfd05911130, duration=194580.738s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,in_port=7,dl_src=fa:16:3f:24:77:e3 actions=resubmit(,1)
 ```
+
+### `def delete_arp_spoofing_protection(self, port)`
+
+1. 调用 `_arp_reply_match` 构造好 OFPMatch，然后调用 `delete_flows` 删除与该 port arp 有关的 flow entity
+2. 调用 `_icmpv6_reply_match` 构造好 OFPMatch，然后调用 `delete_flows` 删除与该 port icmpv6 有关的 flow entity
+3. 调用 `delete_arp_spoofing_allow_rules` 删除 table 24 中关于该 port arp responser 转发的记录
+
+### `def _arp_reply_match(ofp, ofpp, port)`
+
+构造一个 OFPMatch
+
+### `def delete_arp_spoofing_allow_rules(self, port)`
+
+删除 table 24 中关于该 port arp responser 的记录
+
+### `def install_dvr_to_src_mac(self, network_type, vlan_tag, gateway_mac, dst_mac, dst_port)`
+
+1. 调用 `_dvr_to_src_mac_table_id` 根据 network type 获取需要设定的表格
+
+```
+cookie=0xb637cdfd05911130, duration=353007.565s, table=1, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,dl_vlan=1,dl_dst=fa:16:3e:5c:9e:2d actions=strip_vlan,mod_dl_src:fa:16:3e:e0:e5:95,output:3
+```
+
+
+
+
 
 
 

@@ -407,6 +407,20 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
 
 ### `def rpc_loop(self, polling_manager=None)`
 
+* 属性说明
+ 1. sync ：是否需要执行同步操作
+ 2. ports ：当前 l2 agent 追踪的 port
+ 3. updated_ports_copy ：self.updated_ports 的 copy 版（rpc 调用会更新这个数据）
+ 4. ancillary_ports ：当前 l2 agent 追踪的在 `ancillary_brs` （非 br-ex、br-int、br-tun的辅助br）上使用的 port
+ 5. tunnel_sync ：是否需要对 tunnel 做更新操作
+ 6. ovs_restarted ：ovs 是否刚刚启动
+ 7. consecutive_resyncs ：重复更新的次数（上次更新失败，则下次更新时算是重复更新）
+ 8. need_clean_stale_flow  
+ 9. ports_not_ready_yet ：port 已经存在，但是没有 ready
+ 10. failed_devices ：在 neutron-server 端获取详细信息失败的 Port
+ 11. failed_ancillary_devices ：在 neutron-server 端获取详细信息失败的辅助 Port
+ 12. failed_devices_retries_map
+
 1. 调用 `_check_and_handle_signal` 判断接收到的信号（若是接收到 sigterm 信号，则会退出 rpc_loop；若是接收到 sighup 信号则会重新加载配置）
 2. 当 ovs agent 发生重启操作时，`self.fullsync` 会置为 True。
 3. `iter_num` 代表当前执行 rpc 同步操作的次数
@@ -426,21 +440,18 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
 6. 若 ovs 为 `OVS_DEAD` 的状态，此时 ovs agent 不会做其他的处理，仍然后继续进行循环处理
 7. 如果允许 tunnel network，且 `tunnel_sync` 为 True（ovs 的状态为 `OVS_RESTARTED` 时。）则会调用 `tunnel_sync` 进行同步操作
 8. 若该 l2 agent 是否需要更新、同步和重试的操作：
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+ 1. 调用 `process_port_info` 获取当前所有 port 的信息（增加、删除、已追踪、未准备好）
+ 2. 调用 `process_deleted_ports` 将被删除的 port unbind
+ 3. 调用 `update_stale_ofport_rules` 清除 br-int 上所有与被删除 port 有关的流表项
+ 4. 若是有 port 的状态发生了变化：
+  1. 调用 `process_network_ports` 处理那些增加、更新、删除的 port，返回处理失败的 port
+  2. 若需要清空 flow，则调用 `cleanup_stale_flows` 清空所有的 flow
+ 5. 若存在 `ancillary_brs`
+  1. 调用 `process_ancillary_network_ports` 处理所有的 `ancillary_port`
+ 6. 调用 `polling_manager.polling_completed` 说明本次数据监测处理完成
+ 7. 调用 `update_retries_map_and_remove_devs_not_to_retry` 整理失败的 port，组织下次重新进行同步的 port 信息
+ 8. 调用 `_dispose_local_vlan_hints` 同步当前 vlan 的使用信息
+9. 调用 `get_port_stats` 统计当前的 port 信息
 
 ### `def _check_and_handle_signal(self)`
 
@@ -628,3 +639,246 @@ cookie=0x8d92abaa691e5b6d, duration=177624.860s, table=0, n_packets=0, n_bytes=0
                    'ports': self.network_ports[network_id]})
 ```
 
+### `def process_port_info`
+
+```
+    def process_port_info(self, start, polling_manager, sync, ovs_restarted,
+                       ports, ancillary_ports, updated_ports_copy,
+                       consecutive_resyncs, ports_not_ready_yet,
+                       failed_devices, failed_ancillary_devices)
+```
+
+1. 在 sycn 为真或者 `polling_manager` 没有 `get_events` 方法的情况下：
+ 1. 若 sync 为真则将 consecutive_resyncs 加 1；
+ 2. 若 sync 为假则将 consecutive_resyncs 置为 0，同时根据 `failed_devices` 和 `failed_ancillary_devices` 判断是否将 sync 置为真
+ 3. 调用 `scan_ports` 获取在 int-br 上发生增加、删除、更新的所有 port 的 id
+ 4. 若存在 `ancillary_brs`，则调用 `scan_ancillary_ports` 获取在 `ancillary_brs` 上发生增加、删除、更新的所有 port 的 id
+2. 若无需进行 sync 操作，且 `polling_manager` 支持 `get_events` 方法，则：
+ 1. 调用 `polling_manager.get_events` 获取 ovs 上所有发送变动的 port
+ 2. 调用 `process_ports_events` 获取 port 的信息
+ 3. 调用回调系统发送 ovsdb read 完的通知
+3. 返回 (port_info, ancillary_port_info, consecutive_resyncs, ports_not_ready_yet)
+
+
+### `def scan_ports(self, registered_ports, sync, updated_ports=None)`
+
+1. 调用 `int_br.get_vif_port_set` 获取 br-int 上与 network 有关的接口
+2. 调用 `_get_port_info` 判断有哪些 port 需要加入追踪，有哪些 port 需要删除
+3. 调用 `check_changed_vlans` 查找 vlan_manager 中与 br-int 中不一样的 port 信息，并将这些 port 加入到 `updated_ports` 列表中
+4. 综合上述信息，获取在 int-br 上发生增加、删除、更新的 port 的 id，并返回
+
+### `def _get_port_info(self, registered_ports, cur_ports, readd_registered_ports)`
+
+1. `registered_ports` 当前 l2 agent 追踪的 port
+2. `cur_ports` 当前 ovs br-int 上的 port
+3. `readd_registered_ports` 是否重新读取 ovs br-int 上的 port
+
+作用：根据已有的数据，判断当前 l2 agent 追踪的 port 有哪些需要加入，有哪些需要删除。
+
+### `def check_changed_vlans(self)`
+
+1. 调用 `int_br.get_port_tag_dict` 获取所有 port 的 name 和 tag
+2. 将 `vlan_manager` 保存的 port 信息与从 br-int 获取的 port 信息对比，查找 tag 变化的 port 并返回
+
+### `def scan_ancillary_ports(self, registered_ports, sync)`
+
+获取 `ancillary_brs` 上所有再用的 port，然后根据已有的数据（`registered_ports`），判断当前 l2 agent 追踪的 ancillary_port 有哪些需要加入，有哪些需要删除
+
+### `def process_ports_events`
+
+```
+    def process_ports_events(self, events, registered_ports, ancillary_ports,
+                             old_ports_not_ready, failed_devices,
+                             failed_ancillary_devices, updated_ports=None)
+```
+
+1. 根据 event 信息，区分出那些 port 被删除、那些 port 被加入
+2. 定义一个内部方法 `_process_port`，用来判断该包属于哪个组（未准备好、port、辅助 port）
+3. 若存在 `old_ports_not_ready`（上次同步时未准备好的 port）则检查 int-br 上其是否已经准备好还是被删除，将还未准备好的 port 更新到 `ports_not_ready_yet` 中
+4. 调用 `_update_port_info_failed_devices_stats` 方法，根据 `failed_devices` 的信息更新 port_info 的信息
+5. 调用 `_update_port_info_failed_devices_stats` 方法，根据 `failed_ancillary_devices` 的信息更新 ancillary_port_info 的信息
+6. 调用 `check_changed_vlans` 获取 `updated_ports`，在根据 `updated_ports` 来更新 port_info
+7. 最后返回完全处理好的 `port_info, ancillary_port_info, ports_not_ready_yet`
+
+返回信息的数据结构如下：
+
+```
+        port_info = {}
+        port_info['added'] = set() : 新增的
+        port_info['removed'] = set()：被移除的
+        port_info['current'] = set()：当前追踪的（包含新增的，并且去除了被移除的）
+
+        ancillary_port_info = {}
+        ancillary_port_info['added'] = set()：新增的
+        ancillary_port_info['removed'] = set()：被移除的
+        ancillary_port_info['current'] = set()：当前追踪的（包含新增的，并且出去了被移除的）
+
+        ports_not_ready_yet = set()：还未 ready 的
+```
+
+
+### `def _update_port_info_failed_devices_stats(self, port_info, failed_devices)`
+
+根据 `failed_devices` 的信息更新 port_info 的信息
+
+### `def process_deleted_ports(self, port_info)`
+
+1. 忽略那些已经被删除的 port
+2. 调用 `_clean_network_ports` 在 `network_ports` 的属性中删除 port_id 的记录
+3. 调用 `ext_manager.delete_port` 调用各个 extension 的 delete_port 的方法
+4. 调用 `port_dead` 将该 port 的 tag 置为 `DEAD_VLAN_TAG`，同时丢弃从该 port 进入的数据包
+5. 调用 `port_unbound` 释放该 port 所占用的流表项，若该 port 是该 agent 上的最后一个 port，则需要释放该 network 所占有的 local vlan 的所有流表项
+6. 调用 `sg_agent.remove_devices_filter` 处理与所有删除 port 的 filter
+
+### `def _clean_network_ports(self, port_id)`
+
+在 `network_ports` 的属性中删除 port_id 的记录
+
+### `def port_dead(self, port, log_errors=True)`
+
+1. 将该 port 的 tag 置为 `DEAD_VLAN_TAG`
+2. 设置 flow entity，将从该看 port 进入的数据包 drop
+
+### `def port_unbound(self, vif_id, net_uuid=None)`
+
+1. 调用 `dvr_agent.unbind_port_from_dvr` 解绑这个 port
+2. 在 `vlan_manager` 去除该 port 的记录
+3. 若此 lvm 中没有了 port，则调用 `reclaim_local_vlan` 回收该（删除） agent 关于此 local vlan 的一切流表记录
+
+### `def reclaim_local_vlan(self, net_uuid)`
+
+取消 vlan manager 中关于此 network 的记录（也就是此 network 不再当前的 agent 上拥有 port 了）
+
+1. 取消在 vlan manager 中的记录 
+2. 若此 network 是 tunnel network，则：
+ 1. 调用 br-tun 的 `reclaim_local_vlan` 方法删除该 network 的 segmentation_id 与 local vlan 转换关系的流表
+ 2. 调用 br-tun 的 `delete_flood_to_tun` 取消该网络的洪泛转发
+ 3. 调用 br-tun 的 `delete_unicast_to_tun` 取消转发到该网络的单播流表
+ 4. 调用 br-tun 的 `delete_arp_responder` 取消对与该 network 有关的 arp 消息的相应 
+ 5. 若开启了 l2 pop，则还需要调用 `cleanup_tunnel_port` 清除该 port 及其流表
+3. 若此网络类型是 flat 类型的 network，则：
+ 1. 调用 br-ex 的 `reclaim_local_vlan` 删除关于该网络的 local vlan 的流表
+ 2. 调用 br-int 的 `reclaim_local_vlan` 删除关于该网络的 local vlan 的流表
+4. 若此网络类型是 vlan 类型的 network，则：
+ 1. 调用 br-ex 的 `reclaim_local_vlan` 删除关于该网络的 local vlan 的流表
+ 2. 调用 br-int 的 `reclaim_local_vlan` 删除关于该网络的 local vlan 的流表
+5. 对于 local 类型的 network 不作任何处理
+
+### `def cleanup_tunnel_port(self, br, tun_ofport, tunnel_type)`
+
+1. 首先检查 tunnel port 是否仍在被被的网络使用，若是正在使用则直接退出
+2. 若该 tunnel port 不再被使用了，则调用 br-tun 的 `delete_port` 删除该 port，调用 br-tun 的 `cleanup_tunnel_port` 删除与该 port 有关的流表
+
+### `def update_stale_ofport_rules(self)`
+
+1. 调用 `int_br.get_vif_port_to_ofport_map` 获取 br-int 上所有 vif 的 ID 与 ofport 的映射
+2. 调用 `_get_ofport_moves` 获取 ofport 发生变化的端口
+3. 统计被删除的 ofport 的端口
+4. 调用 `int_br.delete_arp_spoofing_protection` 删除 br-int 上与该 port 有关的所有 arp 的表项
+5. 调用 `int_br.delete_flows` 删除 br-int 上有该 port 有关的所有 flow entity
+6. 更新 `self.vifname_to_ofport_map` 与 br-int 上实际的 port 保持一致
+
+### `def _get_ofport_moves(current, previous)`
+
+总计 ofport 发生变化的端口
+
+### `def _port_info_has_changes(self, port_info)`
+
+```
+    def _port_info_has_changes(self, port_info):
+        return (port_info.get('added') or
+                port_info.get('removed') or
+                port_info.get('updated'))
+```
+
+### `def process_network_ports(self, port_info, ovs_restarted)`
+
+1. 调用 `treat_devices_added_or_updated` 进行 Port（ovs 上的 port） 的绑定工作
+2. 调用 `_add_port_tag_info` 处于那些绑定不成功的进行再次的设定
+3. 调用 `sg_agent.setup_port_filters	` 为新加入的 port 增加 filter
+4. 调用 `_bind_devices` 实现那些绑定不成功的进行再次的设定
+5. 调用 `treat_devices_removed` 解绑那些被移除的 port
+
+### `def treat_devices_added_or_updated(self, devices, ovs_restarted)`
+
+1. 通过 RPC 调用 Server 端的 `get_devices_details_list_and_failed_devices` 方法获取 device 的详细信息，对于获取失败的 device 则归为 `failed_devices`，获取信息成功的 device 则归为 `device` 。
+2. 调用 `treat_vif_port` 进行 port 的绑定
+3. 调用 `_update_port_network` 更新该 port 的记录信息
+4. 调用 `ext_manager.handle_port` 让 extension 去处理刚刚绑定的 port
+
+### `def treat_vif_port(self, vif_port, port_id, network_id, network_type, physical_network, segmentation_id, admin_state_up, fixed_ips, device_owner, ovs_restarted)`
+
+调用 `port_bound`，将该 port 与 network id 绑定（lvm），并设置相关流表。
+若绑定成功则返回 True，否则返回 False
+
+
+### `def port_bound(self, port, net_uuid, network_type, physical_network, segmentation_id, fixed_ips, device_owner, ovs_restarted)`
+
+1. 若是该 port 所在的 network 还没有在 vlan manager 中，则调用 `provision_local_vlan` 在各个网桥上创建相关的流表
+2. 调用 `dvr_agent.bind_port_to_dvr` 将该 port 在 dvr 上进行绑定
+3. 设置该 port 的 other_config 属性
+
+### `def provision_local_vlan(self, net_uuid, network_type, physical_network, segmentation_id)`
+
+1. 若该 network 在当前的 agent 没有分配 local vlan，则给其分配一个，并记录到 vlan manager 中
+2. 若该网络类行为 tunnel network
+ 1. 调用 `tun_br.install_flood_to_tun` 在 br-tun 上增加该 network 的洪泛流表
+ 2. 根据是否启用 dvr 调用 `dvr_agent.process_tunneled_network` 创建该 network 在 br-tun 的转发流表还是学习流表
+3. 若该 network 为 flat 类型，则调用 `_local_vlan_for_flat` 为该 network 在 br-int 和 br-ex 上创建相关流表
+4. 若该 network 为 vlan 类型，则调用 `_local_vlan_for_vlan` 为该 network 在 br-int 和 br-ex 上创建相关流表
+5. 若该 network 为 vlan 类型，则不作任何处理
+
+
+### `def _local_vlan_for_flat(self, lvid, physical_network)`
+
+为 lvid 代表的 flat 类型 network 在 br-ex 和 br-tun 上创建相关流表，处理从外部进来的流量
+
+### `def _local_vlan_for_vlan(self, lvid, physical_network, segmentation_id)`
+
+为 lvid 代表的 vlan 类型 network 在 br-ex 和 br-tun 上创建相关流表，处理从外部进来的流量
+
+### `def _add_port_tag_info(self, need_binding_ports)`
+
+设定 port 的详细信息。（类似于绑定的操作）
+
+### ``
+
+
+### `def treat_devices_removed(self, devices)`
+
+1. 调用 `plugin_rpc.update_device_list`
+2. 调用 `ext_manager.delete_port` 调用所有 extension 的 delete_port 操作
+3. 调用 `port_unbound` 解绑 port
+
+### `def cleanup_stale_flows(self)`
+
+调用所有 br 的 `cleanup_flows` 方法 清空所有的 flow 
+
+
+### `def update_retries_map_and_remove_devs_not_to_retry`
+
+1. 调用 `_get_devices_not_to_retry`
+2. 调用 `_remove_devices_not_to_retry`
+
+### `def _get_devices_not_to_retry(self, failed_devices, failed_ancillary_devices, failed_devices_retries_map)`
+
+
+
+### `def _remove_devices_not_to_retry(self, failed_devices, failed_ancillary_devices, devices_not_to_retry, ancillary_devices_not_to_retry)`
+
+
+### `def get_port_stats(self, port_info, ancillary_port_info)`
+
+```
+    def get_port_stats(self, port_info, ancillary_port_info):
+        port_stats = {
+            'regular': {
+                'added': len(port_info.get('added', [])),
+                'updated': len(port_info.get('updated', [])),
+                'removed': len(port_info.get('removed', []))}}
+        if self.ancillary_brs:
+            port_stats['ancillary'] = {
+                'added': len(ancillary_port_info.get('added', [])),
+                'removed': len(ancillary_port_info.get('removed', []))}
+        return port_stats
+```

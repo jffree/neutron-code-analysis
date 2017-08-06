@@ -212,7 +212,48 @@ l2 agent 接收到 dvr 数据库的更新。 dvr_macs 包含数据库中（`dvr_
 1. 调用 `int_br.add_dvr_mac_tun` 在 br-int 上增加利用 dvr mac 处理东西向流量的 flow entity 
 2. 调用 `tun_br.add_dvr_mac_tun` 在 br-tun 上增加利用 dvr mac 处理东西向流量的 flow entity
 
+### `def process_tunneled_network(self, network_type, lvid, segmentation_id)`
 
+调用 `tun_br.provision_local_vlan` 方法创建与 lvid 相关的 flow entity.
+
+### `def bind_port_to_dvr(self, port, local_vlan_map, fixed_ips, device_owner)`
+
+1. 若该 device 为：`DEVICE_OWNER_DVR_INTERFACE`，则调用 `_bind_distributed_router_interface_port`
+
+
+### `def _bind_distributed_router_interface_port(self, port, lvm, fixed_ips, device_owner)`
+
+1. 通过 RPC `plugin_rpc.get_subnet_for_dvr` 调用获取 port 所在子网的详细信息
+2. 根据子网的详细信息创建 `LocalDVRSubnetMapping` 实例 ldm，并加入到 `local_dvr_map` 中
+3. 调用 RPC `plugin_rpc.get_ports_on_host_by_subnet` 获取在此 host 的该子网的所有 port
+4. 通过 `int_br.get_vifs_by_ids` 获得这些 Port 的 vif 描述
+5. 在 ldm 中增加这些 vif
+6. 在 local_ports 增加这些 vif
+7. 调用 `int_br.install_dvr_to_src_mac` 创建如下流表 `cookie=0xb637cdfd05911130, duration=353007.565s, table=1, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,dl_vlan=1,dl_dst=fa:16:3e:5c:9e:2d actions=strip_vlan,mod_dl_src:fa:16:3e:e0:e5:95,output:3`
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### `def unbind_port_from_dvr(self, vif_port, local_vlan_map)`
 
 
 

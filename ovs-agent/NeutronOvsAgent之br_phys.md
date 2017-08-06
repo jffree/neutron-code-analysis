@@ -48,12 +48,17 @@ cookie=0xa48e621bd30e85e9, duration=319478.446s, table=3, n_packets=0, n_bytes=0
  cookie=0xa02e63c944a0b07b, duration=194272.621s, table=3, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,dl_src=fa:16:3f:24:77:e3 actions=output:1
 ```
 
+### `def reclaim_local_vlan(self, port, lvid)`
 
+在 br-ex 删除该 lvid 的流表记录
 
+```
+ cookie=0xa02e63c944a0b07b, duration=342944.841s, table=0, n_packets=21, n_bytes=882, idle_age=65534, hard_age=65534, priority=4,in_port=1,dl_vlan=3 actions=strip_vlan,NORMAL
+```
 
+### `def provision_local_vlan(self, port, lvid, segmentation_id, distributed)`
 
-
-
+创建一个流表处理处理从外部进来的流量
 
 ## `class OVSDVRProcessMixin(object)`
 

@@ -125,3 +125,58 @@ class DeferredOVSTunnelBridge(ovs_lib.DeferredOVSBridge):
 ```
  cookie=0x8ca031df7a84a666, duration=190957.223s, table=9, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1,dl_src=fa:16:3f:24:77:e3 actions=output:1
 ```
+
+### `def reclaim_local_vlan(self, network_type, segmentation_id)`
+
+这意味着该网络在当前的 agent 上没有 port 了
+
+删除一项流表。该流表记录了一个网络的 segmentation_id 与 local_vlan 的对应关系。
+
+```
+cookie=0x8d92abaa691e5b6d, duration=494046.863s, table=4, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1,tun_id=0x5d actions=mod_vlan_vid:3,resubmit(,9)
+```
+
+### `def delete_flood_to_tun(self, vlan)`
+
+删除关于一个 local_vlan flood 的 flow entity
+
+```
+cookie=0x8d92abaa691e5b6d, duration=243619.048s, table=22, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1,dl_vlan=3 actions=strip_vlan,load:0x5d->NXM_NX_TUN_ID[],output:2,output:3
+```
+
+### `def delete_unicast_to_tun(self, vlan, mac)`
+
+取消所有转发该 local vlan 的 flow entity
+
+```
+cookie=0x8d92abaa691e5b6d, duration=337147.807s, table=20, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,dl_vlan=3,dl_dst=fa:16:3e:5c:9e:2d actions=strip_vlan,load:0x5d->NXM_NX_TUN_ID[],output:3
+```
+
+### `def delete_arp_responder(self, vlan, ip)`
+
+取消对 vlan 所代表网络的 arp 的响应
+
+### `def provision_local_vlan(self, network_type, lvid, segmentation_id, distributed=False)`
+
+若当前 agent 支持 dvr，则创建与 lvid 一致的数据包转移到 table 9 中处理
+若当前 agent 不支持 dvr，则创建与 lvid 一致的数据包转移到 table 10 中处理
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
