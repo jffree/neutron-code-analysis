@@ -54,6 +54,8 @@ map.connect('blog/*path_info', controller='blog', path_info='')
 
 路由匹配的方法不同。
 
+* `RoutesMiddleware` 的实例就是一个可调用的 WSGI Application（可以看其 `__call__` 方法）。
+
 ## 参考
 
 [routes.middleware – Routes WSGI Middleware](http://routes.readthedocs.io/en/latest/modules/middleware.html)
