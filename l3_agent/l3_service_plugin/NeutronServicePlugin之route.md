@@ -59,22 +59,29 @@ class L3RouterPlugin(service_base.ServicePluginBase,
  3. resource : `PORT`；event : `AFTER_DELETE`；callback : `_notify_port_delete`
 5. 若 router 支持 `l3-ha`，则调用系统的回调方法（`l3_hascheduler_db.subscribe`）来订阅如下资源事件：
  1. resource : `PORT`；event : `AFTER_UPDATE`；callback : `_notify_l3_agent_ha_port_update`
+6. 增加一个 `agent_notifiers`：`L3AgentNotifyAPI`
+7. 创建一个 `RpcWorker` 实例，并调用 `add_worker` 将其加入到工作队列中
+8. 创建 `DriverController` 的实例
 
+### `def get_plugin_type(cls)`
 
+返回 router service plugin 的类型 `L3_ROUTER_NAT`
 
+### `def get_plugin_description(self)`
 
-### `def add_periodic_l3_agent_status_check(self)`
+返回 router service plugin 的描述
 
-`allow_automatic_l3agent_failover` 在配置中默认为 false，忽略这个方法
+### `def start_rpc_listeners(self)`
 
+创建一个 RPC Server 
 
+### `def router_supports_scheduling(self, context, router_id)`
 
+判断一个 router 是否支持调度
 
+### `def create_floatingip(self, context, floatingip)`
 
-
-
-
-
+调用 `L3_NAT_db_mixin.create_floatingip` 实现
 
 
 

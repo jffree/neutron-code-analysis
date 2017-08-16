@@ -57,7 +57,7 @@ class ExtraRoute_db_mixin(ExtraRoute_dbonly_mixin, l3_db.L3_NAT_db_mixin):
             events.BEFORE_DELETE)
 ```
 
-注册对一个资源事件的监测。
+注册对 `PORT` 资源事件的监测。
 
 ### `def _core_plugin(self)`
 
@@ -189,13 +189,36 @@ class ExtraRoute_db_mixin(ExtraRoute_dbonly_mixin, l3_db.L3_NAT_db_mixin):
 
 创建 router interface port 的信息
 
+### `def prevent_l3_port_deletion(self, context, port_id)`
+
+根据 port_id 检查该 port 是否还在 L3 层被使用，若还在被使用则引发异常
+
+### `def update_router(self, context, id, router)`
+
+1. 若是更新的 router 信息中带有 `external_gateway_info`：
+ 1. 调用 `_check_router_needs_rescheduling` 
+
+
+### `def _check_router_needs_rescheduling(self, context, router_id, gw_info)`
+
+1. 获取该 router 绑定的外部网络的 id 
+2. 通过 ml2 获取所有的 externel network
+3. 检查 l3 plugin 是否支持 l3_agent_scheduler，若不支持则退出
+4. 调用 `l3_plugin.router_supports_scheduling`（在 `L3RouterPlugin` 中实现） 检查该 router 是否支持调度
+5. 调用 `l3_plugin.list_l3_agents_hosting_router`
 
 
 
 
 
+## `def _prevent_l3_port_delete_callback(resource, event, trigger, **kwargs)`
 
+* 回调方法，当删除 port 资源时需要检查该 port 是否在 L3 层被使用：
+ 1. 检查 port 是否被分配了 floating ip
+ 2. 检查 port 是否与 router 想关联
 
+1. 获取 l3plugin 实例
+2. 调用 `l3plugin.prevent_l3_port_deletion` （在 `L3_NAT_dbonly_mixin` 中实现）检查该 Port 是否可以被删除
 
 
 
