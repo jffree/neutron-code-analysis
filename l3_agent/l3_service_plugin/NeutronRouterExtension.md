@@ -203,10 +203,12 @@ class ExtraRoute_db_mixin(ExtraRoute_dbonly_mixin, l3_db.L3_NAT_db_mixin):
 
 1. 获取该 router 绑定的外部网络的 id 
 2. 通过 ml2 获取所有的 externel network
-3. 检查 l3 plugin 是否支持 l3_agent_scheduler，若不支持则退出
+3. 检查 l3 plugin 是否支持 l3_agent_scheduler，若不支持则退出（默认的 scheduler 驱动为：`router_scheduler_driver = neutron.scheduler.l3_agent_scheduler.LeastRoutersScheduler`）
 4. 调用 `l3_plugin.router_supports_scheduling`（在 `L3RouterPlugin` 中实现） 检查该 router 是否支持调度
-5. 调用 `l3_plugin.list_l3_agents_hosting_router`
-
+5. 调用 `l3_plugin.list_l3_agents_hosting_router` 找到与该 router 绑定的 l3agent
+6. 若是需要重新绑定 router 与 l3 agent:
+ 1. 调用 `l3_plugin.get_l3_agents` 获取所有活动的 l3 agent
+ 2. 调用 `l3_plugin.get_l3_agent_candidates`
 
 
 

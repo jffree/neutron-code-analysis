@@ -26,6 +26,13 @@
 
 查询 `RouterL3AgentBinding` 数据库，获取与 routers_ids 绑定的数据库记录
 
+### `def get_l3_agent_candidates(self, context, sync_router, l3_agents,ignore_admin_state=False)`
+
+1. 调用 `get_configuration_dict` 获取 l3 agent 的 configuration
+2. l3 agent 为 dvr 模式时该 agent 不支持绑定
+3. 已经绑定过 router 的 l3 agent 不再操作
+
+
 
 ## `class AgentSchedulerDbMixin(agents_db.AgentDbMixin)`
 
