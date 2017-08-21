@@ -1,4 +1,4 @@
-# Neutron Service Plugin 之 router
+# Neutron Service Plugin 之 Router Service
 
 * 在 */etc/neutron/neutron.conf* 中我们可以看到这个配置选项：
 

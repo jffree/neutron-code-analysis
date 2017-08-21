@@ -14,6 +14,7 @@
 [OpenStack Neutron 之 L3 HA](https://www.ibm.com/developerworks/cn/cloud/library/1506_xiaohh_openstackl3/)
 [理解 OpenStack 高可用（HA）（2）：Neutron L3 Agent HA 之 虚拟路由冗余协议（VRRP）](http://www.cnblogs.com/sammyliu/p/4692081.html)
 [虚拟路由器冗余协议【原理篇】VRRP详解 ](http://zhaoyuqiang.blog.51cto.com/6328846/1166840/)
+[Layer 3 High Availability](https://assafmuller.com/2014/08/16/layer-3-high-availability/)
 
 ## 学习步骤
 

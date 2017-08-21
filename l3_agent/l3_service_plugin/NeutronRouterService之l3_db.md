@@ -1,34 +1,108 @@
-# Neutron router extension
+# Neutron Router Service 之 l3_db
+
+*neutron/db/l3_db.py*
+
+## router and floating ip extension
 
 *neutron/extensions/l3.py*
 
-`RESOURCE_ATTRIBUTE_MAP` 定义了 router 的属性
+`RESOURCE_ATTRIBUTE_MAP` 定义了 router 和 floating ip 的属性
 
 `class L3(extensions.ExtensionDescriptor)` 为 router 的描述，为 WSGI 构造 controller 。
 
 `class RouterPluginBase(object)` 为 router WSGI 实现的抽象基类。
 
 
-## `class ExtraRoute_db_mixin(ExtraRoute_dbonly_mixin, l3_db.L3_NAT_db_mixin)`
+## 数据库 RouterPort、Router、FloatingIP
 
 ```
-class ExtraRoute_db_mixin(ExtraRoute_dbonly_mixin, l3_db.L3_NAT_db_mixin):
-    """Mixin class to support extra route configuration on router with rpc."""
-    pass
+class RouterPort(model_base.BASEV2)
+
+class Router(standard_attr.HasStandardAttributes, model_base.BASEV2,
+             model_base.HasId, model_base.HasProject)
+
+class FloatingIP(standard_attr.HasStandardAttributes, model_base.BASEV2,
+                 model_base.HasId, model_base.HasProject)
 ```
 
 ## `class ExtraRoute_dbonly_mixin(l3_db.L3_NAT_dbonly_mixin)`
 
 
+在 `L3_NAT_dbonly_mixin` 基础上的封装，`L3_NAT_dbonly_mixin` 是负责具体逻辑业务的处理。
+在 `L3_NAT_dbonly_mixin` 处理完距离的逻辑业务后，`ExtraRoute_dbonly_mixin` 来发送 RPC 消息
 
+### `def create_router(self, context, router)`
 
+调用 `L3_NAT_dbonly_mixin.create_router` 实现具体的业务逻辑
+若新创建的 router 包含 `external_gateway_info` 属性，则调用 `notify_router_updated` （`L3RpcNotifierMixin`）发送 RPC 消息
 
+### `def update_router(self, context, id, router)`
 
+调用 `L3_NAT_dbonly_mixin.update_router` 实现具体的业务逻辑
+调用 `notify_router_updated`（`L3RpcNotifierMixin`）发送 RPC 消息
 
+### `def delete_router(self, context, id)`
 
+调用 `L3_NAT_dbonly_mixin.delete_router` 实现具体的业务逻辑
+调用 `notify_router_deleted`（`L3RpcNotifierMixin`）发送 RPC 消息
 
+### `def notify_router_interface_action(self, context, router_interface_info, action)`
+
+调用 `notify_routers_updated`（`L3RpcNotifierMixin`）发送 RPC 消息
+调用 `n_rpc.get_notifier` 获取 notifier 实例，发送关于 router 的通知消息
+
+### `def add_router_interface(self, context, router_id, interface_info)`
+
+调用 `L3_NAT_dbonly_mixin.add_router_interface` 实现具体的业务逻辑
+调用 `notify_router_interface_action` 发送 router 更新的 RPC 消息以及通知消息
+
+### `def remove_router_interface(self, context, router_id, interface_info)`
+
+调用 `L3_NAT_dbonly_mixin.remove_router_interface` 实现具体的业务逻辑
+调用 `notify_router_interface_action` 发送 router 更新的 RPC 消息以及通知消息
+
+### `def create_floatingip(self, context, floatingip, initial_status=lib_constants.FLOATINGIP_STATUS_ACTIVE)`
+
+调用 `L3_NAT_dbonly_mixin.create_floatingip` 实现具体的业务逻辑
+调用 `notify_router_updated`（`L3RpcNotifierMixin`）发送 RPC 消息
+
+### `def update_floatingip(self, context, id, floatingip)`
+
+调用 `L3_NAT_dbonly_mixin._update_floatingip` 和 `L3_NAT_dbonly_mixin._floatingips_to_router_ids` 实现具体的业务逻辑
+调用 `notify_router_updated`（`L3RpcNotifierMixin`）发送 RPC 消息
+
+### `def delete_floatingip(self, context, id)`
+
+调用 `L3_NAT_dbonly_mixin._delete_floatingip` 实现具体的业务逻辑
+调用 `notify_router_updated`（`L3RpcNotifierMixin`）发送 RPC 消息
+
+### `def disassociate_floatingips(self, context, port_id, do_notify=True)`
+
+调用 `L3_NAT_dbonly_mixin.disassociate_floatingips` 实现具体的业务逻辑
+调用 `notify_router_updated` 发送 RPC 消息
+
+### `def notify_routers_updated(self, context, router_ids)`
+
+```
+    def notify_routers_updated(self, context, router_ids):
+        super(L3_NAT_db_mixin, self).notify_routers_updated(
+            context, list(router_ids), 'disassociate_floatingips', {})
+```
+
+### `def _migrate_router_ports(self, context, router_db, old_owner, new_owner)`
+
+```
+    def _migrate_router_ports(
+        self, context, router_db, old_owner, new_owner):
+        """Update the model to support the dvr case of a router."""
+        for rp in router_db.attached_ports.filter_by(port_type=old_owner):
+            rp.port_type = new_owner
+            rp.port.device_owner = new_owner
+```
 
 ## `class L3_NAT_dbonly_mixin(l3.RouterPluginBase, st_attr.StandardAttrDescriptionMixin)`
+
+l3 层中核心资源 router、router port、floating ip 的业务逻辑的实现。
 
 ```
     router_device_owners = (
