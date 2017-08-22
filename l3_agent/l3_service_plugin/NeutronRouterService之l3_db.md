@@ -133,6 +133,8 @@ l3 层中核心资源 router、router port、floating ip 的业务逻辑的实�
 
 注册对 `PORT` 资源事件的监测。
 
+PORT: BEFORE_DELETE: _prevent_l3_port_delete_callback
+
 ### `def _core_plugin(self)`
 
 返回 core plugin 实例
@@ -141,7 +143,7 @@ l3 层中核心资源 router、router port、floating ip 的业务逻辑的实�
 
 根据 id 获取一个 Router 数据库的记录
 
-### `ef _is_dns_integration_supported(self)`
+### `def _is_dns_integration_supported(self)`
 
 
 
@@ -159,10 +161,6 @@ l3 层中核心资源 router、router port、floating ip 的业务逻辑的实�
 
 发送 router 资源准备创建的消息
 
-### `def _update_gw_for_create_router(self, context, gw_info, router_id)`
-
-根据 gateway 的信息 更新router
-
 ### `def _check_for_external_ip_change(self, context, gw_port, ext_ips)`
 
 根据 gateway 信息，判断其 gateway port 的 ip 地址是否要发生变化
@@ -170,6 +168,9 @@ l3 层中核心资源 router、router port、floating ip 的业务逻辑的实�
 ### `def _validate_gw_info(self, context, gw_port, info, ext_ips)`
 
 验证 gateway 的信息是否正确
+
+1. 该 gateway 所在的 network 是否是 external network。
+2. 该 gateway 的 ip 地址不能是 external nerwork subnet 的 gateway_ip
 
 ### `def _update_router_gw_info(self, context, router_id, info, router=None)`
 
@@ -191,7 +192,7 @@ l3 层中核心资源 router、router port、floating ip 的业务逻辑的实�
 1. 调用 `_get_router` 获取当前 router 的数据库记录
 2. 调用 `_check_for_external_ip_change` 判断 router 上 gateway 信息是否发生了变化
 3. 调用 `_validate_gw_info` 验证 gateway 的信息是否正确
-4. 若是 gateway port 存在且其 ip 发生了变化则调用 `_update_current_gw_port` 更新 gateway，否则：
+4. 若是 gateway port 存在且其 ip 发生了变化（但是 ip 所在的 network 未发生变化）则调用 `_update_current_gw_port` 更新 gateway，否则：
  1. 调用 `_delete_current_gw_port` 删除 gateway port 
  2. 调用 `_create_gw_port` 创建新的 gateway port
 
@@ -234,6 +235,10 @@ l3 层中核心资源 router、router port、floating ip 的业务逻辑的实�
 1. 创建 router 数据库
 2. 调用 `_update_gw_for_create_router` 绑定 gateway 信息
 3. 若 `_update_gw_for_create_router` 失败，则调用 `delete_router` 删除 router
+
+### `def _update_gw_for_create_router(self, context, gw_info, router_id)`
+
+为新创建的 router 创建一个 gateway（调用 `_update_router_gw_info`）。
 
 ### `def delete_router(self, context, id)`
 
