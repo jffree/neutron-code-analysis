@@ -70,8 +70,10 @@ class RouterL3AgentBinding(model_base.BASEV2):
 
 1. 调用 `list_l3_agents_hosting_router` 获取当前绑定有 router（`router_id`） 的 l3 agent
 2. 调用 `_unschedule_router` 删除 router 与 l3 agent 的绑定记录
-3. 调用 `schedule_router`
-
+3. 调用 `schedule_router` 实现 router 与 l3 agent 的绑定
+4. 调用 `list_l3_agents_hosting_router` 获取重新调度后与该 router 绑定的 l3 agent
+5. 若调度失败，则引发异常
+6. 若调度成功，则调用 `_notify_agents_router_rescheduled` 发送 RPC 通知 host 有 router 进行解绑和绑定操作
 
 ### `def _unschedule_router(self, context, router_id, agents_ids)`
 
@@ -95,6 +97,39 @@ class RouterL3AgentBinding(model_base.BASEV2):
  4. `gateway_external_network_id` 和 `external_network_bridge` 选项设置后，l3 agent 只能处理一个 external network（不过 `external_network_bridge` 选项将在 O 版本中被删除）。若是想要 l3 agent 支持多个 external network 这里选项必须为空。
 3. 返回可以绑定该 router 的 l3 agent
 
+### `def get_l3_agent_with_min_routers(self, context, agent_ids)`
+
+根据 agent_ids 获取当前 l3 agent 上绑定 router 数量最少的那一个
+
+### `def _notify_agents_router_rescheduled(self, context, router_id, old_agents, new_agents)`
+
+1. 获取 `AGENT_TYPE_L3` 的 notifier（`L3AgentNotifyAPI` 实例）
+2. 调用 `L3AgentNotifyAPI.router_removed_from_agent` 发送 RPC 告知有 router 已经不再与 host（解绑的） 上的 l3 agent 绑定了
+3. 调用 `L3AgentNotifyAPI.router_added_to_agent` 发送 RPC 告知有 router 与 host（新绑定的） 上的 l3 agent 绑定了
+
+### `def auto_schedule_routers(self, context, host, router_ids)`
+
+调用 router scheduler driver 的 `auto_schedule_routers` 方法实现（在 `L3RpcCallback.get_router_ids` 中被调用）
+
+### ``
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Scheduler Driver: `class LeastRoutersScheduler(L3Scheduler)`
 
@@ -107,6 +142,8 @@ class RouterL3AgentBinding(model_base.BASEV2):
             plugin, context, router_id, candidates=candidates)
 ```
 
+调用 `L3Scheduler._schedule_router` 实现。 
+
 ### `def _choose_router_agents_for_ha(self, plugin, context, candidates)`
 
 作用：选取可以绑定 ha router 的 l3 agent
@@ -115,15 +152,44 @@ class RouterL3AgentBinding(model_base.BASEV2):
 2. 调用 `get_l3_agents_ordered_by_num_routers`（`L3_HA_scheduler_db_mixin` 中实现）根据所有 l3 agent 上已绑定的 router 数量进行排序
 3. 取绑定 router 数量少的 l3 agent。
 
+### `def _choose_router_agent(self, plugin, context, candidates)`
 
-调用 `L3Scheduler._schedule_router` 实现。 
+调用 `L3AgentSchedulerDbMixin.get_l3_agent_with_min_routers` 在 candidates 中获取绑定 router 数量最少的那个 l3 agent
+
+### `def get_vacant_binding_index(self, context, router_id, is_manual_scheduling=False)`
+
+1. 调用 `L3_HA_NAT_db_mixin.get_number_of_agents_for_scheduling` 获取可为 ha router 绑定的 l3 agent 的数量
+2. 查询数据库 `RouterL3AgentBinding` 获取 router(`router_id`) 的 `binding_index` 记录
+3. 返回未使用的最小的 `binding_indices`
+
+* `binding_indices` : 对于 ha router 来说，它会与多个 l3 agent 进行绑定，每一个绑定都会有一个 binding_index。这个 `binding_index` 的范围既是 `max_l3_agents_per_router` 或者当前可用 l3 agent 的数量
+
+### ``
+
+
+
+
 
 ## `class ChanceScheduler(L3Scheduler)`
 
+*随机为 router 分配 l3 agent 来进行绑定*
 
+```
+class ChanceScheduler(L3Scheduler):
+    """Randomly allocate an L3 agent for a router."""
 
+    def schedule(self, plugin, context, router_id,
+                 candidates=None):
+        return self._schedule_router(
+            plugin, context, router_id, candidates=candidates)
 
+    def _choose_router_agent(self, plugin, context, candidates):
+        return random.choice(candidates)
 
+    def _choose_router_agents_for_ha(self, plugin, context, candidates):
+        num_agents = self._get_num_of_agents_for_ha(len(candidates))
+        return random.sample(candidates, num_agents)
+```
 
 ## `class L3Scheduler(object)`
 
@@ -144,21 +210,8 @@ class RouterL3AgentBinding(model_base.BASEV2):
 3. 若未知名 candidates（候选的 l3 agent），则调用 `_get_candidates` 获取可以与 router 绑定的 l3 agent
 4. 若是没有可与 router 绑定的 l3 agent 则直接退出。
 5. 若是 router 有 ha 属性，则调用 `self._bind_ha_router` 将该 ha router 绑定到 l3 agent 上
-6. 对于非 ha router 则调用 `self._choose_router_agent`
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+6. 对于非 ha router 则调用 `self._choose_router_agent`（`LeastRoutersScheduler` 中实现）获取绑定 router 数量最少的那个 l3 agent
+7. 调用 `bind_router` 创建 router 与 l3 agent 的绑定记录
 
 ### `def _get_candidates(self, plugin, context, sync_router)`
 
@@ -190,3 +243,86 @@ class RouterL3AgentBinding(model_base.BASEV2):
 ### `def bind_router(self, context, router_id, chosen_agent, binding_index=l3_agentschedulers_db.LOWEST_BINDING_INDEX)`
 
 创建一个 `RouterL3AgentBinding` 数据库记录，用来记录 router 与 l3 agent 的绑定记录
+
+### `def auto_schedule_routers(self, plugin, context, host, router_ids)`
+
+作用：为某一 host 上的 l3 agent 自动调度 router 来进行绑定
+
+1. 调用 `AgentDbMixin.get_enabled_agent_on_host` 获取当前 host 上的 l3 agent 实例
+2. 调用 `_get_routers_to_schedule` 获取那些待绑的 router
+3. 若没有发现待绑定 router，且 router service 支持 ha extension，则调用 `_schedule_ha_routers_to_additional_agent` 查找是否有 ha router 可与 l3 agent 进行绑定，若有，则执行绑定动作。
+4. 若发现有待绑定的 router，则调用 `_get_routers_can_schedule` 找到那些未与当前 l3 agent 绑定的 router
+5. 调用 `_bind_routers` 将 l3 agent 与这些 router 进行绑定
+
+### `def _get_routers_to_schedule(self, context, plugin, router_ids=None)`
+
+1. 若 router_ids 不为空，则调用 `_filter_unscheduled_routers` 找出 router_ids 中未与 l3 agent 绑定的 router
+2. 若 router_ids 为空，则调用 `_get_unscheduled_routers` 所有未与 l3 agent 绑定的 router
+3. 从获取待绑定的 router 中找出支持调度的 router 并返回
+
+### `def _filter_unscheduled_routers(self, context, plugin, routers)`
+
+通过调用 `get_l3_agents_hosting_routers` 方法判断该 routers 中有哪些是未与 l3 agent 绑定的
+
+### `def _get_unscheduled_routers(self, context, plugin)`
+
+获取所有 router 中未与 l3 agent 绑定的 router
+
+### `def _schedule_ha_routers_to_additional_agent(self, plugin, context, agent)`
+
+1. 调用 `get_ha_routers_l3_agents_counts` 获取所有的 ha router 及其绑定的 l3 agent 的数量的对应关系
+2. 检查所有的 ha router 在绑定 l3 agent 的数量上是否已经达到了最大设定值 `cfg.CONF.max_l3_agents_per_router`
+3. 调用 `_get_routers_can_schedule` 可与当前 l3 agent 绑定的 router
+4. 调用 `_router_has_binding` 判断 router 是否已经与当前的 l3 agent 绑定。
+5. 若 router 未与当前的 l3 agent 绑定，则调用 `create_ha_port_and_bind` 创建 ha port，并将 ha port 和 router 都与 l3 agent 进行绑定
+
+### `def get_ha_routers_l3_agents_counts(self, context, plugin, filters=None)`
+
+```
+    def get_ha_routers_l3_agents_counts(self, context, plugin, filters=None):
+        """Return a mapping (router, # agents) matching specified filters."""
+        return plugin.get_ha_routers_l3_agents_count(context)
+```
+
+`get_ha_routers_l3_agents_count` 在 `L3_HA_scheduler_db_mixin` 中实现（获取所有的 ha router 及其绑定的 l3 agent 的数量的对应关系）
+
+### `def _get_routers_can_schedule(self, context, plugin, routers, l3_agent)`
+
+获取可与当前 l3 agent 绑定的 router
+
+### `def _router_has_binding(self, context, router_id, l3_agent_id)`
+
+判断 router 是否已经于当前的 l3 agent 绑定
+
+### `def create_ha_port_and_bind(self, plugin, context, router_id, tenant_id, agent, is_manual_scheduling=False)`
+
+1. 调用 `L3AgentSchedulerDbMixin.get_vacant_binding_index` 获取该 router 最小的还未使用 `binding_index`
+2. 调用 `bind_router` 创建 ha router 与 l3 agent 的绑定记录 `RouterL3AgentBinding`
+3. 调用 `utils.create_object_with_dependency` 完成 ha port 的创建。
+ 1. 调用 `L3_HA_NAT_db_mixin.get_ha_network` 判断该租户的 ha network 是否已经创建
+ 2. 若是 ha network 还未创建，则调用 `L3_HA_NAT_db_mixin._create_ha_network` 创建该租户的 ha network 
+ 3. 调用 `_add_port_from_net` 完成 ha port 的创建
+ 4. 若创建 ha port 的过程中发生失败，且查过了最大重试次数，则调用 `L3_HA_NAT_db_mixin._delete_ha_network` 删除上面创建的 ha network。
+4. ha port 创建成功后，在对应的 `L3HARouterAgentPortBinding` 记录中增加 l3 agent id 的字段
+
+### `def _add_port_from_net(self, plugin, ctxt, router_id, tenant_id, ha_net)`
+
+```
+    def _add_port_from_net(self, plugin, ctxt, router_id, tenant_id, ha_net):
+        """small wrapper function to unpack network id from ha_network"""
+        return plugin.add_ha_port(ctxt, router_id, ha_net.network.id,
+                                  tenant_id)
+```
+
+`add_ha_port` 在 `L3_HA_NAT_db_mixin` 中定义。
+
+### `def _bind_routers(self, context, plugin, routers, l3_agent)`
+
+一次将多个 router 绑定到 l3 agent 上
+
+1. 若 router 是 ha router，则调用 `_router_has_binding` 检查该 router 是否已经与这个 l3 agent 进行绑定，若未绑定则调用 `create_ha_port_and_bind` 创建 ha port，并将 router 与 l3 agent 进行绑定
+2. 对于非 ha router，则调用 `bind_router` 将 router 与 l3 agent 进行绑定
+
+
+
+
