@@ -275,8 +275,11 @@ PORT: BEFORE_DELETE: _prevent_l3_port_delete_callback
 ### `def update_router(self, context, id, router)`
 
 1. 若是更新的 router 信息中带有 `external_gateway_info`：
- 1. 调用 `_check_router_needs_rescheduling` 
-
+ 1. 调用 `_check_router_needs_rescheduling` 检查 router 的 gw_info 发生变化时是否需要重新调度
+ 2. 调用 `_update_router_gw_info` 更新 router 的 gateway 信息
+2. 调用 `_update_router_db` 更新数据库记录，并发送数据库更新的事件通知
+3. 若是有可以与 router 重新绑定的 l3 agent（重新调度），则调用 `l3_plugin.reschedule_router` 实现 router 的重新调度
+4. 返回更新后 router 的数据
 
 ### `def _check_router_needs_rescheduling(self, context, router_id, gw_info)`
 
@@ -287,10 +290,12 @@ PORT: BEFORE_DELETE: _prevent_l3_port_delete_callback
 5. 调用 `l3_plugin.list_l3_agents_hosting_router` 找到与该 router 绑定的 l3agent
 6. 若是需要重新绑定 router 与 l3 agent:
  1. 调用 `l3_plugin.get_l3_agents` 获取所有活动的 l3 agent
- 2. 调用 `l3_plugin.get_l3_agent_candidates`
+ 2. 调用 `l3_plugin.get_l3_agent_candidates` 获取可以与该 router 绑定的 l3 agent
 
+### `def _update_router_db(self, context, router_id, data)`
 
-
+1. 更新 Router 中的数据库记录
+2. 通过 neutron callback 系统发送 ROUTER 资源 PRECOMMIT_UPDATE 的事件
 
 ## `def _prevent_l3_port_delete_callback(resource, event, trigger, **kwargs)`
 
@@ -301,10 +306,59 @@ PORT: BEFORE_DELETE: _prevent_l3_port_delete_callback
 1. 获取 l3plugin 实例
 2. 调用 `l3plugin.prevent_l3_port_deletion` （在 `L3_NAT_dbonly_mixin` 中实现）检查该 Port 是否可以被删除
 
+### `def _make_router_dict_with_gw_port(self, router, fields)`
+
+将 router 的数据库记录数据转化为字典格式。
+若 router 中包含 `gw_port` 属性，则调用 `core_plugin._make_port_dict` 将 `gw_port` 数据也转化为易读的字典格式
+
+### `def _get_router_info_list(self, context, router_ids=None, active=None, device_owners=None)`
+
+1. 调用 `self._get_sync_routers` 获取数据库中关于这些 router 的详细数据
+2. 调用 `self._get_sync_interfaces` 获取与这些 router 绑定的 port 的详细数据
+3. 调用 `_get_sync_floating_ips` 获取与这些 router 绑定的 floating ip 的详细数据
+4. 返回上面获取的 router、port、floating ip 的数据
+
+### `def _get_sync_routers(self, context, router_ids=None, active=None)`
+
+**作用：读取数据库中关于 router 的详细信息，包括 gateway 的信息**
+
+1. 调用 `CommonDbMixin._get_collection` 获取符合 router_ids 和 active 条件的 router 的数据
+2. 读取刚才获取的 router 数据中的 `gw_port` 信息
+3. 调用 `_build_routers_list`（这个方法在三个类中被实现：`L3_NAT_dbonly_mixin`、`L3_NAT_dbonly_mixin`、`L3_NAT_with_dvr_db_mixin`，我们应该以 `L3_NAT_with_dvr_db_mixin` 为最终版本） 获取 router 详细属性
+
+### `def _build_routers_list(self, context, routers, gw_ports)`
+
+```
+    def _build_routers_list(self, context, routers, gw_ports):
+        """Subclasses can override this to add extra gateway info"""
+        return routers
+```
+
+### `def _get_sync_interfaces(self, context, router_ids, device_owners=None)`
+
+1. 查询数据库 `RouterPort` 获取与 router_ids 代表的 router 绑定的 port，且这些 port 需要具有 device_owners 一致的属性
+2. 调用 `core_plugin._make_port_dict` 获取这些 port 的详细信息
+
+### `def _get_sync_floating_ips(self, context, router_ids)`
+
+1. 查询数据 `FloatingIP`、`SubnetPool`、`Port`、`Subnet`，找到那些 router_ids 内的记录
+2. 上面取出的 floating ip 记录可能会有重复的，调用 `_unique_floatingip_iterator` 使其单一化
+3. 调用 `_make_floatingip_dict_with_scope` 返回 floating ip 的易读格式
+
+### `def _unique_floatingip_iterator(query)`
+
+floating ip 数据库查询记录 query 可能会有重复的，该方法的功能既是使其单一化
 
 
+### `def _make_floatingip_dict_with_scope(self, floatingip_db, scope_id)`
 
+```
+    def _make_floatingip_dict_with_scope(self, floatingip_db, scope_id):
+        d = self._make_floatingip_dict(floatingip_db)
+        d['fixed_ip_address_scope'] = scope_id
+        return d
+```
 
+### `def _make_floatingip_dict(self, floatingip, fields=None, process_extensions=True)`
 
-
-
+构造 floating ip 的易读的数据格式

@@ -64,7 +64,6 @@ class L3HARouterVRIdAllocation(model_base.BASEV2)
  2. 调用 `_create_ha_port_binding` 创建 `RouterPort` 和 `L3HARouterAgentPortBinding` 的数据库记录
  3. 若数据库创建失败，则调用 `core_plugin.delete_port` 删除刚才创建的 ha port
 
-
 ### `def _create_ha_port_binding(self, context, router_id, port_id)`
 
 1. 创建一个 `RouterPort` 的数据库记录
@@ -82,6 +81,34 @@ class L3HARouterVRIdAllocation(model_base.BASEV2)
 
 1. 调用 `get_l3_agents` 获取 legacy 和 dvr_sant 类型 agent 的数量。
 2. 可调度的 l3 agent 数量与 `cfg.CONF.min_l3_agents_per_router` 和 `cfg.CONF.max_l3_agents_per_router` 进行对比，获取可为 ha router 进行调度的 l3 agent 的数量
+
+### `def delete_ha_interfaces_on_host(self, context, router_id, host)`
+
+1. 调用 `get_ha_router_port_bindings` 获取某台机器 host 上 router_ids 上绑定的 ha port 
+2. 调用 `core_plugin.delete_port` 删除这个 ha port
+
+### `def get_ha_sync_data_for_host(self, context, host, agent, router_ids=None, active=None)`
+
+1. 对于 dvr 模式的 l3 agent，调用 `L3_NAT_with_dvr_db_mixin._get_dvr_sync_data`
+2. 对于不支持 dvr 模式的 l3 agent，调用 `L3_NAT_dbonly_mixin.get_sync_data`
+3. 调用 `_process_sync_ha_data`
+
+### ``
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

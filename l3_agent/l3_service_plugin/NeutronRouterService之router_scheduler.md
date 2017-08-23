@@ -4,6 +4,8 @@ router scheduler driver 在 `L3RouterPlugin` 初始化时被加载，默认的 d
 
 *neutron/scheduler/l3_agent_scheduler.py*
 
+**调度：即指将 router 与 l3 agent 进行绑定**
+
 ## extension
 
 *neutron/extensions/l3agentscheduler.py*
@@ -111,15 +113,76 @@ class RouterL3AgentBinding(model_base.BASEV2):
 
 调用 router scheduler driver 的 `auto_schedule_routers` 方法实现（在 `L3RpcCallback.get_router_ids` 中被调用）
 
+### `def add_router_to_l3_agent(self, context, agent_id, router_id)`
+
+1. 调用 `router_supports_scheduling` 判断该 router 是否支持调度，若不支持调度则引发异常
+2. 调用 `validate_agent_router_combination` 判断该 router 是否可以与 l3 agent 进行绑定
+3. 调用 `check_agent_router_scheduling_needed` 检查该 router 是否已经与该 l3 agent 进行绑定
+4. 调用 `create_router_to_agent_binding` 完成 router 与 l3 agent 的绑定
+5. 调用 `l3_notifier.router_added_to_agent` 发送通知，告诉 l3 agent 有一个 router 被绑定到其上面了
+
+### `def validate_agent_router_combination(self, context, agent, router)`
+
+判断一个 router 是否可以与 l3 agent 进行绑定
+
+1. 判断该 agent 是否是 l3 agent
+2. 判断该 l3 agent 是否是 dvr mode（dvr 模式不支持调度）
+3. 不可以将 distributed router 绑定到 legacy 模式上的 l3 agent
+4. 判断该 router 是否可以与该 l3 agent 绑定
+5. 若无法绑定则引发异常 
+
+### `def check_agent_router_scheduling_needed(self, context, agent, router)`
+
+判断该 router 是否需要与该 l3 agent 进行绑定。
+
+1. 判断该 router 是否已经进行过绑定
+2. 判断该 router 是否已经与该 l3 agent 进行绑定
+3. ha 类型的 router 则认为可以与 l3 agent 进行绑定
+
+### `def create_router_to_agent_binding(self, context, agent, router)`
+
+将一个 router 与 l3 agent 进行绑定。
+
+1. 对于 ha router，调用 `router_scheduler.create_ha_port_and_bind` 实现绑定
+2. 对于其他的 router，调用 `router_scheduler.bind_router` 进行绑定
+
+### `def remove_router_from_l3_agent(self, context, agent_id, router_id)`
+
+1. 调用 `_unbind_router` 删除数据库中 router 与 l3 agent 的绑定记录
+2. 若 router 是 ha 类型，则调用 `delete_ha_interfaces_on_host` 删除与该 l3 agent 绑定的 router 上的 ha port
+3. 若 router 是 distributed 类型，则：
+ 1. 调用 `L3_DVRsch_db_mixin.get_subnet_ids_on_router` 获取该 router 上 port 所属的 subnet
+ 2. 调用 `L3_DVRsch_db_mixin._check_dvr_serviceable_ports_on_host` 查询该 host 上是否有属于 subnet_ids 的提供 dvr service 的 port
+4. 获取  notifier（`L3AgentNotifyAPI` 实例）
+5. 若存在提供 dvr service 的 port，则调用 `notifier.routers_updated_on_host` 发送 RPC 消息
+6. 若不存在提供 dvr service 的 port，则调用 `notifier.router_removed_from_agent` 发送 RPC 消息
+
+### `def list_routers_on_l3_agent(self, context, agent_id)`
+
+查询数据库 `RouterL3AgentBinding` 获取与 agent_id 绑定的所有 router
+
+### `def list_router_ids_on_host(self, context, host, router_ids=None)`
+
+1. 调用 `_get_agent_by_type_and_host` 获取该 host 上的 l3 agent
+2. 调用 `_get_router_ids_for_agent` 获取该 l3 agent 绑定的 router 的 id
+
+### `def _get_router_ids_for_agent(self, context, agent, router_ids)`
+
+查询数据库 `RouterL3AgentBinding` 获取 router_ids 中与 l3 agent 绑定的 router
+
+### `def list_active_sync_routers_on_active_l3_agent(self, context, host, router_ids)`
+
+1. 调用 `_get_agent_by_type_and_host` 获取该 host 上的 l3 agent
+2. 调用 `_get_router_ids_for_agent` 获取 router_ids 中与该 l3 agent 绑定的 router
+3. 调用 `_get_active_l3_agent_routers_sync_data`
+
+### `def _get_active_l3_agent_routers_sync_data(self, context, host, agent, router_ids)`
+
+1. 若当前 Router Service 支持 ha extension，则调用 `L3_HA_NAT_db_mixin.get_ha_sync_data_for_host`
+2. 若当前 Router Service 不支持 ha extension，则调用 `L3_NAT_dbonly_mixin.get_sync_data`
+3. 调用 `L3_NAT_dbonly_mixin.filter_allocating_and_missing_routers`
+
 ### ``
-
-
-
-
-
-
-
-
 
 
 
@@ -163,12 +226,6 @@ class RouterL3AgentBinding(model_base.BASEV2):
 3. 返回未使用的最小的 `binding_indices`
 
 * `binding_indices` : 对于 ha router 来说，它会与多个 l3 agent 进行绑定，每一个绑定都会有一个 binding_index。这个 `binding_index` 的范围既是 `max_l3_agents_per_router` 或者当前可用 l3 agent 的数量
-
-### ``
-
-
-
-
 
 ## `class ChanceScheduler(L3Scheduler)`
 
