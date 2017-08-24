@@ -102,9 +102,9 @@ class L3HARouterVRIdAllocation(model_base.BASEV2)
 5. 若 agent 为 dvr 模式，则返回所有的带有 ha port 的 router 数据
 6. 返回带有 `ha` 属性或者带有 `_ha_interface` 属性的 router 数据
 
+### `def _check_router_agent_ha_binding(context, router_id, agent_id)`
 
-
-
+查询数据库 `L3HARouterAgentPortBinding` 判断该 router 是否是在 agent 上提供 ha 服务
 
 
 
