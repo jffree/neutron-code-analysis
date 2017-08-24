@@ -89,13 +89,18 @@ class L3HARouterVRIdAllocation(model_base.BASEV2)
 
 ### `def get_ha_sync_data_for_host(self, context, host, agent, router_ids=None, active=None)`
 
-1. 对于 dvr 模式的 l3 agent，调用 `L3_NAT_with_dvr_db_mixin._get_dvr_sync_data`
-2. 对于不支持 dvr 模式的 l3 agent，调用 `L3_NAT_dbonly_mixin.get_sync_data`
-3. 调用 `_process_sync_ha_data`
+1. 对于 dvr 模式的 l3 agent，调用 `L3_NAT_with_dvr_db_mixin._get_dvr_sync_data` 获取 router 的详细信息
+2. 对于不支持 dvr 模式的 l3 agent，调用 `L3_NAT_dbonly_mixin.get_sync_data` 获取 router 的详细信息
+3. 调用 `_process_sync_ha_data` 处理包含 ha port 的 router，并返回其数据
 
-### ``
+### `def _process_sync_ha_data(self, context, routers, host, agent_mode)`
 
-
+1. 调用 `get_ha_router_port_bindings` 获取某台机器 host 上 router_ids 上绑定的 ha port 
+2. 放弃那些没有 ha port 的 router
+3. 为所有带有 ha port 的 router 增加 `_ha_interface` 和 `_ha_state` 属性
+4. 调用 `ExtraRoute_dbonly_mixin._populate_mtu_and_subnets_for_ports` 为所有的 ha port 增加 subnet 数据和 mtu
+5. 若 agent 为 dvr 模式，则返回所有的带有 ha port 的 router 数据
+6. 返回带有 `ha` 属性或者带有 `_ha_interface` 属性的 router 数据
 
 
 

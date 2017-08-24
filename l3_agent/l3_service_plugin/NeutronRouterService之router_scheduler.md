@@ -89,7 +89,7 @@ class RouterL3AgentBinding(model_base.BASEV2):
 
 调用 router schedule_router driver（`LeastRoutersScheduler`） 的 `schedule` 方法实现
 
-### `def get_l3_agent_candidates(self, context, sync_router, l3_agents, ignore_admin_state=False)`
+### `def **get_l3_agent_candidates**(self, context, sync_router, l3_agents, ignore_admin_state=False)`
 
 1. 判断该 router 是否是 distributed
 2. 调用 `get_configuration_dict` 获取 l3 agent 的 configuration
@@ -174,25 +174,22 @@ class RouterL3AgentBinding(model_base.BASEV2):
 
 1. 调用 `_get_agent_by_type_and_host` 获取该 host 上的 l3 agent
 2. 调用 `_get_router_ids_for_agent` 获取 router_ids 中与该 l3 agent 绑定的 router
-3. 调用 `_get_active_l3_agent_routers_sync_data`
+3. 调用 `_get_active_l3_agent_routers_sync_data` 获取与 l3 agent 绑定的 routers 中符合要求的详细数据
 
 ### `def _get_active_l3_agent_routers_sync_data(self, context, host, agent, router_ids)`
 
-1. 若当前 Router Service 支持 ha extension，则调用 `L3_HA_NAT_db_mixin.get_ha_sync_data_for_host`
-2. 若当前 Router Service 不支持 ha extension，则调用 `L3_NAT_dbonly_mixin.get_sync_data`
-3. 调用 `L3_NAT_dbonly_mixin.filter_allocating_and_missing_routers`
+1. 若当前 Router Service 支持 ha extension，则调用 `L3_HA_NAT_db_mixin.get_ha_sync_data_for_host` 获取该 host 上支持 ha 的 router 的详细数据
+2. 若当前 Router Service 不支持 ha extension，则调用 `L3_NAT_dbonly_mixin.get_sync_data` 获取该 host 上支持 ha 的 router 的详细数据
+3. 调用 `L3_NAT_dbonly_mixin.filter_allocating_and_missing_routers` 过滤掉处于 `ALLOCATING` 状态的 router
 
-### ``
+### `def get_hosts_to_notify(self, context, router_id)`
 
+1. 调用 `get_l3_agents_hosting_routers` 找出与这些 router_ids 绑定的 l3 agent
+2. 获取这些 l3 agent 所在的 host 并返回
 
+### `def get_l3_agents_hosting_routers(self, context, router_ids, admin_state_up=None, active=None)`
 
-
-
-
-
-
-
-
+通过查询 `RouterL3AgentBinding` 数据库，找出与这些 router_ids 绑定的 l3 agent
 
 ## Scheduler Driver: `class LeastRoutersScheduler(L3Scheduler)`
 
@@ -379,7 +376,3 @@ class ChanceScheduler(L3Scheduler):
 
 1. 若 router 是 ha router，则调用 `_router_has_binding` 检查该 router 是否已经与这个 l3 agent 进行绑定，若未绑定则调用 `create_ha_port_and_bind` 创建 ha port，并将 router 与 l3 agent 进行绑定
 2. 对于非 ha router，则调用 `bind_router` 将 router 与 l3 agent 进行绑定
-
-
-
-

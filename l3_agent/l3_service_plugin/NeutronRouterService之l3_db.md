@@ -153,7 +153,7 @@ PORT: BEFORE_DELETE: _prevent_l3_port_delete_callback
 
 ### `def filter_allocating_and_missing_routers(self, context, routers)`
 
-
+通过查询数据库 `Router`，过滤掉 routers 中正处于 `ALLOCATING` 状态的 router
 
 ### `def _create_router_db(self, context, router, tenant_id)`
 
@@ -297,15 +297,6 @@ PORT: BEFORE_DELETE: _prevent_l3_port_delete_callback
 1. 更新 Router 中的数据库记录
 2. 通过 neutron callback 系统发送 ROUTER 资源 PRECOMMIT_UPDATE 的事件
 
-## `def _prevent_l3_port_delete_callback(resource, event, trigger, **kwargs)`
-
-* 回调方法，当删除 port 资源时需要检查该 port 是否在 L3 层被使用：
- 1. 检查 port 是否被分配了 floating ip
- 2. 检查 port 是否与 router 想关联
-
-1. 获取 l3plugin 实例
-2. 调用 `l3plugin.prevent_l3_port_deletion` （在 `L3_NAT_dbonly_mixin` 中实现）检查该 Port 是否可以被删除
-
 ### `def _make_router_dict_with_gw_port(self, router, fields)`
 
 将 router 的数据库记录数据转化为字典格式。
@@ -362,3 +353,51 @@ floating ip 数据库查询记录 query 可能会有重复的，该方法的功�
 ### `def _make_floatingip_dict(self, floatingip, fields=None, process_extensions=True)`
 
 构造 floating ip 的易读的数据格式
+
+### `def _populate_mtu_and_subnets_for_ports(self, context, ports)`
+
+1. 调用 `_each_port_having_fixed_ips` 获取带有 ip 地址的 port
+2. 调用 `_get_mtus_by_network_list` 获取所有 network 的 mtu 值
+3. 调用 `_get_subnets_by_network_list` 获取所有 network 的 subnet 数据
+4. 对于所有的带有 ip 地址的 port 来说，获取其所在的 subnet 的数据、MTU 值
+
+### `def _each_port_having_fixed_ips(ports)`
+
+在 ports 中筛选出所有带有 Ip 的 port
+
+### `def _get_mtus_by_network_list(self, context, network_ids)`
+
+获取所有 network 的 mtu 值
+
+### `def _get_subnets_by_network_list(self, context, network_ids)`
+
+获取所有 network 的 subnet 数据（带有 `address_scope_id` 属性）
+
+### `def _process_interfaces(self, routers_dict, interfaces)`
+
+为 router 增加 `_interfaces` 属性
+
+### `def get_sync_data(self, context, router_ids=None, active=None)`
+
+1. 调用 `_get_router_info_list` 获取与 router_ids 所代表的 router 有关的详细数据（包含 port 和 floating ip）
+2. 调用 `_populate_mtu_and_subnets_for_ports` 获取这些 router 上 port 的 subnet 数据和 mtu 值
+3. 调用 `_process_floating_ips` 为 router 数据增加 `_floatingips` 属性
+4. 调用 `_process_interfaces` 为 router 数据增加 `_interfaces` 属性
+
+### `def _process_floating_ips(self, context, routers_dict, floating_ips)`
+
+为 router 数据增加 `_floatingips` 属性
+
+### `def _process_interfaces(self, routers_dict, interfaces)`
+
+为 router 数据增加 `_interfaces` 属性
+
+
+## `def _prevent_l3_port_delete_callback(resource, event, trigger, **kwargs)`
+
+* 回调方法，当删除 port 资源时需要检查该 port 是否在 L3 层被使用：
+ 1. 检查 port 是否被分配了 floating ip
+ 2. 检查 port 是否与 router 想关联
+
+1. 获取 l3plugin 实例
+2. 调用 `l3plugin.prevent_l3_port_deletion` （在 `L3_NAT_dbonly_mixin` 中实现）检查该 Port 是否可以被删除

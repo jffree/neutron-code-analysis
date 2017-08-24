@@ -31,11 +31,12 @@
   1. 调用 `_get_dvr_service_port_hostid` 获取提供 dvr 服务的 port 的 host_id 属性
   2. 调用 `_get_dvr_migrating_service_port_hostid` 获取提供 dvr 服务的 port 准备迁移到的 host 的 id
  4. 调用 `_process_routers` 为 router 数据填充 `_snat_router_interfaces` 属性
- 5. 调用 `_process_floating_ips_dvr`
+ 5. 调用 `_process_floating_ips_dvr` 为 router 数据填充 `_floatingips` 和 `_floatingip_agent_interfaces` 属性
+4. 调用 `ExtraRoute_dbonly_mixin._populate_mtu_and_subnets_for_ports` 获取 port 的 subnet 数据和 mtu
+5. 调用 `ExtraRoute_dbonly_mixin._process_interfaces` 为 router 增加 `_interfaces` 属性
+6. 返回 router 的所有数据
 
-
-
-
+*我觉得这个过程肯定是慢慢丰富起来的，根据 l3 agent 的需求*
 
 
 ### `def _build_routers_list(self, context, routers, gw_ports)`
@@ -62,13 +63,16 @@
 
 ### `def _process_floating_ips_dvr(self, context, routers_dict, floating_ips, host, agent)`
 
+1. 为 router 添加 `_floatingips` 属性。
+ 1. 若该 router 为 distributed，则需要判断 floating ip 的 host 属性是否与 `host` 一致
+2. 为 router 添加 `_floatingip_agent_interfaces` 属性。
+ 1. 调用 `_get_fip_sync_interfaces` 获取属于 agent 的 `floatingip_agent_gateway` 的 Port
 
+### `def _get_fip_sync_interfaces(self, context, fip_agent_id)`
 
+获取属于 agent 的 `floatingip_agent_gateway` 的 Port
 
-
-
-
-
+### ``
 
 
 
