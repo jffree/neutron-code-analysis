@@ -174,9 +174,11 @@ class RouterL3AgentBinding(model_base.BASEV2):
 
 1. 调用 `_get_agent_by_type_and_host` 获取该 host 上的 l3 agent
 2. 调用 `_get_router_ids_for_agent` 获取 router_ids 中与该 l3 agent 绑定的 router
-3. 调用 `_get_active_l3_agent_routers_sync_data` 获取与 l3 agent 绑定的 routers 中符合要求的详细数据
+3. 调用 `L3_DVRsch_db_mixin._get_active_l3_agent_routers_sync_data` 获取与 l3 agent 绑定的 routers 中符合要求的详细数据
 
 ### `def _get_active_l3_agent_routers_sync_data(self, context, host, agent, router_ids)`
+
+*该方法在 `L3_DVRsch_db_mixin` 类中被重写，增加了 dvr 服务的处理。*
 
 1. 若当前 Router Service 支持 ha extension，则调用 `L3_HA_NAT_db_mixin.get_ha_sync_data_for_host` 获取该 host 上支持 ha 的 router 的详细数据
 2. 若当前 Router Service 不支持 ha extension，则调用 `L3_NAT_dbonly_mixin.get_sync_data` 获取该 host 上支持 ha 的 router 的详细数据
