@@ -95,7 +95,7 @@ class L3HARouterVRIdAllocation(model_base.BASEV2)
 
 ### `def _process_sync_ha_data(self, context, routers, host, agent_mode)`
 
-1. 调用 `get_ha_router_port_bindings` 获取某台机器 host 上 router_ids 上绑定的 ha port 
+1. 调用 `get_ha_router_port_bindings` 获取某台机器 host 上 ha router 的绑定记录
 2. 放弃那些没有 ha port 的 router
 3. 为所有带有 ha port 的 router 增加 `_ha_interface` 和 `_ha_state` 属性
 4. 调用 `ExtraRoute_dbonly_mixin._populate_mtu_and_subnets_for_ports` 为所有的 ha port 增加 subnet 数据和 mtu
@@ -106,12 +106,33 @@ class L3HARouterVRIdAllocation(model_base.BASEV2)
 
 查询数据库 `L3HARouterAgentPortBinding` 判断该 router 是否是在 agent 上提供 ha 服务
 
+### `def get_l3_bindings_hosting_router_with_ha_states(self, context, router_id)`
+
+1. 调用 `_get_bindings_and_update_router_state_for_dead_agents` 获取 router 的绑定数据
+2. 返回绑定数据中存在 l3 agent 的绑定记录
+
+### `def _get_bindings_and_update_router_state_for_dead_agents(self, context, router_id)`
+
+1. 调用 `get_ha_router_port_bindings` 获取 ha router 的绑定记录
+2. 过滤出绑定状态为 active 的绑定
+3. 对于处于 active 状态的绑定来说，需要查看其绑定的 l3 agent 是否处于激活状态。若是有的 l3 agent 处于未激活状态，则调用 `update_routers_states` 则更新 router 及 port 的数据
+4. 若存在不活动的 l3 agent，则调用 `get_ha_router_port_bindings` 重新获取绑定数据后返回
+5. 若不存在不活动的 l3 agent，则直接返回最初获取的绑定数据
 
 
+### `def update_routers_states(self, context, states, host)`
 
+1. 调用 `get_ha_router_port_bindings` 获取 ha router 的绑定记录
+2. 调用 `_set_router_states` 更新这些 router 绑定记录的状态为 state
+3. 调用 `_update_router_port_bindings` 更新 port 数据
 
+### `def _set_router_states(cls, context, bindings, states)`
 
+更新数据库 `L3HARouterAgentPortBinding` 中 bindings 记录中的状态信息为 states
 
+### `def _update_router_port_bindings(self, context, states, host)`
+
+1. 调用 `core_plugin.get_ports` 获取符合条件的 port 并更新其数据
 
 
 
