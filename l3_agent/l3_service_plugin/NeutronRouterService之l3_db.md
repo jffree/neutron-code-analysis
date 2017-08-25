@@ -392,6 +392,100 @@ floating ip 数据库查询记录 query 可能会有重复的，该方法的功�
 
 为 router 数据增加 `_interfaces` 属性
 
+### `def _create_floatingip(self, context, floatingip, initial_status=lib_constants.FLOATINGIP_STATUS_ACTIVE)`
+
+1. floating ip 所属的 network 必须是 external network
+2. floating ip 必须是一个 ipv4 地址
+3. 调用 `core_plugin.create_port` 创建一个与该 floating ip 绑定的 port
+4. 调用 `_port_ipv4_fixed_ips` 判断该 port 的 fixed ip（也就是 floating ip） 是否为 ipv4 版本，若不是则引发异常
+5. 创建一个 `FloatingIP` 的数据库记录
+6. 调用 `_update_fip_assoc` 更新 floating ip 数据库的关于绑定 port 以及 router 的信息
+7. 调用 `_is_dns_integration_supported` 判断 core plugin 是否支持 `dns-integration` extension，则调用 `_process_dns_floatingip_create_precommit`
+8. 调用 `_is_dns_integration_supported` 判断 core plugin 是否支持 `dns-integration` extension，则调用 `_process_dns_floatingip_create_postcommit`
+9. 调用 `_apply_dict_extend_functions`
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### `def _port_ipv4_fixed_ips(self, port)`
+
+判断该 port 的 fixed_ip 属性是否为 ipv4 版本
+
+### `def _update_fip_assoc(self, context, fip, floatingip_db, external_port)`
+
+1. 调用 `_check_and_get_fip_assoc` 判断该 floating ip 是否已经分配，若为分配则会获取`fip['port_id'], internal_ip_address, router_id` 属性
+2. 更新该 floating ip 的数据库记录
+3. 若是获取了该 floating ip 绑定的 router，则发送 `FLOATING_IP` 资源更新完毕的通知
+
+### `def _check_and_get_fip_assoc(self, context, fip, floatingip_db)`
+
+1. 若 fip 数据中包含 `fixed_ip_address` 属性，则必须要包含 `port_id` 属性
+2. 如 fip 数据包含 `port_id` 属性，则：
+ 1. 调用 `_get_assoc_data` 获取该 floating ip 的 `fip['port_id'], internal_ip_address, router_id` 属性
+ 2. 若上一步获取的 port id 与 floating ip 数据库中的 `fixed_port_id` 一致，则直接返回
+ 3. 若不一致，则通过查询数据库 `FloatingIP` 判断该 floating ip 是否已经被分配，若被分配则引发异常
+
+### `def _get_assoc_data(self, context, fip, floatingip_db)`
+
+1. 调用 `_internal_fip_assoc_data` 获取将要与 floating ip 绑定的 Port 的信息
+2. 调用 `_get_router_for_floatingip` 获取该 floating ip 所属的 router
+3. 返回该 floating ip 的一些信息：`fip['port_id'], internal_ip_address, router_id`
+
+### `def _internal_fip_assoc_data(self, context, fip, tenant_id)`
+
+1. 调用 `core_plugin.get_port` 获取 floating ip 将要绑定的 port 的数据
+2. 判断 port 所属的租户是否是 tenant_id 
+3. 若 fip 中包含有 `fixed_ip_address` 属性，则：
+ 1. floating ip 要求 `fixed_ip_address` 必须为 ipv4 版本
+ 2. internal port 必须已经与 `fixed_ip_address` 绑定
+4. 若 fip 中未包含 `fixed_ip_address` 属性，则：
+ 1. 调用 `_port_ipv4_fixed_ips` 获取该 internal port 中 ipv4 的地址
+ 2. 若还 port 上的 ipv4 地址有多个，则引发异常（floating ip 只能与一个 ipv4 地址对应）
+5. 返回与 floating ip 绑定的 Port 的信息（`internal_port, internal_subnet_id, internal_ip_address`）
+
+### `def _get_router_for_floatingip(self, context, internal_port, internal_subnet_id, external_network_id)`
+
+1. 调用 `core_plugin.get_subnet` 获取与 floating ip 对应的 internal_subnet_id（floatip ip 所绑定 port 所在的 subnet 的 id） 的 subnet 数据
+2. 若该 subnet 不存在 gateway 则引发异常
+3. 调用 `get_router_for_floatingip` 获取该 floating ip 所属的 router
+
+### `def get_router_for_floatingip(self, context, internal_port, internal_subnet, external_network_id)`
+
+* 通过查询 `RouterPort`、`IPAllocation`、`Port`:
+ 1. 若找到 internal_subnet gateway_ip 所在的 router，则返回该 router 的 id
+ 2. 若找不到，则返回第一个找到的 router
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## `def _prevent_l3_port_delete_callback(resource, event, trigger, **kwargs)`
 
