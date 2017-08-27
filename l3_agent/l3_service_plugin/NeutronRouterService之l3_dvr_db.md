@@ -234,11 +234,35 @@
 
 ### `def create_floatingip(self, context, floatingip, initial_status=const.FLOATINGIP_STATUS_ACTIVE)`
 
-1. 调用 `L3_NAT_dbonly_mixin._create_floatingip`
+1. 调用 `L3_NAT_dbonly_mixin._create_floatingip` 创建 floating ip
+2. 调用 `_notify_floating_ip_change` 发送 floating ip 更新引起的 router 更新的消息
 
+### `def _notify_floating_ip_change(self, context, floating_ip)`
 
+1. 获取 floating ip 绑定的 router 和 port
+2. 调用 `_get_router` 获取 router 数据
+3. 若 router 是 distributed router，则:
+ 1. 调用 `_get_dvr_service_port_hostid` 获取 port 所在的 host
+ 2. 调用 `_get_dvr_migrating_service_port_hostid` 获取提供 dvr 服务的 port 准备迁移到的 host 的 id
+ 3. 调用 `l3_rpc_notifier.routers_updated_on_host` 发送到原  host 上，router 的更新消息
+ 4. 若 port 确实准备迁移，则调用 `l3_rpc_notifier.routers_updated_on_host` 通知新的 host 上有 router 更新的消息
+4. 若 router 不是 distributed router，则调用 `L3RpcNotifierMixin.notify_router_updated` 发送 router 更新的消息
 
+### `def update_floatingip(self, context, id, floatingip)`
 
+1. 调用 `_update_floatingip` 完成 floating ip 的更新
+2. 调用 `_notify_floating_ip_change` 发送 floating ip 更新引起的 router 更新的 RPC 消息
+3. 若 floating ip 绑定的 router 或者 port 发生了变化，也会调用 `_notify_floating_ip_change` 发送 floating ip 更新的 RPC 消息
 
+### `def delete_floatingip(self, context, id)`
 
+1. 调用 `_delete_floatingip` 完成 floating ip 的删除工作
+2. 调用 `_notify_floating_ip_change` 发送 floating ip 删除引起的 RPC 更新的消息
 
+### `def _update_fip_assoc(self, context, fip, floatingip_db, external_port)`
+
+1. 调用 `L3_NAT_dbonly_mixin._update_fip_assoc` 完成 floating ip 的业务处理
+2. 获取 floating ip 绑定的 router
+3. 若 router 为 distributed，则调用 `_get_dvr_service_port_hostid` 检查该 port 是否用来提供 dvr 服务的，则返回该 port 的 host_id 属性
+4. 若该 port 是用来提供 dvr 服务的，则调用 `create_fip_agent_gw_port_if_not_exists` 保证 agent gateway port 的存在
+5. 若该 port 不是用来提供 dvr 服务的，
