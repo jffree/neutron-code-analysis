@@ -25,11 +25,11 @@ class FloatingIP(standard_attr.HasStandardAttributes, model_base.BASEV2,
                  model_base.HasId, model_base.HasProject)
 ```
 
-## `class ExtraRoute_dbonly_mixin(l3_db.L3_NAT_dbonly_mixin)`
+## `class L3_NAT_db_mixin(L3_NAT_dbonly_mixin, L3RpcNotifierMixin)`
 
 
-在 `L3_NAT_dbonly_mixin` 基础上的封装，`L3_NAT_dbonly_mixin` 是负责具体逻辑业务的处理。
-在 `L3_NAT_dbonly_mixin` 处理完距离的逻辑业务后，`ExtraRoute_dbonly_mixin` 来发送 RPC 消息
+在 `L3_NAT_dbonly_mixin` 基础上的封装，`L3_NAT_db_mixin` 是负责具体逻辑业务的处理。
+在 `L3_NAT_dbonly_mixin` 处理完距离的逻辑业务后，`L3_NAT_db_mixin` 来发送 RPC 消息
 
 ### `def create_router(self, context, router)`
 
@@ -145,7 +145,7 @@ PORT: BEFORE_DELETE: _prevent_l3_port_delete_callback
 
 ### `def _is_dns_integration_supported(self)`
 
-
+判断是否支持 dns extension
 
 ### `def _make_router_dict(self, router, fields=None, process_extensions=True)`
 
@@ -402,24 +402,7 @@ floating ip 数据库查询记录 query 可能会有重复的，该方法的功�
 6. 调用 `_update_fip_assoc` 更新 floating ip 数据库的关于绑定 port 以及 router 的信息
 7. 调用 `_is_dns_integration_supported` 判断 core plugin 是否支持 `dns-integration` extension，则调用 `_process_dns_floatingip_create_precommit`
 8. 调用 `_is_dns_integration_supported` 判断 core plugin 是否支持 `dns-integration` extension，则调用 `_process_dns_floatingip_create_postcommit`
-9. 调用 `_apply_dict_extend_functions`
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+9. 调用 `_apply_dict_extend_functions` 处理 floating ip 的数据
 
 ### `def _port_ipv4_fixed_ips(self, port)`
 
@@ -469,23 +452,76 @@ floating ip 数据库查询记录 query 可能会有重复的，该方法的功�
  1. 若找到 internal_subnet gateway_ip 所在的 router，则返回该 router 的 id
  2. 若找不到，则返回第一个找到的 router
 
+### `def update_floatingip(self, context, id, floatingip)`
 
+```
+    @db_api.retry_if_session_inactive()
+    def update_floatingip(self, context, id, floatingip):
+        _old_floatingip, floatingip = self._update_floatingip(
+            context, id, floatingip)
+        return floatingip
+```
 
+### `def _update_floatingip(self, context, id, floatingip)`
 
+1. 调用 `_get_floatingip` 获取原 floating ip 的数据
+2. 调用 `_make_floatingip_dict` 将原 floating ip 数据转化为易读的字典格式
+3. 调用 `core_plugin.get_port` 获取原 floating ip 绑定的 port 
+4. 调用 `_update_fip_assoc` 更新 floating ip 数据库的关于绑定 port 以及 router 的信息
+5. 调用 `_make_floatingip_dict` 获取更新过后的 floating ip 数据
+6. 调用 `_is_dns_integration_supported` 判断 core plugin 是否支持 `dns-integration` extension，则调用 `_process_dns_floatingip_create_precommit`
+7. 调用 `_is_dns_integration_supported` 判断 core plugin 是否支持 `dns-integration` extension，则调用 `_process_dns_floatingip_create_postcommit`
+8. 调用 `_apply_dict_extend_functions` 处理 floating ip 的数据
 
+### `def _floatingips_to_router_ids(self, floatingips)` 
 
+获取 floating ip 所绑定的 router
 
+### `def update_floatingip_status(self, context, floatingip_id, status)`
 
+更新 floating ip 的 status 属性
 
+### `def delete_floatingip(self, context, id)`
 
+```
+    @db_api.retry_if_session_inactive()
+    def delete_floatingip(self, context, id):
+        self._delete_floatingip(context, id)
+```
 
+### `def _delete_floatingip(self, context, id)`
 
+*从逻辑上可以看出，删除 floating ip 只是删除了与之绑定的 port，并未删除 floating ip 的数据库记录*
 
+1. 调用 `_get_floatingip` 获取 floating ip 的数据库记录
+2. 调用 `_make_floatingip_dict` 获取 floating ip 的属性
+3. 若支持 dns extension，则调用 `_process_dns_floatingip_delete`
+4. 调用 `core_plugin.delete_port` 输出与 floating ip 绑定的 port
+5. 返回 floating ip 的属性
 
+### `def get_floatingip(self, context, id, fields=None)`
 
+获取 floating ip 的数据库记录
 
+### `def get_floatingips(self, context, filters=None, fields=None, sorts=None, limit=None, marker=None, page_reverse=False)`
 
+获取多个 floating ip 的数据库记录
 
+### `def delete_disassociated_floatingips(self, context, network_id)`
+
+删除与某个 external network 上分配的所有 floating ip 记录
+
+### `def get_floatingips_count(self, context, filters=None)`
+
+找出满足过滤条件的 floating ip 的数量
+
+### `def _router_exists(self, context, router_id)`
+
+查询 router 是否存在
+
+### `def _floating_ip_exists(self, context, floating_ip_id)`
+
+查询 floating ip 是否存在
 
 ## `def _prevent_l3_port_delete_callback(resource, event, trigger, **kwargs)`
 
@@ -495,3 +531,15 @@ floating ip 数据库查询记录 query 可能会有重复的，该方法的功�
 
 1. 获取 l3plugin 实例
 2. 调用 `l3plugin.prevent_l3_port_deletion` （在 `L3_NAT_dbonly_mixin` 中实现）检查该 Port 是否可以被删除
+
+## `def _notify_routers_callback(resource, event, trigger, **kwargs)`
+
+通知 l3 agent 有某些 router 更新
+
+## `def _notify_subnet_gateway_ip_update(resource, event, trigger, **kwargs)`
+
+通知 l3 agent 某个 router 的 gateway 发生了变化
+
+## `def _notify_subnetpool_address_scope_update(resource, event, trigger, **kwargs)`
+
+由 subnetpool address scope 的改变引起的通知 l3 agent 上 router 的更新
