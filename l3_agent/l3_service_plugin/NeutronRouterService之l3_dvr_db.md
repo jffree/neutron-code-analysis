@@ -261,8 +261,87 @@
 
 ### `def _update_fip_assoc(self, context, fip, floatingip_db, external_port)`
 
-1. 调用 `L3_NAT_dbonly_mixin._update_fip_assoc` 完成 floating ip 的业务处理
-2. 获取 floating ip 绑定的 router
-3. 若 router 为 distributed，则调用 `_get_dvr_service_port_hostid` 检查该 port 是否用来提供 dvr 服务的，则返回该 port 的 host_id 属性
-4. 若该 port 是用来提供 dvr 服务的，则调用 `create_fip_agent_gw_port_if_not_exists` 保证 agent gateway port 的存在
-5. 若该 port 不是用来提供 dvr 服务的，
+1. 调用 `L3_NAT_dbonly_mixin._update_fip_assoc` 完成 floating ip 数据的更新
+2. 若 floating ip 绑定了一个 internal port，则进行下面的操作：
+3. 获取该 floating ip 的 router，若 router 为 distributed，则调用 `_get_dvr_service_port_hostid` 检查该 port 是否需要 dvr 服务，若需要则返回该 port 绑定的 host
+4. 若该 port 与某个 host 绑定，则调用 `create_fip_agent_gw_port_if_not_exists` 保证 agent gateway port 的存在
+5. 若该 port 没有与某个 host 绑定，则：
+ 1. 调用 `core_plugin.get_port` 获取 port 数据
+ 2. 调用 `get_dvr_allowed_address_pair_device_owners` 获取在 dvr 模式下，`allowed_address_pair` port 的 device_owner
+ 3. 若 port 的 device_owner 为空，或者该 port 绑定有 `allowed_address_pair` 属性，则：
+  1. 调用 `_get_ports_for_allowed_address_pair_ip` 获取该 network 上将此 ip 设置为 `allowed_address_pair` 的 Port
+  2. 若有多个 port 的 `allowed_address_pair` 为该 floating ip 绑定的 ip，则不作处理
+  3. 若只有一个 port 的 `allowed_address_pair` 为该 floating ip 绑定的 ip ，则调用 `_inherit_service_port_and_arp_update` 更新 service port 数据，并发送 RPC 通知
+
+### `def _inherit_service_port_and_arp_update(self, context, service_port, allowed_address_port)`
+
+1. 调用 `update_unbound_allowed_address_pair_port_binding` 更新拥有 `allowed_address_pair` 原 port（我们成为 service port） 的数据（host 和 device owner）
+2. 调用 `update_arp_entry_for_dvr_service_port` 发送 service port 有关的 RPC 消息
+
+### `def add_router_interface(self, context, router_id, interface_info)`
+
+1. 调用 `_validate_interface_info` 验证 interface 的数据是否合法
+2. 调用 `_get_router` 获取路由信息
+3. 调用 `_get_device_owner` 获取路由的 device owner
+4. 若是通过声明 port_id 来为 route 绑定 port，则:
+ 1. 调用 `_check_router_port` 检查 interface 数据，并发送 interface 将要创建的通知
+ 2. 调用 `_add_interface_by_port` 完成 port 和 router 的绑定
+5. 若是通过声明 subnet id 来直接为 router 添加 interface，则： 
+ 1. 调用 `_add_interface_by_subnet` 完成 port 的创建
+6. 若 router 为 distributed 其 router 有 gateway port，则调用 `_add_csnat_router_interface_port` 在 router 上为该 port 所在的 subnet 创建一个提供 snat 服务的 port
+7. 若是创建一个新 port，则：
+ 1. 创建一个 `RouterPort` 的数据库记录
+ 2. 调用 `core_plugin.update_port` 更新 port 数据，将 router 与 port 绑定
+8. 若是 subnet 是 ipv6，则：
+ 1. 调用 `_find_v6_router_port_by_network_and_device_owner` 找到该 router 上是否含有该 subnet 的 ipv6 地址的额port
+ 2. 更新 port 数据，将 port 与 router 绑定
+9. 调用 `_make_router_interface_info` 获取 router interface 数据
+10. 调用 `notify_router_interface_action` 发送 router 更新的 RPC 消息以及通知消息
+11. 调用 `registry.notify` 发送 router interface after create 的通知
+12. 返回 router interface 的数据
+
+### `def _port_has_ipv6_address(self, port, csnat_port_check=True)`
+
+若 `csnat_port_check` 为 True 且 该 port 为 snat port，则直接返回 false。
+若不是则调用 `L3_NAT_dbonly_mixin._port_has_ipv6_address` 判断 port 是否含有 ipv6 地址
+
+### `def _find_v6_router_port_by_network_and_device_owner(self, router, net_id, device_owner)`
+
+找到该 router 上是否含有该 subnet 的 ipv6 地址的额port
+
+### `def remove_router_interface(self, context, router_id, interface_info)`
+
+1. 调用 `_get_router` 获取 router 数据
+2. 若该 router 不是 distributed router，则调用 `L3_NAT_dbonly_mixin.remove_router_interface` 完成 router interface 的创建
+3. 若该 router 是一个 distribiuted router，则：
+ 1. 调用 `NeutronManager.get_service_plugins` 获取 router plugin 实例
+ 2. 调用 `plugin._get_dvr_hosts_for_router` 获取删除该 router interface 前与该 router 绑定的 dvr host
+ 3. 调用 `L3_NAT_dbonly_mixin.remove_router_interface` 删除该 router interface 
+ 4. 调用 `plugin._get_dvr_hosts_for_router` 获取删除该 router interface 后与该 router 绑定的 dvr host
+ 5. 若是在删除 router interface 时，在某个 host 上移除了该 dvr router，则：
+  1. 获取这些 host 上的 l3 agent
+  2. 通过数据库 `RouterL3AgentBinding` 查询该 router 的绑定记录
+  3. 若该 l3 agent 不是用来提供 snat 服务的，则调用 `l3_rpc_notifier.router_removed_from_agent` 发送 RPC 消息
+ 6. 调用 `_check_for_multiprefix_csnat_port_and_update` 检查该 router 的 snat port 是否含有该 subnet 的地址
+ 7. 若 snat port 中含有 subnet 的地址，则调用 `delete_csnat_router_interface_ports` 删除不用的 snat port
+ 8. 返回被删除 router interface 的信息
+ 
+### `def _check_for_multiprefix_csnat_port_and_update(self, context, router, network_id, subnet_id)`
+
+* 若 router 包含 gateway port，则：
+ 1. 调用 `_find_v6_router_port_by_network_and_device_owner` 查询该 router 上是否含有该 network 的 ipv6 地址的额port
+ 2. 若含有包含有 ipv6 地址的 port：
+  1. 若该 port 不包含该 subnet 的 ip 地址，则不作任何处理
+  2. 若不是，则调用 `core_plugin.update_port` 则在该 port 的 ip 地址中删除 subnet 下的地址
+若 snat port 包含有 subnet 的 ip 地址，则返回 True
+
+### `def delete_csnat_router_interface_ports(self, context, router, subnet_id=None)`
+
+1. 获取该 router 上 snat port
+2. 调用 `core_plugin.get_ports` 获取 port 的数据
+3. 若 snat port 不再含有 ip 地址，则调用 `core_plugin.delete_port` 删除该 snat port
+4. 删除与 subnet 绑定的 snat port
+
+### `def _get_subnet_id_for_given_fixed_ip(self, context, fixed_ip, port_dict)`
+
+根据 port 上的 fixed ip，获取该 ip 所在的 subnet

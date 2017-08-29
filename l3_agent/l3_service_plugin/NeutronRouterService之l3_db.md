@@ -523,6 +523,82 @@ floating ip 数据库查询记录 query 可能会有重复的，该方法的功�
 
 查询 floating ip 是否存在
 
+### `def _validate_interface_info(self, interface_info, for_removal=False)`
+
+interface info 中必须包含要绑定 port 的 id 或者该 Port 所在的 subnet id
+
+### `def add_router_interface(self, context, router_id, interface_info)`
+
+1. 获取 router 数据
+2. 调用 `_validate_interface_info` 验证 interface 数据是否合法
+3. 调用 `_get_device_owner` 获取 router 的 device_owner
+4. 若是通过声明 port id 来直接为 router 添加 interface，则：
+ 1. 调用 `_check_router_port` 检查 interface 数据，并发送 interface 将要创建的通知
+ 2. 调用 `_add_interface_by_port` 完成 port 和 router 的绑定
+5. 若是通过声明 subnet id 来直接为 router 添加 interface，则： 
+ 1. 调用 `_add_interface_by_subnet` 完成 port 的创建
+6. 创建 `RouterPort` 的数据库记录
+7. 调用 `core_plugin.update_port` 将 port 与 router 完成绑定
+8. 调用 `registry.notify` 发送 router interface after create 的通知
+9. 调用 `_make_router_interface_info` 返回 interface 的数据 
+
+### `def _check_router_port(self, context, port_id, device_id, router_id=None)`
+
+1. 调用 `core_plugin.get_port` 获取 port 数据
+2. Port 必须要有 fixed ip
+3. 调用 `_notify_attaching_interface` 发送 router interface before create 的通知
+
+### `def _notify_attaching_interface(self, context, router_id, network_id)`
+
+通过 neutron callback system 发送 `ROUTER_INTERFACE` `BEFORE_CREATE` 的通知
+
+### `def _add_interface_by_port(self, context, router, port_id, owner)`
+
+更新 port 的 `device_id` 和 `device_owner` 属性，来将 port 与 router 进行绑定
+
+### `def _add_interface_by_subnet(self, context, router, subnet_id, owner)`
+
+1. 调用 `core_plugin.get_subnet` 获取 subnet 数据
+2. 调用 `_notify_attaching_interface` 发送 router interface before create 的通知
+3. 调用 `_check_for_dup_router_subnets` 判断请求的 subnet 是否与当前 router 上的 subnet 有冲突
+
+### `def _check_for_dup_router_subnets(self, context, router, network_id, new_subnets)`
+
+1. 判断该 router 是是否已经有该 subnet 的 Interface 
+2. 调用 `core_plugin.get_subnets` 获取这些待绑定到 router 的 subnet 的数据
+3. 查看是否 router 上绑定的 subnet 的地址范围以及覆盖了心情求的 subnet 的地址范围，或者被新请求的地址范围覆盖。若是发生覆盖则引发异常
+4. 若 subnet 是 ipv6 版本的，则调用 `_find_ipv6_router_port_by_network` 实现 port 的创建
+5. 若 subnet 是 ipv4 版本的，则调用 `core_plugin.create_port` 实现 port 的创建
+
+### `def remove_router_interface(self, context, router_id, interface_info)`
+
+1. 调用 `_validate_interface_info` 验证 interface 的数据是否合法
+2. 调用 `_get_device_owner` 获取 router 的 device owner
+3. 若是声明了需要移除的 port，则调用 `_remove_interface_by_port` 删除该 Port
+4. 若是只声明了 subnet，则调用 `_remove_interface_by_subnet` 删除该 router 上与 subnet 绑定的 port
+5. 调用 `registry.notify` 发送 router interface after delete 的通知
+6. 调用 `_make_router_interface_info` 返回删除的 port 的数据
+
+### `def _remove_interface_by_port(self, context, router_id, port_id, subnet_id, owner)`
+
+1. 查询数据库 `RouterPort` 获得带有 port_id 的 router interface 的记录
+2. 调用 `core_plugin.get_subnet` 获取该 port 所在的 subnet
+3. 调用 `_confirm_router_interface_not_in_use` 查询改 port 是否还被别的资源依赖
+4. 若无依赖，则调用 `core_plugin.delete_port` 删除该 port
+
+### `def _confirm_router_interface_not_in_use(self, context, router_id, subnet_id)`
+
+1. 调用 `core_plugin.get_subnet` 获取 subnet 的数据
+2. 调用 `registry.notify` 发送 router interface before delete 的通知
+3. 通过查询数据库 `FloatingIP` 确定是否还有 floating 在使用该 router interface 
+
+### `def _remove_interface_by_subnet(self, context, router_id, subnet_id, owner)`
+
+1. 调用 `core_plugin.get_subnet` 获取 subnet 数据
+2. 通过查询 `Port` 和 `RouterPort` 获取到该 router 上与 subnet 有关的 port
+3. 若 port 上带有多个 ip，即与多个 subnet 绑定，则调用 `core_plugin.update_port` 去掉该 subnet 的 ip 地址
+4. 若 port 只与该 subnet 绑定，则调用 `core_plugin.delete_port` 删除该 port
+
 ## `def _prevent_l3_port_delete_callback(resource, event, trigger, **kwargs)`
 
 * 回调方法，当删除 port 资源时需要检查该 port 是否在 L3 层被使用：
