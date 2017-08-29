@@ -141,3 +141,16 @@ class L3HARouterVRIdAllocation(model_base.BASEV2)
 
 
 
+
+
+
+## `def is_ha_router(router)`
+
+判断一个 router 是否提供 ha 服务
+
+## `def is_ha_router_port(device_owner, router_id)`
+
+通过 port 的 device_owner 和 router 的 id，判断该 port 是否是 ha port
+
+
+
