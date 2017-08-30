@@ -58,5 +58,5 @@ class BatchNotifier(object):
         self.callback(batched_events)
 ```
 
-架构上很简单，向 `pending_events` 然后调用回调函数 callback 去处理这些事件
+架构上很简单，向 `pending_events` 注册事件，然后调用回调函数 callback 去处理这些事件
 

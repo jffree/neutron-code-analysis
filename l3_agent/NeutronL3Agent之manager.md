@@ -52,7 +52,7 @@ RPC Client 为：`L3AgentNotifyAPI`
 
 ```
     def agent_updated(self, context, payload):
-        """Handle the agent_updated notification event."""
+         """Handle the agent_updated notification event."""
         self.fullsync = True
         LOG.info(_LI("agent_updated by server side %s!"), payload)
 ```
@@ -60,6 +60,8 @@ RPC Client 为：`L3AgentNotifyAPI`
 这是一个 RPC Server endpoint 方法。
 
 当有 agent update 发生时，将 fullsyn 置为 True
+
+在 neutron-server 端，收到将 l3 agent 的 `admin_state_up` 属性改变的操作时，会触发该 RPC 调用。
 
 ## `class L3NATAgent(ha.AgentMixin, dvr.AgentMixin, manager.Manager)`
 
@@ -154,17 +156,19 @@ RPC Client 为：`L3AgentNotifyAPI`
 12. 判断是否使用 ipv6
 13. 构造 `PrefixDelegation` 实例
 
+### `def _check_config_params(self)`
 
-
+1. 检查 `interface_driver` 是否配置
+2. 若是设置了 `ipv6_gateway`，则检查：*Check for valid v6 link-local address.*
 
 ### `def init_extension_manager(self, connection)`
 
-*我们在 l3 agent 中未使用任何的 extension，所以这里我们也不对其做分析了*
+*l3 agent 目前还没有任何的 extension 可用，所以这里我们只是简单看一下逻辑*
 
 1. 注册配置选项
 2. 实例化 `L3AgentExtensionAPI`
 3. 实例化 `L3AgentExtensionsManager`
-4. 调用 `L3AgentExtensionsManager.initialize` 方法（这里的 agent_mode 我们改成了 `dvr_snat`）
+4. 调用 `L3AgentExtensionsManager.initialize` 方法用来初始化 extensions。
 
 ### `def _process_routers_loop(self)`
 
