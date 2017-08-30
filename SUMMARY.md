@@ -185,4 +185,7 @@
 * [NeutronRouterService之Router\_availability\_zoneExtension](l3_agent/l3_service_plugin/NeutronRouterService之Router_availability_zoneExtension.md)
 * [NeutronRouterService之router\_scheduler](l3_agent/l3_service_plugin/NeutronRouterService之router_scheduler.md)
 * [NeutronRouterService之ServicePluginBase](l3_agent/l3_service_plugin/NeutronRouterService之ServicePluginBase.md)
+* [NeutronRouterServic之L3\_HA\_scheduler\_db\_mixin](l3_agent/l3_service_plugin/NeutronRouterServic之L3_HA_scheduler_db_mixin.md)
+* [NeutronServicePlugin之ProviderConfiguration](l3_agent/l3_service_plugin/NeutronServicePlugin之ProviderConfiguration.md)
+* [NeutronServicePlugin之RouterService](l3_agent/l3_service_plugin/NeutronServicePlugin之RouterService.md)
 
