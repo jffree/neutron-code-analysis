@@ -34,11 +34,3 @@ def subscribe():
 ## `def _notify_l3_agent_ha_port_update(resource, event, trigger, **kwargs)`
 
 若 port 为 ha 类型，且 port 的状态变为 active，则调用 `l3_rpc_notifier.routers_updated_on_host` 更新其 host 上的路由信息
-
-
-
-
-
-
-
-
