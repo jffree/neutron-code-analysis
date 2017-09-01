@@ -151,7 +151,7 @@ RPC Client 为：`L3AgentNotifyAPI`
 7. 调用 `init_extension_manager` 初始化 extension
 8. 若是允许使用 metadata proxy，则会加载 `metadata_driver.MetadataDriver` 实例
 9. 初始化 `NamespaceManager` 实例
-10. 初始化 `RouterProcessingQueue` 实例
+10. 初始化 `RouterProcessingQueue` 实例，用来记录 router 的更新操作
 11. 调用父类的初始化方法
 12. 判断是否使用 ipv6
 13. 构造 `PrefixDelegation` 实例
@@ -193,75 +193,6 @@ RPC Client 为：`L3AgentNotifyAPI`
 ### `def router_deleted(self, context, router_id)`
 
 RPC Server endpoint 方法一枚。
-
-
-
-
-
-
-
-
-
-
-
-## `class AgentMixin(object)`
-
-*neutron/agent/l3/ha.py*
-
-```
-    def __init__(self, host):
-        self._init_ha_conf_path()
-        super(AgentMixin, self).__init__(host)
-        self.state_change_notifier = batch_notifier.BatchNotifier(
-            self._calculate_batch_duration(), self.notify_server)
-        eventlet.spawn(self._start_keepalived_notifications_server)
-```
-
-1. 调用 `_init_ha_conf_path`
-2. 调用 `_calculate_batch_duration`
-3. 初始化一个 `BatchNotifier` 的实例
-4. 开辟一个线程，运行 `_start_keepalived_notifications_server` 方法
-
-### `def _init_ha_conf_path(self)`
-
-```
-    def _init_ha_conf_path(self):
-        ha_full_path = os.path.dirname("/%s/" % self.conf.ha_confs_path)
-        common_utils.ensure_dir(ha_full_path)
-```
-
-确保 ha 数据目录的存在。（本实例为 `/opt/stack/data/neutron/ha_confs/`）
-
-### `def _calculate_batch_duration(self)`
-
-计算 ha salve 切换至 master 所需要的时间
-
-### `def _start_keepalived_notifications_server(self)`
-
-初始化一个 `L3AgentKeepalivedStateChangeServer` 实例
-调用 `L3AgentKeepalivedStateChangeServer.run` 方法
-
-
-
-
-
-
-
-
-
-
-
-## `class AgentMixin(object)`
-
-*neutron/agent/l3/dvr.py*
-
-```
-class AgentMixin(object):
-    def __init__(self, host):
-        # dvr data
-        self._fip_namespaces = weakref.WeakValueDictionary()
-        super(AgentMixin, self).__init__(host)
-```
 
 
 
