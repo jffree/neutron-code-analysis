@@ -170,6 +170,22 @@ RPC Client 为：`L3AgentNotifyAPI`
 3. 实例化 `L3AgentExtensionsManager`
 4. 调用 `L3AgentExtensionsManager.initialize` 方法用来初始化 extensions。
 
+### `def after_start(self)`
+
+```
+    def after_start(self):
+        # Note: the FWaaS' vArmourL3NATAgent is a subclass of L3NATAgent. It
+        # calls this method here. So Removing this after_start() would break
+        # vArmourL3NATAgent. We need to find out whether vArmourL3NATAgent
+        # can have L3NATAgentWithStateReport as its base class instead of
+        # L3NATAgent.
+        eventlet.spawn_n(self._process_routers_loop)
+        LOG.info(_LI("L3 agent started"))
+```
+
+该方法在子类 `L3NATAgentWithStateReport` 中被重写
+
+
 ### `def _process_routers_loop(self)`
 
 ```
@@ -180,36 +196,154 @@ RPC Client 为：`L3AgentNotifyAPI`
             pool.spawn_n(self._process_router_update)
 ```
 
-启动一个绿色线程来运行 `_process_router_update` 方法
+启动一个绿色线程池来运行 `_process_router_update` 方法
 
 ### `def _process_router_update(self)`
 
-
-
-1. 调用 `RouterProcessingQueue.each_update_to_next_router` 方法
-
+* 调用 `RouterProcessingQueue.each_update_to_next_router` 方法，循环获得每个 router 的更新信息
+ 1. 若更新的动作为 `PD_UPDATE`，则调用 `PrefixDelegation.process_prefix_update` 方法
+ 2. 获取待更新的 router 数据
+ 3. 若更新的动作为 `DELETE_ROUTER`，但是未找到 router 数据，则：
+  1. 调用 `plugin_rpc.get_routers` 获取 router 的数据
+  2. 若发生异常，则调用 `_resync_router` 方法，增加更新 router 数据的任务
+ 4. 若不存在 router 数据，则：
+  1. 调用 `_safe_router_removed` 删除与 router 相关的数据和 namespace
+  2. 若删除失败，则调用 `_resync_router` 方法，增加更新 router 数据的任务
+  3. 若删除成功，则调用 `ExclusiveRouterProcessor.fetched_and_processed` 方法记录 router 更新的时间
+ 5. 对于其他情况：
+  1. 调用 `_process_router_if_compatible` 处理该 router 的数据（增加或者更新记录）
+  2. 调用 `ExclusiveRouterProcessor.fetched_and_processed` 记录该 router 的当前操作时间
 
 
 ### `def router_deleted(self, context, router_id)`
 
 RPC Server endpoint 方法一枚。
 
+### `def _resync_router(self, router_update, priority=queue.PRIORITY_SYNC_ROUTERS_TASK)`
 
+```
+    def _resync_router(self, router_update,
+                       priority=queue.PRIORITY_SYNC_ROUTERS_TASK):
+        router_update.timestamp = timeutils.utcnow()
+        router_update.priority = priority
+        router_update.router = None  # Force the agent to resync the router
+        self._queue.add(router_update)
+```
 
+增加一个更新 router 数据的任务
 
+### `def _safe_router_removed(self, router_id)`
 
+1. 调用 `_router_removed` 实现 router 的删除
+2. 调用 `l3_ext_manager.delete_router` 处理 extension 
+3. 若删除成功，则返回 True
+4. 若发生异常，则返回 False
 
+### `def _router_removed(self, router_id)`
 
+1. 若 `router_info` 中不存在有该 router 的记录，则调用 `namespaces_manager.ensure_router_cleanup` 清除与该 router 有关的 namespace
+2. 若 `router_info` 中存在有该 router 的记录，则调用 router info delete 删除该 router，并删除 `router_info` 中的记录 
 
+### `def _process_router_if_compatible(self, router)`
 
+1. 若设置了 `external_network_bridge`，则需要检查此网络设备是否存在
+2. 获取 router 上 gateway port 所在的 external network
+3. 若该 router 不存在 external network 且未设置 `handle_internal_only_routers`，则引发异常
+4. 若是通过 `_fetch_external_net_id` 获取的 external network id 与 router gateway port 所在的 external networ id 不一致，则引发异常
+5. 若该 router 的 id 未在当前 l3 agent 的记录中，则调用 `_process_added_router` 用来增加该 router 的记录
+6. 若该 router 的 id 属性已经在当前 l3 agent 的记录中，则调用 `_process_updated_router` 更新该 router 记录的数据
 
+* **配置选项说明**：
+ 1. `external_network_bridge`（这个配置选项将在 O 版本被删除）若配置了该选项，那么所有附加在该 bridge 上的 port 都不再由 l2 agent 来管理
+ 2. `handle_internal_only_routers`：当一个 router 没有 gateway 是，是否可以使用，也就是 router 是否可以用来只处理内部网络。
+ 3. `gateway_external_network_id`：当 `external_network_bridge` 设定后，每个 l3 agent 只能帮到一个 external network，`gateway_external_network_id` 就是用来声明该 external network id 的（若是想要一个 l3 agent 支持多个 external network，这两个选项必须同时设定为空）。
 
+### `def _fetch_external_net_id(self, force=False)`
 
+该方法只有在设置了 `gateway_external_network_id` 或者 `external_network_bridge` 的情况下生效。
 
+1. 若设置了 `gateway_external_network_id`，则返回此值
+2. 若未设置 `external_network_bridge` 则返回空
+3. 若未设置 `force`，且存在 `self.target_ex_net_id`，则返回 `target_ex_net_id`
+4. 调用 `plugin_rpc.get_external_network_id` 获取 external network id，返回此值
 
+### `def _process_added_router(self, router)`
 
+1. 调用 `_router_added` 创建该 router info 的记录
+2. 调用 router info 的 `process` 方法
+3. 通过 callback system 发送 ROUTER AFTER_CREATE 的通知
+4. 若存在 l3 extension，则调用 extension 的 `add_router` 方法
 
+### `def _router_added(self, router_id, router)`
 
+1. 调用 `_create_router` 创建 router 的描述
+2. 通过 callback system 发送 ROUTER BEFORE_CREATE 的通知
+3. 在当前的 l3 agent 中记录 router 数据
+4. 调用 router 的 `initialize` 方法
 
+### `def _create_router(self, router_id, router)`
 
+```
+    def _create_router(self, router_id, router):
+        args = []
+        kwargs = {
+            'router_id': router_id,
+            'router': router,
+            'use_ipv6': self.use_ipv6,
+            'agent_conf': self.conf,
+            'interface_driver': self.driver,
+        }
+
+        if router.get('distributed'):
+            kwargs['agent'] = self
+            kwargs['host'] = self.host
+
+        if router.get('distributed') and router.get('ha'):
+            if self.conf.agent_mode == lib_const.L3_AGENT_MODE_DVR_SNAT:
+                kwargs['state_change_callback'] = self.enqueue_state_change
+                return dvr_edge_ha_router.DvrEdgeHaRouter(*args, **kwargs)
+
+        if router.get('distributed'):
+            if self.conf.agent_mode == lib_const.L3_AGENT_MODE_DVR_SNAT:
+                return dvr_router.DvrEdgeRouter(*args, **kwargs)
+            else:
+                return dvr_local_router.DvrLocalRouter(*args, **kwargs)
+
+        if router.get('ha'):
+            kwargs['state_change_callback'] = self.enqueue_state_change
+            return ha_router.HaRouter(*args, **kwargs)
+
+        return legacy_router.LegacyRouter(*args, **kwargs)
+```
+
+根据 router 的类型，创建一个 `RouterInfo` 的子类实例来描述 router
+
+### `def _process_updated_router(self, router)`
+
+1. 更新当前 l3 agent 中关于该 router 记录的数据
+2. 通过 callback system 发送 ROUTER BEFORE_UPDATE 的通知
+3. 若存在 l3 extension，则调用 extension 的 `update_router` 方法
+
+### `def periodic_sync_routers_task(self, context)`
+
+这个是间隔一段时间执行的任务，用来完成 l3 agent 与 Router Servic 的信息同步。
+
+1. 若 `fullsync` 为 false，则直接返回
+2. 若 `fullsync` 为 True，则调用 `fetch_and_sync_all_routers` 与 Neutron Server 进行 router 数据的同步
+
+### `def fetch_and_sync_all_routers(self, context, ns_manager)`
+
+1. 调用 `plugin_rpc.get_router_ids` 获取该 l3 agent 上所有 router 的 id
+2. 调用 `plugin_rpc.get_routers` 获取一定数量的 router 数据
+3. 对于所获得的 router 的数据：
+ 1. 若该 router 是 distributed，
+  1. 调用 `NamespaceManager` 记录该 router 的数据
+  2. 若当前的 l3 agent 是 dvr_snat 模式，则调用 `NamespaceManager.ensure_snat_cleanup` 清理与该 router 有关的 snat namespace
+ 2. 若该 router 支持 ha，则：
+  1. 调用 `check_ha_state_for_router` 检查该 ha router 的状态是否发生了变化
+ 3. 根据 router 的数据生成一个 `RouterUpdate` 的实例，并将其放入待处理的队列中
+4. 若所有的 router 数据都同步成功，则根据同步前的 router 数据和同步后的 router 数据，找出那些需要被删除的 router
+5. 为这些需要被删除的 router 创建 `RouterUpdate` 对象，放入待处理队列中
+
+### `def router_removed_from_agent(self, context, payload)`
 
