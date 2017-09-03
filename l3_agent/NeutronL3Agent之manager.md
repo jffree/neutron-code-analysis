@@ -347,3 +347,16 @@ RPC Server endpoint 方法一枚。
 
 ### `def router_removed_from_agent(self, context, payload)`
 
+创建 `RouterUpdate` 的事件（`DELETE_ROUTER`），并将其放入待处理队列中
+
+### `def router_added_to_agent(self, context, payload)`
+
+调用 `routers_updated` 实现
+
+### `def routers_updated(self, context, routers)`
+
+针对所有待操作的 router 数据，创建 `RouterUpdate` 事件，并将其放入事件队列中。
+
+### `def create_pd_router_update(self)`
+
+关于 ipv6 处理的，待深入了解
