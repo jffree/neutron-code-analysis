@@ -203,7 +203,7 @@ RPC Client 为：`L3AgentNotifyAPI`
 * 调用 `RouterProcessingQueue.each_update_to_next_router` 方法，循环获得每个 router 的更新信息
  1. 若更新的动作为 `PD_UPDATE`，则调用 `PrefixDelegation.process_prefix_update` 方法
  2. 获取待更新的 router 数据
- 3. 若更新的动作为 `DELETE_ROUTER`，但是未找到 router 数据，则：
+ 3. 若更新的动作不为 `DELETE_ROUTER`，但是未找到 router 数据，则：
   1. 调用 `plugin_rpc.get_routers` 获取 router 的数据
   2. 若发生异常，则调用 `_resync_router` 方法，增加更新 router 数据的任务
  4. 若不存在 router 数据，则：
@@ -229,6 +229,8 @@ RPC Server endpoint 方法一枚。
         router_update.router = None  # Force the agent to resync the router
         self._queue.add(router_update)
 ```
+
+当处理一个 router 更新事件时，若在操作过程中发生了异常，则会调用该方法，创建一个 router 更新事件，该事件的作用是强制性从 neutron-server 端重新获取 router 数据。
 
 增加一个更新 router 数据的任务
 
