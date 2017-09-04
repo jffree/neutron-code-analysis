@@ -339,7 +339,7 @@
 ### `def delete(self, agent)`
 
 1. 清空该 router 的 gw_port、interface、floating ip 记录
-2. 调用 `process_delete`
+2. 调用 `process_delete` 删除 internal 和 external port
 3. 调用 `disable_radvd` 停止 radvr 服务
 4. 删除 qrouter- namespace
 
@@ -355,8 +355,8 @@
 ### `def process_delete(self, agent)`
 
 1. 若当前还存在 qrouter- namespace，则：
- 1. 调用 `_process_internal_ports` 处理 port 的删除问题
-
+ 1. 调用 `_process_internal_ports` 处理 internal port 的删除问题
+ 2. 调用 `_process_external_on_delete` 删除 external port
 
 ### `def _process_internal_ports(self, pd)`
 
@@ -401,6 +401,206 @@
 
 设置 port 的 ip，更新其 route 记录
 
+### `def _process_external_on_delete(self, agent)`
 
+1. 调用 `get_ex_gw_port` 获取 gateway port
+2. 调用 `_process_external_gateway` 清理所有的 gateway port
+3. 调用 `get_external_device_interface_name` 获取 gateway port 的名称
+4. 调用 `configure_fip_addresses` 处理 gatway port floating ip
 
+### `def _process_external_gateway(self, ex_gw_port, pd)`
 
+1. 调用 `get_external_device_name` 获取 gateway port 的名称
+2. 若是当前 router 数据中还不存在 external gateway port 则调用 `external_gateway_added` 为 router 增加 gateway
+3. 若 router 中已经存在 external gateway port 的记录，则调用 `_gateway_ports_equal` 判断数据是否相等，若是不相等，则调用 `external_gateway_updated` 更新 gateway port
+4. 若 router 中存在 gateway port 的记录，但是 ex_gw_port 不存在，则调用 `external_gateway_removed` 清除 gateway port
+5. 若二者同时不存在，则调用 `gateway_redirect_cleanup`
+6. 调用 `_delete_stale_external_devices` 删除那些与 gateway port name 不一致的 qg- 设备
+7. 调用 `_handle_router_snat_rules` 情况 snat 规则
+
+### `def external_gateway_added(self, ex_gw_port, interface_name)`
+
+```
+    def external_gateway_added(self, ex_gw_port, interface_name):
+        preserve_ips = self._list_floating_ip_cidrs()
+        self._external_gateway_added(
+            ex_gw_port, interface_name, self.ns_name, preserve_ips)
+```
+
+### `def _external_gateway_added(self, ex_gw_port, interface_name, ns_name, preserve_ips)`
+
+1. 调用 `_plug_external_gateway` 增加 gateway port
+2. 调用 `_get_external_gw_ips` 获取 gateway port 所在 subnet 的 gateway ip
+3. 调用 `_add_route_to_gw` 增加 gateway route 记录
+4. 调用 interface driver init_router_port 方法为该 port 增加 ip 和对于的 route
+5. 获取 gateway port 初始化完成后与其绑定的 gateway ip
+6. 对于那些没有使用的 gateway ip，删除其路由记录
+7. 对于那些正在使用的 gateway ip，增加其路由记录
+8. 调用 `ip_lib.send_ip_addr_adv_notif` 发送 arp 通知
+
+### `def _plug_external_gateway(self, ex_gw_port, interface_name, ns_name)`
+
+调用 interface driver plug 创建 gateway port
+
+### `def _get_external_gw_ips(self, ex_gw_port)`
+
+获取 gateway port 所在 subnet 的 gateway ip
+
+### `def _add_route_to_gw(self, ex_gw_port, device_name, namespace, preserve_ips)`
+
+* 对于 gateway 上的所有 subnet：
+ 1. 判断 subnet 的 gateway ip 是否在 subnet 内
+ 2. 若不在 subnet 内，则调用 `IPDevice.route.add_route` 增加此 ip route
+
+### `def _gateway_ports_equal(port1, port2)`
+
+```
+    @staticmethod
+    def _gateway_ports_equal(port1, port2):
+        return port1 == port2
+```
+
+### `def external_gateway_updated(self, ex_gw_port, interface_name)`
+
+```
+    def external_gateway_updated(self, ex_gw_port, interface_name):
+        preserve_ips = self._list_floating_ip_cidrs()
+        self._external_gateway_added(
+            ex_gw_port, interface_name, self.ns_name, preserve_ips)
+```
+
+### `def external_gateway_removed(self, ex_gw_port, interface_name)`
+
+1. 调用 `IPDevice` 来描述该设备
+2. 调用 `remove_external_gateway_ip` 删除 gateway port 的 Ip 地址
+3. 调用 interface driver unplug 删除该设备
+
+### `def _delete_stale_external_devices(self, interface_name, pd)`
+
+删除名称与 interface_name 不一样的 external port 
+
+### `def _handle_router_snat_rules(self, ex_gw_port, interface_name)`
+
+1. 调用 `_empty_snat_chains` 清空与 snat 有关的 chain
+2. 将 snat 转发至 floating-nat chain
+3. 调用 `_add_snat_rules` 处理相应的规则
+
+### `def _empty_snat_chains(self, iptables_manager)`
+
+清空该 qrouter- 上的 nat 表与 mangle 表上的 POSTROUTING、snat、mark chain
+
+### `def _add_snat_rules(self, ex_gw_port, iptables_manager, interface_name)`
+
+1. 调用 `process_external_port_address_scope_routing` 处理 gateway port address scope 的 route
+2. 若存在 gateway port，则：
+ * 若该 gateway port 上绑定有 ipv4 地址：
+  1. 调用 `external_gateway_nat_snat_rules` 增加 snat 规则
+  2. 调用 `external_gateway_nat_fip_rules` 增加
+  3. 调用 `external_gateway_mangle_rules` 生成 mangle 表的规则
+
+### `process_external_port_address_scope_routing`
+
+1. 若不支持 snat 则退出
+2. 若不存在 gateway port 则退出
+3. `-A neutron-l3-agent-POSTROUTING -o qg-c68ba5c4-7b -m connmark --mark 0x0/0xffff0000 -j CONNMARK --save-mark --nfmask 0xffff0000 --ctmask 0xffff0000`
+4. 调用 `_get_external_address_scope` 获取 external network address scope，为其增加相应的规则
+
+### ` def external_gateway_nat_snat_rules(self, ex_gw_ip, interface_name)`
+
+对 gateway port 增加 snat 规则
+
+### `def external_gateway_nat_fip_rules(self, ex_gw_ip, interface_name)`
+
+1. 调用 `_prevent_snat_for_internal_traffic_rule` 阻止内部网络之间走 snat 方法
+2. 增加如下规则：
+
+```
+-A neutron-l3-agent-snat -m mark ! --mark 0x2/0xffff -m conntrack --ctstate DNAT -j SNAT --to-source 172.16.100.247
+```
+
+### `def _prevent_snat_for_internal_traffic_rule(self, interface_name)`
+
+nat 表增加如下规则：
+
+```
+-A neutron-l3-agent-POSTROUTING ! -i qg-c68ba5c4-7b ! -o qg-c68ba5c4-7b -m conntrack ! --ctstate DNAT -j ACCEPT
+```
+
+### `def external_gateway_mangle_rules(self, interface_name)`
+
+```
+-A neutron-l3-agent-scope -i qg-c68ba5c4-7b -j MARK --set-xmark 0x4000000/0xffff0000
+```
+
+### `def configure_fip_addresses(self, interface_name)`
+
+调用 `process_floating_ip_addresses` 实现
+
+### `def _internal_network_updated(self, port, subnet_id, prefix, old_prefix, updated_cidrs)`
+
+与 ipv6 相关
+
+### `def _get_existing_devices(self)`
+
+获取当前的 namespace 中存在的网络设备
+
+### `def _port_has_ipv6_subnet(port)`
+
+判断 port 上是否含有 ipv6 地址 subnet
+
+### `def address_scope_mangle_rule(self, device_name, mark_mask)`
+
+```
+    def address_scope_mangle_rule(self, device_name, mark_mask):
+        return '-i %s -j MARK --set-xmark %s' % (device_name, mark_mask)
+```
+
+### `def address_scope_filter_rule(self, device_name, mark_mask)`
+
+```
+    def address_scope_filter_rule(self, device_name, mark_mask):
+        return '-o %s -m mark ! --mark %s -j DROP' % (
+            device_name, mark_mask)
+```
+
+### `def _enable_ra_on_gw(self, ex_gw_port, ns_name, interface_name)`
+
+在 Interface 上启动 ipv6 ra
+
+### `def is_v6_gateway_set(self, gateway_ips)`
+
+判断 ip 中是否含有 ipv6 版本的地址
+
+### `def update_fip_statuses(self, agent, fip_statuses)`
+
+调用 `plugin_rpc.update_floatingip_statuses` 更新 Server 端 floating ip 的状态
+
+### `def _add_address_scope_mark(self, iptables_manager, ports_scopemark)`
+
+1. 调用 `address_scope_mangle_rule`
+2. 调用 `address_scope_filter_rule`
+
+### `def process_ports_address_scope_iptables(self)`
+
+```
+    def process_ports_address_scope_iptables(self):
+        ports_scopemark = self._get_address_scope_mark()
+        self._add_address_scope_mark(self.iptables_manager, ports_scopemark)
+```
+
+### `def process_address_scope(self)`
+
+```
+    def process_address_scope(self):
+        with self.iptables_manager.defer_apply():
+            self.process_ports_address_scope_iptables()
+            self.process_floating_ip_address_scope_rules()
+```
+
+### `def process(self, agent)`
+
+1. 调用 `_process_internal_ports` 更新 l3 agent 上的 internal port
+2. 调用 `process_external` 更新 l3 agent 上的 external port
+3. 调用 `process_address_scope` 处理 address scope 相关
+4. 调用 `routes_updated` 更新 route 
+5. 更新自身的 ex_gw_port、fip_map、enable_snat 数据
