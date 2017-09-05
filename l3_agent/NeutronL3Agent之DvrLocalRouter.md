@@ -4,6 +4,9 @@
 
 ## `class DvrRouterBase(router.RouterInfo)`
 
+实现了对 fip- namespace 相关的操作
+
+
 ```
     def __init__(self, agent, host, *args, **kwargs):
         super(DvrRouterBase, self).__init__(*args, **kwargs)
