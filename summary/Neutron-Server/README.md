@@ -4,12 +4,15 @@
 
 ## WSGI Server And App 的创建
 
+* 请见同一目录下的文章：*WSGI服务.md*
 
+## plugin 和 extension 的加载
 
+* 请见同一目录下的文章：*Plugin和Extension的加载.md*
 
+## RESTful API 的创建（路由映射的创建）
 
-## RESTful API 的创建
-
+* 请见同一目录下的文章：*路由映射的建立.md*
 
 ## Workers 的创建
 
